@@ -984,16 +984,6 @@ void Compiler::lvaClassifyParameterABI(Classifier& classifier)
 
     lvaParameterStackSize = classifier.StackSize();
 
-<<<<<<< HEAD
-#ifndef TARGET_LLVM
-    // genFnPrologCalleeRegArgs expect these to be the counts of registers it knows how to handle.
-    // TODO-Cleanup: Recompute these values in the backend instead, where they are used.
-    codeGen->intRegState.rsCalleeRegArgCount   = genCountBits(argRegs & RBM_ARG_REGS);
-    codeGen->floatRegState.rsCalleeRegArgCount = genCountBits(argRegs & RBM_FLTARG_REGS);
-#endif // !TARGET_LLVM
-
-=======
->>>>>>> upstream/main
 #ifdef TARGET_ARM
     // Prespill all argument regs on to stack in case of Arm when under profiler.
     // We do this as the arm32 CORINFO_HELP_FCN_ENTER helper does not preserve

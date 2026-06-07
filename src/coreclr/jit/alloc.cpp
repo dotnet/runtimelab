@@ -97,13 +97,9 @@ void JitMemStatsInfo::dumpMaxMemStats(FILE* file)
 
 #ifdef JIT_STANDALONE_BUILD
 
-<<<<<<< HEAD
 #if !defined(TARGET_LLVM)
-=======
 // Note that code in libstdc++ (for example) may call the global new
 // during thread initialization etc. so don't assert during init.
-
->>>>>>> upstream/main
 void* __cdecl operator new(std::size_t size)
 {
     assert((g_jitHost == nullptr) || !"Global new called; use HostAllocator if long-lived allocation was intended");

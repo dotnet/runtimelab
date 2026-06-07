@@ -883,8 +883,7 @@ CONFIG_INTEGER(JitUseScalableVectorT, "JitUseScalableVectorT", 0)
 CONFIG_INTEGER(JitDispIns, "JitDispIns", 0)
 #endif // defined(TARGET_LOONGARCH64)
 
-<<<<<<< HEAD
-#ifdef TARGET_LLVM
+#if defined(TARGET_LLVM)
 RELEASE_CONFIG_INTEGER(JitVerifyLlvmIR, "JitVerifyLlvmIR", 0)
 RELEASE_CONFIG_INTEGER(JitCheckLlvmIR, "JitCheckLlvmIR", 0)
 RELEASE_CONFIG_INTEGER(JitRunLssaTests, "JitRunLssaTests", 0)
@@ -892,9 +891,7 @@ RELEASE_CONFIG_INTEGER(JitGcStress, "JitGcStress", 0)
 
 CONFIG_STRING(JitDumpSymbol, "JitDumpSymbol")
 CONFIG_STRING(JitEnableLssaRange, "JitEnableLssaRange")
-#endif // TARGET_LLVM
-=======
-#if defined(TARGET_WASM)
+#elif defined(TARGET_WASM)
 // Set this to 1 to turn NYI_WASM into R2R unsupported failures instead of asserts.
 CONFIG_INTEGER(JitWasmNyiToR2RUnsupported, "JitWasmNyiToR2RUnsupported", 0)
 // Specify methods that will fail with R2R unsupported after codegen.
@@ -903,7 +900,6 @@ CONFIG_STRING(JitR2RUnsupportedRange, "JitR2RUnsupportedRange")
 // Enable processing methods with funclets.
 RELEASE_CONFIG_INTEGER(JitWasmFunclets, "JitWasmFunclets", 0)
 #endif // defined(TARGET_WASM)
->>>>>>> upstream/main
 
 // Allow to enregister locals with struct type.
 RELEASE_CONFIG_INTEGER(JitEnregStructLocals, "JitEnregStructLocals", 1)

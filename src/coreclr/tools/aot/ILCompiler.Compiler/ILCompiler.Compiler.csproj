@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <AssemblyName>ILCompiler.Compiler</AssemblyName>
@@ -488,9 +488,8 @@
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmAbi.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmMethodLevelVirtualUnwindModel.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmPreciseVirtualUnwindInfoNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmValueType.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmFunctionType.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmEmitter.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\LlvmWasmEmitter.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\NodeFactory.Wasm.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\MetadataManager.Wasm.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\CompilerTypeSystemContext.Wasm.cs" />
@@ -501,7 +500,6 @@
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmUnboxingStubNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_LoongArch64\LoongArch64TentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_RiscV64\RiscV64TentativeMethodNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmTentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_X64\X64TentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_X86\X86TentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\TentativeInstanceMethodNode.cs" />
@@ -560,7 +558,6 @@
     <Compile Include="Compiler\DependencyAnalysis\CodeBasedDependencyAlgorithm.cs" />
     <Compile Include="Compiler\DependencyAnalysis\DelegateMarshallingStubMapNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\StructMarshallingStubMapNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\StubTargetMappingsNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\GenericVirtualMethodTableNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\InterfaceGenericVirtualMethodTableNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\TypeGVMEntriesNode.cs" />
@@ -665,10 +662,6 @@
     <Compile Include="Compiler\DependencyAnalysis\Target_RiscV64\RiscV64ReadyToRunHelperNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_RiscV64\RiscV64ReadyToRunGenericHelperNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_RiscV64\RiscV64UnboxingStubNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmJumpStubNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmReadyToRunHelperNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmReadyToRunGenericHelperNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmUnboxingStubNode.cs" />
     <Compile Include="Compiler\ObjectWriter\CodeView\CodeViewFileTableBuilder.cs" />
     <Compile Include="Compiler\ObjectWriter\CodeView\CodeViewNative.cs" />
     <Compile Include="Compiler\ObjectWriter\CodeView\CodeViewSymbolsBuilder.cs" />

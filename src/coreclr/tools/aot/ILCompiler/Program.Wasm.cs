@@ -21,7 +21,13 @@ namespace ILCompiler
 
             context.InitializeWasmCompilationOptions(
                 Get(_command.WasmMethodLevelVirtualUnwindModel),
-                Get(_command.EmitStackTraceData),
+                Get(_command.StackTraceData) switch
+                {
+                    null or "none" => false,
+                    "frames" => true,
+                    "lines" => true,
+                    _ => throw new CommandLineException($"Unknown stack trace data: {Get(_command.StackTraceData)}"),
+                },
                 Get(_command.WasmGlobalBase));
         }
 

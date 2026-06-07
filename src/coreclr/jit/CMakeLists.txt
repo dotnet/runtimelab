@@ -23,11 +23,7 @@ function(create_standalone_jit)
 
   if(TARGETDETAILS_OS STREQUAL "unix_osx" OR TARGETDETAILS_OS STREQUAL "unix_anyos")
     set(JIT_ARCH_LINK_LIBRARIES gcinfo_unix_${TARGETDETAILS_ARCH})
-<<<<<<< HEAD
-  elseif(NOT (TARGETDETAILS_ARCH STREQUAL "wasm32" OR TARGETDETAILS_ARCH STREQUAL "wasm64"))
-=======
-  elseif(NOT ${TARGETDETAILS_ARCH} MATCHES "wasm")
->>>>>>> upstream/main
+  elseif(NOT (TARGETDETAILS_ARCH STREQUAL "wasm32" OR TARGETDETAILS_ARCH STREQUAL "wasm64" OR TARGETDETAILS_ARCH STREQUAL "wasm"))
     set(JIT_ARCH_LINK_LIBRARIES gcinfo_${TARGETDETAILS_OS}_${TARGETDETAILS_ARCH})
   endif()
 
@@ -251,6 +247,7 @@ set( JIT_WASM64_SOURCES
   llvmlssa.cpp
   llvmcodegen.cpp
   llvmdebuginfo.cpp
+  registeropswasm.cpp
 )
 set( JIT_WASM32_SOURCES
   targetllvm.cpp
@@ -260,6 +257,7 @@ set( JIT_WASM32_SOURCES
   llvmlssa.cpp
   llvmcodegen.cpp
   llvmdebuginfo.cpp
+  registeropswasm.cpp
 )
 
 set( JIT_ARM_SOURCES

@@ -290,11 +290,7 @@ GenTree* Compiler::fgMorphExpandCast(GenTreeCast* tree)
     var_types srcType = genActualType(oper);
     var_types dstType = tree->CastToType();
 
-<<<<<<< HEAD
 #if !defined(TARGET_LLVM) // LLVM codegen supports all casts directly.
-    // See if the cast has to be done in two steps.  R -> I
-=======
->>>>>>> upstream/main
     if (varTypeIsFloating(srcType) && varTypeIsIntegral(dstType))
     {
         // Do we need to do it in two steps R -> I -> smallType?
@@ -418,49 +414,9 @@ GenTree* Compiler::fgMorphExpandCast(GenTreeCast* tree)
     }
 #endif // TARGET_AMD64
 
-<<<<<<< HEAD
-#ifdef TARGET_X86
-#ifdef FEATURE_HW_INTRINSICS
-    else if (varTypeIsLong(srcType) && varTypeIsFloating(dstType) && canUseEvexEncoding())
-    {
-        // We can handle these casts directly using SIMD instructions.
-        // The transform to SIMD is done in DecomposeLongs.
-        return nullptr;
-    }
-#endif // FEATURE_HW_INTRINSICS
-
-    // Do we have to do two step U4/8 -> R4/8 ?
-    else if (tree->IsUnsigned() && varTypeIsFloating(dstType))
-    {
-        srcType = varTypeToUnsigned(srcType);
-
-        if (srcType == TYP_ULONG)
-        {
-            CorInfoHelpFunc helper = (dstType == TYP_FLOAT) ? CORINFO_HELP_ULNG2FLT : CORINFO_HELP_ULNG2DBL;
-            return fgMorphCastIntoHelper(tree, helper, oper);
-        }
-        else if (srcType == TYP_UINT && !canUseEvexEncoding())
-        {
-            oper = gtNewCastNode(TYP_LONG, oper, true, TYP_LONG);
-            oper->gtFlags |= (tree->gtFlags & (GTF_OVERFLOW | GTF_EXCEPT));
-            tree->ClearUnsigned();
-
-            CorInfoHelpFunc helper = (dstType == TYP_FLOAT) ? CORINFO_HELP_LNG2FLT : CORINFO_HELP_LNG2DBL;
-            return fgMorphCastIntoHelper(tree, helper, oper);
-        }
-    }
-    else if (!tree->IsUnsigned() && (srcType == TYP_LONG) && varTypeIsFloating(dstType))
-    {
-        CorInfoHelpFunc helper = (dstType == TYP_FLOAT) ? CORINFO_HELP_LNG2FLT : CORINFO_HELP_LNG2DBL;
-        return fgMorphCastIntoHelper(tree, helper, oper);
-    }
-#endif // TARGET_X86
-    else
+    else 
 #endif // !defined(TARGET_LLVM)
         if (varTypeIsGC(srcType) != varTypeIsGC(dstType))
-=======
-    else if (varTypeIsGC(srcType) != varTypeIsGC(dstType))
->>>>>>> upstream/main
     {
         // We are casting away GC information.  we would like to just
         // change the type to int, however this gives the emitter fits because
@@ -7093,11 +7049,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
         case GT_MUL:
             noway_assert(op2 != nullptr);
 
-<<<<<<< HEAD
-#if !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
-=======
 #if !defined(TARGET_64BIT) && !defined(TARGET_WASM)
->>>>>>> upstream/main
             if (typ == TYP_LONG)
             {
                 // For (long)int1 * (long)int2, we dont actually do the
@@ -7132,9 +7084,6 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
                     goto USE_HELPER_FOR_ARITH;
                 }
             }
-<<<<<<< HEAD
-#endif // !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
-=======
 #endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM)
 
 #if defined(TARGET_WASM)
@@ -7152,7 +7101,6 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
                 }
             }
 #endif
->>>>>>> upstream/main
             break;
 
         case GT_ARR_LENGTH:
@@ -7213,11 +7161,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
                 return fgMorphSmpOp(tree, mac);
             }
 
-<<<<<<< HEAD
-#if !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
-=======
 #if !defined(TARGET_64BIT) && !defined(TARGET_WASM)
->>>>>>> upstream/main
             if (typ == TYP_LONG)
             {
                 helper = CORINFO_HELP_LDIV;
@@ -7231,20 +7175,12 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
                 goto USE_HELPER_FOR_ARITH;
             }
 #endif
-<<<<<<< HEAD
-#endif // !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
-=======
 #endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM)
->>>>>>> upstream/main
             break;
 
         case GT_UDIV:
 
-<<<<<<< HEAD
-#if !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
-=======
 #if !defined(TARGET_64BIT) && !defined(TARGET_WASM)
->>>>>>> upstream/main
             if (typ == TYP_LONG)
             {
                 helper = CORINFO_HELP_ULDIV;
@@ -7257,11 +7193,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
                 goto USE_HELPER_FOR_ARITH;
             }
 #endif
-<<<<<<< HEAD
-#endif // !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
-=======
 #endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM)
->>>>>>> upstream/main
             break;
 
         case GT_MOD:
@@ -7369,11 +7301,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
                 }
             }
 
-<<<<<<< HEAD
-#if !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
-=======
 #if !defined(TARGET_64BIT) && !defined(TARGET_WASM)
->>>>>>> upstream/main
             if (typ == TYP_LONG)
             {
                 helper = (oper == GT_UMOD) ? CORINFO_HELP_ULMOD : CORINFO_HELP_LMOD;
@@ -7395,11 +7323,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
                 }
             }
 #endif
-<<<<<<< HEAD
-#endif // !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
-=======
 #endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM)
->>>>>>> upstream/main
 
             if (tree->OperIs(GT_UMOD) && op2->IsIntegralConstUnsignedPow2())
             {
@@ -7699,15 +7623,9 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
         }
     }
 
-<<<<<<< HEAD
-#if !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
-DONE_MORPHING_CHILDREN:
-#endif // !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
-=======
 #if !defined(TARGET_64BIT) && !defined(TARGET_WASM)
 DONE_MORPHING_CHILDREN:
 #endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM)
->>>>>>> upstream/main
 
     gtUpdateNodeOperSideEffects(tree);
 
@@ -7939,22 +7857,14 @@ DONE_MORPHING_CHILDREN:
 
         case GT_MUL:
 
-<<<<<<< HEAD
-#if !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
-=======
 #if !defined(TARGET_64BIT) && !defined(TARGET_WASM)
->>>>>>> upstream/main
             if (typ == TYP_LONG)
             {
                 // This must be GTF_MUL_64RSLT
                 INDEBUG(tree->AsOp()->DebugCheckLongMul());
                 return tree;
             }
-<<<<<<< HEAD
-#endif // !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
-=======
 #endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM)
->>>>>>> upstream/main
             goto CM_OVF_OP;
 
         case GT_SUB:

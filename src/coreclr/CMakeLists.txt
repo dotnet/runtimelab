@@ -300,14 +300,8 @@ if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 
   add_subdirectory(debug)
 
-<<<<<<< HEAD
   add_subdirectory(binder)
-  add_subdirectory(classlibnative)
   add_subdirectory(dlls)
-=======
-add_subdirectory(binder)
-add_subdirectory(dlls)
->>>>>>> upstream/main
 
   add_subdirectory(unwinder)
   add_subdirectory(interop)

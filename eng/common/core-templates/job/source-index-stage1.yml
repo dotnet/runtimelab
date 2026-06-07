@@ -27,17 +27,10 @@ jobs:
     pool:
       ${{ if eq(variables['System.TeamProject'], 'public') }}:
         name: $(DncEngPublicBuildPool)
-<<<<<<< HEAD
-        image: windows.vs2026preview.scout.amd64.open
-      ${{ if eq(variables['System.TeamProject'], 'internal') }}:
-        name: $(DncEngInternalBuildPool)
-        image: windows.vs2026preview.scout.amd64
-=======
         image: windows.vs2026.amd64.open
       ${{ if eq(variables['System.TeamProject'], 'internal') }}:
         name: $(DncEngInternalBuildPool)
         image: windows.vs2026.amd64
->>>>>>> upstream/main
 
   steps:
   - ${{ if eq(parameters.is1ESPipeline, '') }}:

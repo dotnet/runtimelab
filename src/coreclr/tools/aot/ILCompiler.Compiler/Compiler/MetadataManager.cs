@@ -177,18 +177,6 @@ namespace ILCompiler
             var invokeMapNode = new ReflectionInvokeMapNode(commonFixupsTableNode);
             header.Add(BlobIdToReadyToRunSection(ReflectionMapBlob.InvokeMap), invokeMapNode);
 
-            if (GenerateUnboxingStubTargetMappings)
-            {
-                var unboxingStubTargetsMapNode = new UnboxingStubTargetMappingsNode();
-                header.Add(BlobIdToReadyToRunSection(ReflectionMapBlob.UnboxingStubMap), unboxingStubTargetsMapNode);
-            }
-
-            if (GenerateUnboxingAndInstantiatingStubTargetMappings)
-            {
-                var unboxingAndInstantiatingStubTargetsMapNode = new UnboxingAndInstantiatingStubTargetMappingsNode();
-                header.Add(BlobIdToReadyToRunSection(ReflectionMapBlob.UnboxingAndInstantiatingStubMap), unboxingAndInstantiatingStubTargetsMapNode);
-            }
-
             var arrayMapNode = new ArrayMapNode(commonFixupsTableNode);
             header.Add(BlobIdToReadyToRunSection(ReflectionMapBlob.ArrayMap), arrayMapNode);
 
@@ -789,15 +777,14 @@ namespace ILCompiler
                 if (internedBody != methodBody)
                     continue;
 
-<<<<<<< HEAD
                 if (SkipGeneratingStackTraceMappingForWasmMethod(factory, methodBody))
-=======
+                    continue;
+
                 methodBodies.Add(method);
 
                 // Methods that will end up in the reflection invoke table should not have an entry in stack trace table
                 // We'll try looking them up in reflection data at runtime.
                 if (methodsWithMappings.Contains(method))
->>>>>>> upstream/main
                     continue;
 
                 MethodStackTraceVisibilityFlags stackVisibility = _stackTraceEmissionPolicy.GetMethodVisibility(method);

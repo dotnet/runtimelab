@@ -6,6 +6,12 @@
 #error The file should not be included for this platform.
 #endif
 
+#ifdef TARGET_WASM32
+#define CORINFO_ARCH_TARGET      CORINFO_ARCH_WASM32
+#else
+#error NYI: WASM64
+#endif
+
 // clang-format off
 
   #define CPU_LOAD_STORE_ARCH      1
@@ -133,3 +139,5 @@
   #define RBM_FLTARG_REGS          RBM_F0
 
   // clang-format on
+
+  #include "registeropswasm.h"

@@ -241,7 +241,6 @@ export async function mono_wasm_load_config (module: DotnetModuleInternal): Prom
         return;
     }
     try {
-<<<<<<< HEAD
         if (NativeAOT && !loaderHelpers.config?.resources) {
             // TODO-LLVM: embed (part of) the config at app compile time.
             if (!loaderHelpers.config) {
@@ -259,15 +258,6 @@ export async function mono_wasm_load_config (module: DotnetModuleInternal): Prom
             };
         }
 
-        if (!module.configSrc && (!loaderHelpers.config || Object.keys(loaderHelpers.config).length === 0 || (!loaderHelpers.config.assets && !loaderHelpers.config.resources))) {
-            // if config file location nor assets are provided
-            module.configSrc = "dotnet.boot.js";
-        }
-
-        configFilePath = module.configSrc;
-
-=======
->>>>>>> upstream/main
         configLoaded = true;
 
         normalizeConfig();

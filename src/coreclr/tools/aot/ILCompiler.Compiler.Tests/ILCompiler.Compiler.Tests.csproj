@@ -7,7 +7,7 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <TestRunnerAdditionalArguments>-notrait category=failing</TestRunnerAdditionalArguments>
     <!-- xunit.runner.visualstudio is restored for .NET Framework instead of Core-->
-    <NoWarn>$(NoWarn);NU1701</NoWarn>
+    <NoWarn>$(NoWarn);NU1701;NU1900</NoWarn>
     <!-- By default the subdirectories containing CoreTestAssembly and ILTestAssembly would be
          included in compilation of this project -->
     <EnableDefaultItems>false</EnableDefaultItems>

@@ -48,11 +48,7 @@
         <FeatureInterpreter>true</FeatureInterpreter>
     </PropertyGroup>
 
-<<<<<<< HEAD
-    <PropertyGroup Condition="('$(Platform)' == 'x64' OR '$(Platform)' == 'arm64') AND ('$(Configuration)' == 'debug' OR '$(Configuration)' == 'checked') AND '$(TargetsAndroid)' != 'true' AND '$(TargetsWasm)' != 'true'">
-=======
-    <PropertyGroup Condition="('$(Platform)' == 'x64' OR '$(Platform)' == 'arm64' OR '$(Platform)' == 'arm' OR '$(Platform)' == 'riscv64' OR '$(Platform)' == 'loongarch64') AND ('$(Configuration)' == 'debug' OR '$(Configuration)' == 'checked') AND '$(TargetsAndroid)' != 'true'">
->>>>>>> upstream/main
+    <PropertyGroup Condition="('$(Platform)' == 'x64' OR '$(Platform)' == 'arm64' OR '$(Platform)' == 'arm' OR '$(Platform)' == 'riscv64' OR '$(Platform)' == 'loongarch64') AND ('$(Configuration)' == 'debug' OR '$(Configuration)' == 'checked') AND '$(TargetsAndroid)' != 'true' AND '$(TargetsWasm)' != 'true'">
         <FeatureInterpreter>true</FeatureInterpreter>
     </PropertyGroup>
 

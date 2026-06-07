@@ -379,15 +379,8 @@ namespace Internal.ReadyToRunConstants
         // Marker to be used in asserts.
         FirstFakeHelper,
 
-<<<<<<< HEAD
         ThrowMisalign,
-        ThrowArgumentOutOfRange,
-        ThrowArgument,
-        ThrowPlatformNotSupported,
-        ThrowNotImplemented,
 
-=======
->>>>>>> upstream/main
         DebugBreak,
 
         GetRuntimeType,

@@ -226,11 +226,8 @@
     <SubsetName Include="Clr.PalTestList" OnDemand="true" Description="Generate the list of the CoreCLR PAL tests. When using the command line, use Clr.PalTests instead." />
     <SubsetName Include="Clr.Hosts" Description="The CoreCLR corerun test host." />
     <SubsetName Include="Clr.Jit" Description="The JIT for the CoreCLR .NET runtime." />
-<<<<<<< HEAD
     <SubsetName Include="Clr.LlvmJit" Description="The cross-compiling CoreCLR JIT targeting WebAssembly for Native AOT." />
-=======
     <SubsetName Include="Clr.WasmJit" Description="The cross-targeting WebAssembly JIT compiler for the CoreCLR .NET runtime." />
->>>>>>> upstream/main
     <SubsetName Include="Clr.AllJits" Description="All of the cross-targeting JIT compilers for the CoreCLR .NET runtime." />
     <SubsetName Include="Clr.AllJitsCommunity" Description="All of the cross-targeting JIT compilers for the CoreCLR .NET runtime, including community targets." />
     <SubsetName Include="Clr.Spmi" Description="SuperPMI, a tool for CoreCLR JIT testing." />
@@ -335,13 +332,12 @@
     <ClrRuntimeBuildSubsets>$(ClrRuntimeBuildSubsets);ClrJitSubset=true</ClrRuntimeBuildSubsets>
   </PropertyGroup>
 
-<<<<<<< HEAD
   <PropertyGroup Condition="$(_subset.Contains('+clr.llvmjit+'))">
     <ClrRuntimeBuildSubsets>$(ClrRuntimeBuildSubsets);ClrLlvmJitSubset=true</ClrRuntimeBuildSubsets>
-=======
+  </PropertyGroup>
+
   <PropertyGroup Condition="$(_subset.Contains('+clr.wasmjit+'))">
     <ClrRuntimeBuildSubsets>$(ClrRuntimeBuildSubsets);ClrWasmJitSubset=true</ClrRuntimeBuildSubsets>
->>>>>>> upstream/main
   </PropertyGroup>
 
   <PropertyGroup Condition="$(_subset.Contains('+clr.paltests+'))">
@@ -785,18 +781,10 @@
     <ProjectToBuild Include="@(TestProjectToBuild)" BuildInParallel="true" Test="true" Category="packs" />
   </ItemGroup>
 
-<<<<<<< HEAD
   <ItemGroup Condition="$(_subset.Contains('+nativeaot.packages+'))">
     <ProjectToBuild Include="$(InstallerProjectRoot)\pkg\projects\nativeaot-packages.proj" Category="packs" />
   </ItemGroup>
 
-  <!-- Utility -->
-  <ItemGroup Condition="$(_subset.Contains('+regeneratedownloadtable+'))">
-    <ProjectToBuild Include="$(RepositoryEngineeringDir)regenerate-download-table.proj" />
-  </ItemGroup>
-
-=======
->>>>>>> upstream/main
   <ItemGroup Condition="$(_subset.Contains('+regeneratethirdpartynotices+'))">
     <ProjectToBuild Include="$(RepositoryEngineeringDir)regenerate-third-party-notices.proj" BuildInParallel="false" />
   </ItemGroup>

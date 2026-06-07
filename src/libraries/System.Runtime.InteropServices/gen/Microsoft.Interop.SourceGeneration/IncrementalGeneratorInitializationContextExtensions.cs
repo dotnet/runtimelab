@@ -46,6 +46,14 @@ namespace Microsoft.Interop
                     new StubEnvironment(data.Left, data.Right));
         }
 
+        public static void RegisterDiagnostics(this IncrementalGeneratorInitializationContext context, IncrementalValuesProvider<DiagnosticInfo> diagnostics)
+        {
+            context.RegisterSourceOutput(diagnostics.Where(diag => diag is not null), (context, diagnostic) =>
+            {
+                context.ReportDiagnostic(diagnostic.ToDiagnostic());
+            });
+        }
+
         public static void RegisterConcatenatedSyntaxOutputs<TNode>(this IncrementalGeneratorInitializationContext context, IncrementalValuesProvider<TNode> nodes, string fileName)
             where TNode : SyntaxNode
         {

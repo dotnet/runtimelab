@@ -60,16 +60,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="$(CommonTestPath)SingleFileTestRunner\SingleFileTestRunner.cs"
-             Link="Common\SingleFileTestRunner\SingleFileTestRunner.cs"
-<<<<<<< HEAD
-             Condition="'$(TargetsSingleThreadedWasm)' != 'true' and '$(IsFunctionalTest)' != 'true'" />
     <Compile Include="$(CommonTestPath)WasmTestRunner\WasmTestRunner.cs"
              Link="Common\WasmTestRunner\WasmTestRunner.cs"
              Condition="'$(TargetsSingleThreadedWasm)' == 'true' and '$(IsFunctionalTest)' != 'true'" />
-=======
-             Condition="'$(CLRTestKind)' == '' and '$(IsFunctionalTest)' != 'true'" />
->>>>>>> upstream/main
   </ItemGroup>
 
   <ItemGroup>

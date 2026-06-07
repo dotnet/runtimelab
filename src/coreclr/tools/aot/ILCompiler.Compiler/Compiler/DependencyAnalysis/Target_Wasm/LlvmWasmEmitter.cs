@@ -8,7 +8,7 @@ using ILCompiler.ObjectWriter;
 
 namespace ILCompiler.DependencyAnalysis.Wasm
 {
-    public struct WasmEmitter(NodeFactory factory, bool relocsOnly)
+    public struct LlvmWasmEmitter(NodeFactory factory, bool relocsOnly)
     {
         public const uint InvalidIndex = uint.MaxValue;
 

@@ -321,7 +321,6 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
     if not "!string:-jit-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! jit
     )
-<<<<<<< HEAD
     if not "!string:-llvmjit-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! llvmjit
         set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCLR_CMAKE_BUILD_LLVM_JIT=1"
@@ -340,10 +339,9 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
             echo %__ErrMsgPrefix%%__MsgPrefix%Error: The LLVM_CMAKE_CONFIG environment variable pointing to llvm-build-dir/lib/cmake/llvm must be set.
             goto ExitWithError
         )
-=======
+    )
     if not "!string:-wasmjit-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! wasmjit
->>>>>>> upstream/main
     )
     if not "!string:-alljits-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! alljits

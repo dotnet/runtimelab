@@ -1762,7 +1762,6 @@ void HelperCallProperties::init()
                 mutatesHeap = true; // Conservatively.
                 break;
 
-<<<<<<< HEAD
             case CORINFO_HELP_LLVM_EH_REVERSE_PINVOKE_ENTER_AND_PUSH_VIRTUAL_UNWIND_FRAME:
             case CORINFO_HELP_LLVM_EH_REVERSE_PINVOKE_EXIT_AND_POP_VIRTUAL_UNWIND_FRAME:
                 isNoGC = true;
@@ -1771,9 +1770,9 @@ void HelperCallProperties::init()
             case CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES:
             case CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME:
             case CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME:
-                noThrow     = true;
                 mutatesHeap = true;
-=======
+                break;
+
             case CORINFO_HELP_VIRTUAL_FUNC_PTR:
             case CORINFO_HELP_GVMLOOKUP_FOR_SLOT:
             case CORINFO_HELP_READYTORUN_VIRTUAL_FUNC_PTR:
@@ -1787,7 +1786,6 @@ void HelperCallProperties::init()
             case CORINFO_HELP_ALLOC_CONTINUATION_METHOD:
                 mutatesHeap = true;
                 isAllocator = true;
->>>>>>> upstream/main
                 break;
 
             default:

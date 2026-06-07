@@ -9,11 +9,5 @@ namespace System.Diagnostics
         {
             InitializeForIpAddress(IntPtr.Zero, needFileInfo);
         }
-
-        private static string CreateStackTraceStringForNativeUnwind(out bool isStackTraceHidden)
-        {
-            isStackTraceHidden = false;
-            return UnknownStackFrameString;
-        }
     }
 }

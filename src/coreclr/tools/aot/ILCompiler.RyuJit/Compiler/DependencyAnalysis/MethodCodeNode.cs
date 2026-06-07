@@ -29,11 +29,7 @@ namespace ILCompiler.DependencyAnalysis
     }
 
     [DebuggerTypeProxy(typeof(MethodCodeNodeDebugView))]
-<<<<<<< HEAD
-    public class MethodCodeNode : ObjectNode, IMethodBodyNode, INodeWithCodeInfo, INodeWithDebugInfo, ISymbolDefinitionNode, ISpecialUnboxThunkNode, IMethodCodeNode
-=======
-    public class MethodCodeNode : ObjectNode, IMethodBodyNode, INodeWithCodeInfo, INodeWithDebugInfo, ISpecialUnboxThunkNode, IMethodCodeNodeWithTypeSignature
->>>>>>> upstream/main
+    public class MethodCodeNode : ObjectNode, IMethodCodeNode, IMethodBodyNode, INodeWithCodeInfo, INodeWithDebugInfo, ISpecialUnboxThunkNode, IMethodCodeNodeWithTypeSignature
     {
         private MethodDesc _method;
         private ObjectData _methodCode;

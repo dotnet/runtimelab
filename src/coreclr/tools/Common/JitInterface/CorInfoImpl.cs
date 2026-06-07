@@ -50,22 +50,6 @@ namespace Internal.JitInterface
         //
         // Global initialization and state
         //
-<<<<<<< HEAD
-        private enum ImageFileMachine
-        {
-            I386 = 0x014c,
-            IA64 = 0x0200,
-            AMD64 = 0x8664,
-            ARM = 0x01c4,
-            ARM64 = 0xaa64,
-            WASM32 = 0xffff, // matches llvm.h - TODO better to just #if out this check in compiler.cpp?
-            WASM64 = 0xfffe,
-            LoongArch64 = 0x6264,
-            RiscV64 = 0x5064,
-        }
-
-=======
->>>>>>> upstream/main
         internal const string JitLibrary = "clrjitilc";
 
 #if SUPPORT_JIT
@@ -3474,23 +3458,18 @@ namespace Internal.JitInterface
 
             pEEInfoOut.osPageSize = 0x1000;
 
-<<<<<<< HEAD
 #if !READYTORUN
             if (_compilation.NodeFactory.Target.IsWasm)
             {
                 pEEInfoOut.maxUncheckedOffsetForNullObject = _compilation.TypeSystemContext.WasmGlobalBase - 1;
             }
-            else
-#endif
-            {
-                pEEInfoOut.maxUncheckedOffsetForNullObject = (_compilation.NodeFactory.Target.IsWindows) ?
-                    (32 * 1024 - 1) : (pEEInfoOut.osPageSize / 2 - 1);
-=======
+#else
             if (_compilation.NodeFactory.Target.IsWasm)
             {
                 // TODO: Set this value to 0 for Wasm
                 pEEInfoOut.maxUncheckedOffsetForNullObject = 1024 - 1;
             }
+#endif
             else if (_compilation.NodeFactory.Target.IsWindows)
             {
                 pEEInfoOut.maxUncheckedOffsetForNullObject = 32 * 1024 - 1;
@@ -3498,7 +3477,6 @@ namespace Internal.JitInterface
             else
             {
                 pEEInfoOut.maxUncheckedOffsetForNullObject = pEEInfoOut.osPageSize / 2 - 1;
->>>>>>> upstream/main
             }
 
             pEEInfoOut.targetAbi = TargetABI;
@@ -4406,21 +4384,15 @@ namespace Internal.JitInterface
                 case TargetArchitecture.ARM:
                     return (uint)CorInfoArch.CORINFO_ARCH_ARM;
                 case TargetArchitecture.ARM64:
-<<<<<<< HEAD
-                    return (uint)ImageFileMachine.ARM64;
-                case TargetArchitecture.Wasm32:
-                    return (uint)ImageFileMachine.WASM32;
-                case TargetArchitecture.Wasm64:
-                    return (uint)ImageFileMachine.WASM64;
-=======
                     return (uint)CorInfoArch.CORINFO_ARCH_ARM64;
->>>>>>> upstream/main
                 case TargetArchitecture.LoongArch64:
                     return (uint)CorInfoArch.CORINFO_ARCH_LOONGARCH64;
                 case TargetArchitecture.RiscV64:
                     return (uint)CorInfoArch.CORINFO_ARCH_RISCV64;
                 case TargetArchitecture.Wasm32:
                     return (uint)CorInfoArch.CORINFO_ARCH_WASM32;
+                case TargetArchitecture.Wasm64:
+                    return (uint)CorInfoArch.CORINFO_ARCH_WASM64;
                 default:
                     throw new NotImplementedException("Expected target architecture is not supported");
             }

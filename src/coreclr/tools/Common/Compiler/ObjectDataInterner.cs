@@ -21,7 +21,7 @@ namespace ILCompiler
         void DeduplicatePass(NodeFactory factory, Dictionary<ISymbolNode, ISymbolNode> previousSymbolRemapping, Dictionary<ISymbolNode, ISymbolNode> symbolRemapping);
     }
 
-    public sealed class ObjectDataInterner
+    public sealed partial class ObjectDataInterner
     {
         private readonly IObjectDataDeduplicator[] _deduplicators;
         private Dictionary<ISymbolNode, ISymbolNode> _symbolRemapping;

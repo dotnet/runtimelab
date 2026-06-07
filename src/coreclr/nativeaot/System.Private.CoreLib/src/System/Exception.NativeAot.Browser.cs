@@ -96,12 +96,12 @@ namespace System
             {
                 IntPtr eip = eips[index++];
                 Debug.Assert(eip != EdiSeparator); // Should never appear in data from JS.
-                AppendStackIP(eip, false);
+                AppendStackIP(eip);
 
                 int jsFrameLength = GetBrowserFrameInfoWithBias(eip, out int wasmFunctionIndexWithBias);
                 if (jsFrameLength is 0)
                 {
-                    AppendStackIP(eips[index++], false); // Append the function offset.
+                    AppendStackIP(eips[index++]); // Append the function offset.
 
                     if (wasmFunctionIndexWithBias == ip)
                     {
@@ -117,7 +117,7 @@ namespace System
                     int jsFrameLengthInChunks = GetJSFrameLengthInChunks(jsFrameLength);
                     for (int i = 0; i < jsFrameLengthInChunks; i++)
                     {
-                        AppendStackIP(eips[index++], false);
+                        AppendStackIP(eips[index++]);
                     }
                 }
             }

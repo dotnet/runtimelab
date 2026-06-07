@@ -40,10 +40,23 @@
       <ResolvedFileToPublish Remove="@(_DebugSymbolsIntermediatePath)" />
       <ResolvedFileToPublish Remove="@(IlcSatelliteAssembly)" />
       <!-- replace apphost with binary we generated during native compilation -->
-      <ResolvedFileToPublish Include="$(NativeBinary)">
+      <ResolvedFileToPublish Include="$(NativeBinary)" Condition="'$(DotNetJsApi)' != 'true'">
         <RelativePath>$(NativeBinaryPrefix)$(TargetName)$(NativeBinaryExt)</RelativePath>
         <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       </ResolvedFileToPublish>
+
+      <ResolvedFileToPublish Remove="$(PublishDir)\$(TargetName).js" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
+
+      <ResolvedFileToPublish Include="$(NativeOutputPath)$(TargetName).js" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
+
+      <ResolvedFileToPublish Remove="$(PublishDir)\$(TargetName).wasm" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
+      <ResolvedFileToPublish Include="$(NativeOutputPath)$(TargetName).wasm" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
+      
+      <ResolvedFileToPublish Include="$(NativeOutputPath)\dotnet.native.js" />
+      <ResolvedFileToPublish Include="$(NativeOutputPath)\dotnet.native.wasm" />
+
+      <ResolvedFileToPublish Include="@(_FilesToCopyToNative)" Condition="'$(_targetOS)' == 'browser' and '$(DotnetJsApi)' == 'true'"/>
+
     </ItemGroup>
 
     <PropertyGroup Condition="'$(CopyOutputSymbolsToPublishDirectory)' == 'true'">
@@ -128,45 +141,7 @@
       <Output TaskParameter="RuntimePackFilesToSkipPublish" ItemName="_RuntimePackFilesToSkipPublish" />
     </ComputeManagedAssembliesToCompileToNative>
 
-<<<<<<< HEAD
-  </Target>
-
-  <Target Name="CopyNativeBinary" AfterTargets="Publish">
-    <!-- replace apphost with binary we generated during native compilation -->
-    <Delete Files="$(PublishDir)\$(TargetName)$(NativeBinaryExt)" />
-    <Copy SourceFiles="$(NativeBinary)" DestinationFolder="$(PublishDir)" Condition="'$(DotNetJsApi)' != 'true'" />
-
-    <Delete Files="$(PublishDir)\$(TargetName).js" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
-    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).js" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
-
-    <Delete Files="$(PublishDir)\$(TargetName).wasm" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
-    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
-    
-    <ItemGroup>
-      <_FilesToCopyToNative Include="$(NativeOutputPath)\dotnet.native.js" />
-      <_FilesToCopyToNative Include="$(NativeOutputPath)\dotnet.native.wasm" />
-    </ItemGroup>
-    <Copy SourceFiles="@(_FilesToCopyToNative)" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotnetJsApi)' == 'true'"/>
-  </Target>
-
-  <Target Name="_CopyAotSymbols" AfterTargets="Publish"
-          Condition="'$(CopyOutputSymbolsToPublishDirectory)' == 'true'">
-    <!-- dotnet CLI produces managed debug symbols, which we will delete and copy native symbols instead -->
-    <Delete Files="$(PublishDir)\$(TargetName).pdb" />
-
-    <PropertyGroup>
-      <_symbolExt Condition="'$(OS)' == 'Windows_NT'">$(NativeSymbolExt)</_symbolExt>
-      <_symbolExt Condition="'$(OS)' != 'Windows_NT'">$(NativeBinaryExt)$(NativeSymbolExt)</_symbolExt>
-      <_symbolSourcePath>$(NativeOutputPath)$(TargetName)$(_symbolExt)</_symbolSourcePath>
-      <_symbolTargetPath>$(PublishDir)\$(TargetName)$(_symbolExt)</_symbolTargetPath>
-      <!-- If the symbol is a dSYM bundle, it's a folder not a file. -->
-      <_symbolIsFile Condition="'$(NativeSymbolExt)' == '.dSYM'">false</_symbolIsFile>
-      <_symbolIsFile Condition="'$(_symbolIsFile)' == ''">true</_symbolIsFile>
-    </PropertyGroup>
-
-=======
     <!-- Replace CoreCLR runtime pack with NativeAOT equivalents, tagged PostprocessAssembly=true. -->
->>>>>>> upstream/main
     <ItemGroup>
       <ResolvedFileToPublish Remove="@(_RuntimePackFilesToSkipPublish)" />
       <ResolvedFileToPublish Include="@(DefaultFrameworkAssemblies)">

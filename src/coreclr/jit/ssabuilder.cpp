@@ -236,9 +236,9 @@ void SsaBuilder::InsertPhiToRationalIRForm(BasicBlock* block, unsigned lclNum)
 {
     assert(block->IsLIR());
 
-    var_types type     = m_pCompiler->lvaGetDesc(lclNum)->TypeGet();
-    GenTree*  phi      = new (m_pCompiler, GT_PHI) GenTreePhi(type);
-    GenTree*  storeLcl = m_pCompiler->gtNewStoreLclVarNode(lclNum, phi);
+    var_types type     = m_compiler->lvaGetDesc(lclNum)->TypeGet();
+    GenTree*  phi      = new (m_compiler, GT_PHI) GenTreePhi(type);
+    GenTree*  storeLcl = m_compiler->gtNewStoreLclVarNode(lclNum, phi);
 
     GenTree* insertionPoint = nullptr;
     for (GenTree* node : LIR::AsRange(block))
@@ -901,7 +901,6 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
     // First handle the incoming memory states.
     for (MemoryKind memoryKind : allMemoryKinds())
     {
-<<<<<<< HEAD
 #ifdef TARGET_LLVM
         // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
         if (block->IsLIR())
@@ -910,10 +909,7 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
         }
 #endif // TARGET_LLVM
 
-        if ((memoryKind == GcHeap) && m_pCompiler->byrefStatesMatchGcHeapStates)
-=======
         if ((memoryKind == GcHeap) && m_compiler->byrefStatesMatchGcHeapStates)
->>>>>>> upstream/main
         {
             // ByrefExposed and GcHeap share any phi this block may have,
             assert(block->bbMemorySsaPhiFunc[memoryKind] == block->bbMemorySsaPhiFunc[ByrefExposed]);
@@ -1040,15 +1036,9 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
 //
 void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
 {
-<<<<<<< HEAD
-    block->VisitAllSuccs(m_pCompiler, [this, block](BasicBlock* succ) {
+    block->VisitAllSuccs(m_compiler, [this, block](BasicBlock* succ) {
 #ifdef TARGET_LLVM
         if (block->IsLIR())
-=======
-    block->VisitAllSuccs(m_compiler, [this, block](BasicBlock* succ) {
-        // Walk the statements for phi nodes.
-        for (Statement* const stmt : succ->Statements())
->>>>>>> upstream/main
         {
             for (GenTree* tree : LIR::AsRange(succ))
             {
@@ -1071,6 +1061,8 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
         }
         else
 #endif // TARGET_LLVM
+        // Walk the statements for phi nodes.
+        for (Statement* const stmt : succ->Statements())
         {
             // Walk the statements for phi nodes.
             for (Statement* const stmt : succ->Statements())
@@ -1438,15 +1430,11 @@ void SsaBuilder::Build()
     // Mark all variables that will be tracked by SSA
     for (unsigned lclNum = 0; lclNum < m_compiler->lvaCount; lclNum++)
     {
-<<<<<<< HEAD
-        m_pCompiler->lvaTable[lclNum].lvInSsa = m_pCompiler->lvaGetDesc(lclNum)->lvTracked
+        m_compiler->lvaTable[lclNum].lvInSsa = m_compiler->lvaGetDesc(lclNum)->lvTracked
 #ifdef TARGET_LLVM
-                                                && !m_pCompiler->lvaGetDesc(lclNum)->lvHasLocalAddr
+                                                && !m_compiler->lvaGetDesc(lclNum)->lvHasLocalAddr
 #endif
         ;
-=======
-        m_compiler->lvaTable[lclNum].lvInSsa = m_compiler->lvaGetDesc(lclNum)->lvTracked;
->>>>>>> upstream/main
     }
 
     // Insert phi functions.

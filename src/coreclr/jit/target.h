@@ -120,17 +120,10 @@ inline bool compUnixX86Abi()
 //                       be assigned during register allocation.
 //    REG_NA           - Used to indicate that a register is either not yet assigned or not required.
 //
-<<<<<<< HEAD
-#if defined(TARGET_ARM) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_LLVM)
-enum _regNumber_enum : unsigned
-{
-#if defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_LLVM)
-=======
 #if defined(TARGET_ARM) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
 enum _regNumber_enum : unsigned
 {
 #if defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
->>>>>>> upstream/main
 // LA64 and RV64 don't require JITREG_ workaround for Android (see register.h)
 #define REGDEF(name, rnum, mask, sname) REG_##name = rnum,
 #define REGALIAS(alias, realname)       REG_##alias = REG_##realname,
@@ -356,11 +349,7 @@ public:
     }
 #endif
 
-<<<<<<< HEAD
-#if !defined(TARGET_X86) && !defined(TARGET_LLVM_WASM32)
-=======
 #if REGMASK_BITS != 32
->>>>>>> upstream/main
     explicit operator unsigned int() const
     {
         return (unsigned int)low;
@@ -442,11 +431,7 @@ public:
     }
 };
 
-<<<<<<< HEAD
-#if defined(TARGET_ARM) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_LLVM)
-=======
 #if defined(TARGET_ARM) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
->>>>>>> upstream/main
 
 #define REGDEF(name, rnum, mask, sname)                                                                                \
     static constexpr regMaskTP RBM_##name =                                                                            \
@@ -656,15 +641,12 @@ static uint32_t BitScanForward(const regMaskTP& mask)
 
 #endif // TARGET_XARCH
 
-<<<<<<< HEAD
 #if !defined(TARGET_LLVM_WASM32) && !defined(TARGET_LLVM_WASM64) // has no registers
 static_assert(REG_FIRST == 0);
 static_assert(REG_INT_FIRST < REG_INT_LAST);
 static_assert(REG_FP_FIRST  < REG_FP_LAST);
 #endif
 
-=======
->>>>>>> upstream/main
 // Opportunistic tail call feature converts non-tail prefixed calls into
 // tail calls where possible. It requires fast tail calling mechanism for
 // performance. Otherwise, we are better off not converting non-tail prefixed
@@ -1196,11 +1178,8 @@ static_assert((RBM_ALLINT & RBM_FPBASE) == RBM_NONE);
 static_assert((RBM_INT_CALLEE_SAVED & RBM_FPBASE) == RBM_NONE);
 #endif
 /*****************************************************************************/
-<<<<<<< HEAD
-#endif
-=======
+#endif // !TARGET_LLVM_WASM32 && !TARGET_LLVM_WASM64
 #endif // HAS_FIXED_REGISTER_SET
->>>>>>> upstream/main
 
 #ifdef TARGET_64BIT
 typedef uint64_t target_size_t;

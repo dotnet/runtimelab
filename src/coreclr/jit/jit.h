@@ -202,15 +202,9 @@
 #if defined(TARGET_RISCV64)
 #error Cannot define both TARGET_ARM64 and TARGET_RISCV64
 #endif
-<<<<<<< HEAD
 
-#elif defined(TARGET_LLVM)
+#elif defined(TARGET_LLVM) || defined(TARGET_WASM32)
 
-=======
-#if defined(TARGET_WASM32)
-#error Cannot define both TARGET_ARM64 and TARGET_WASM32
-#endif
->>>>>>> upstream/main
 #elif defined(TARGET_LOONGARCH64)
 #if defined(TARGET_X86)
 #error Cannot define both TARGET_LOONGARCH64 and TARGET_X86
@@ -308,34 +302,7 @@
 #endif
 #endif
 
-<<<<<<< HEAD
-// --------------------------------------------------------------------------------
-// IMAGE_FILE_MACHINE_TARGET
-// --------------------------------------------------------------------------------
-
-#if defined(TARGET_X86)
-#define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_I386
-#elif defined(TARGET_AMD64)
-#define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_AMD64
-#elif defined(TARGET_ARM)
-#define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_ARMNT
-#elif defined(TARGET_ARM64)
-#define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_ARM64 // 0xAA64
-#elif defined(TARGET_LLVM_WASM32)
-#define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_WASM32
-#elif defined(TARGET_LLVM_WASM64)
-#define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_WASM64
-#elif defined(TARGET_LOONGARCH64)
-#define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_LOONGARCH64 // 0x6264
-#elif defined(TARGET_RISCV64)
-#define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_RISCV64 // 0x5064
-#else
-#error Unsupported or unset target architecture
-#endif
-
-=======
->>>>>>> upstream/main
-typedef ptrdiff_t ssize_t;
+    typedef ptrdiff_t ssize_t;
 
 // Include the AMD64 unwind codes when appropriate.
 #if defined(TARGET_AMD64)

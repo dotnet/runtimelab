@@ -433,15 +433,11 @@ void RegSet::rsSpillTree(regNumber reg, GenTree* tree, unsigned regIdx /* =0 */)
     // Generate the code to spill the register
     var_types storeType = floatSpill ? treeType : tempType;
 
-<<<<<<< HEAD
 #ifndef TARGET_LLVM
-    m_rsCompiler->codeGen->spillReg(storeType, temp, reg);
+    m_compiler->codeGen->spillReg(storeType, temp, reg);
 #else
     assert(false); // TODO
 #endif // !TARGET_LLVM
-=======
-    m_compiler->codeGen->spillReg(storeType, temp, reg);
->>>>>>> upstream/main
 
     // Mark the tree node as having been spilled
     rsMarkSpill(tree, reg);

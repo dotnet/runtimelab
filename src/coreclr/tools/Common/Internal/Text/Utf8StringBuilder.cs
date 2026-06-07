@@ -16,15 +16,13 @@ namespace Internal.Text
         {
         }
 
-<<<<<<< HEAD
-        public byte[] UnderlyingArray => _buffer;
-=======
         public Utf8StringBuilder(int capacity)
         {
             _buffer = new byte[capacity];
         }
 
->>>>>>> upstream/main
+        public byte[] UnderlyingArray => _buffer;
+
         public int Length => _length;
 
         public ReadOnlySpan<byte> AsSpan() => _buffer.AsSpan(0, _length);

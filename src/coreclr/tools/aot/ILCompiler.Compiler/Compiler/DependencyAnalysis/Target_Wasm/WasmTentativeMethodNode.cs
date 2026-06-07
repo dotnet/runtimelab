@@ -1,11 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-<<<<<<< HEAD
-using System.Diagnostics;
-=======
 using System;
->>>>>>> upstream/main
+using System.Diagnostics;
 
 using ILCompiler.DependencyAnalysis.Wasm;
 
@@ -13,9 +10,16 @@ namespace ILCompiler.DependencyAnalysis
 {
     public partial class TentativeMethodNode
     {
+#if READYTORUN
         protected override void EmitCode(NodeFactory factory, ref WasmEmitter encoder, bool relocsOnly)
         {
-<<<<<<< HEAD
+            protected override void EmitCode(NodeFactory factory, ref WasmEmitter encoder, bool relocsOnly)
+            {
+                throw new NotImplementedException();
+            }
+#else
+        protected override void EmitCode(NodeFactory factory, ref LlvmWasmEmitter encoder, bool relocsOnly)
+        {
             IMethodNode target = GetTarget(factory);
             if (relocsOnly)
             {
@@ -31,9 +35,7 @@ namespace ILCompiler.DependencyAnalysis
             WasmValueType calleeReturnType = WasmValueType.Invalid;
             Debug.Assert(calleeReturnType == WasmAbi.GetWasmReturnType(target.Method, out _));
             encoder.EmitReturnAfterAlwaysThrowCall(callerReturnType, calleeReturnType, isEnd: true);
-=======
-            throw new NotImplementedException();
->>>>>>> upstream/main
+#endif
         }
     }
 }

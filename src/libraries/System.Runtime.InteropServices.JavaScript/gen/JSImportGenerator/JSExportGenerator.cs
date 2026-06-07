@@ -49,25 +49,9 @@ namespace Microsoft.Interop.JavaScript
                         requiresImplementation: true) is null);
 
             IncrementalValueProvider<StubEnvironment> stubEnvironment = context.CreateStubEnvironmentProvider();
-            var allAttributedMethods = attributedMethods.Collect();
+            var allAttributedMethods = methodsToGenerate.Collect();
 
-<<<<<<< HEAD
-            // Validate environment that is being used to generate stubs.
-            context.RegisterDiagnostics(stubEnvironment.Combine(allAttributedMethods).SelectMany((data, ct) =>
-            {
-                if (data.Right.IsEmpty // no attributed methods
-                    || data.Left.Compilation.Options is CSharpCompilationOptions { AllowUnsafe: true }) // Unsafe code enabled
-                {
-                    return ImmutableArray<DiagnosticInfo>.Empty;
-                }
-
-                return ImmutableArray.Create(DiagnosticInfo.Create(GeneratorDiagnostics.JSExportRequiresAllowUnsafeBlocks, null));
-            }));
-
-            IncrementalValuesProvider<(MemberDeclarationSyntax, StatementSyntax, AttributeListSyntax, ImmutableArray<DiagnosticInfo>)> generateSingleStub = methodsToGenerate
-=======
             IncrementalValuesProvider<(MemberDeclarationSyntax, StatementSyntax, AttributeListSyntax)> generateSingleStub = methodsToGenerate
->>>>>>> upstream/main
                 .Combine(stubEnvironment)
                 .Select(static (data, ct) => new
                 {
@@ -147,51 +131,19 @@ namespace Microsoft.Interop.JavaScript
         }
 
         private static MemberDeclarationSyntax PrintGeneratedSource(
-            IncrementalStubGenerationContext context,
+            ContainingSyntaxContext containingSyntaxContext,
             BlockSyntax wrapperStatements, string wrapperName)
         {
+
             MemberDeclarationSyntax wrappperMethod = MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), Identifier(wrapperName))
                 .WithModifiers(TokenList(new[] { Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword), Token(SyntaxKind.UnsafeKeyword) }))
-                .WithAttributeLists(List(
-                    new[] {
-                        AttributeList(
-                            SingletonSeparatedList(
-                                Attribute(
-                                    IdentifierName(Constants.DebuggerNonUserCodeAttribute)
-                                )
-                            )
-                        ),
-                        AttributeList(
-                            SingletonSeparatedList(
-                                Attribute(
-                                    IdentifierName(Constants.UnmanagedCallersOnlyAttributeGlobal)
-                                )
-                                .WithArgumentList(
-                                    AttributeArgumentList(
-                                        SingletonSeparatedList(
-                                            AttributeArgument(
-                                                LiteralExpression(
-                                                    SyntaxKind.StringLiteralExpression,
-                                                    Literal(GetUnmanagedEntryPointName(context.SignatureContext))
-                                                )
-                                            )
-                                            .WithNameEquals(
-                                                NameEquals(
-                                                    IdentifierName("EntryPoint")
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    })
-                )
+                .WithAttributeLists(SingletonList(AttributeList(SingletonSeparatedList(
+                    Attribute(IdentifierName(Constants.DebuggerNonUserCodeAttribute))))))
                 .WithParameterList(ParameterList(SingletonSeparatedList(
                     Parameter(Identifier(Constants.ArgumentsBuffer)).WithType(PointerType(ParseTypeName(Constants.JSMarshalerArgumentGlobal))))))
                 .WithBody(wrapperStatements);
 
-            MemberDeclarationSyntax toPrint = context.ContainingSyntaxContext.WrapMembersInContainingSyntaxWithUnsafeModifier(wrappperMethod);
+            MemberDeclarationSyntax toPrint = containingSyntaxContext.WrapMembersInContainingSyntaxWithUnsafeModifier(wrappperMethod);
 
             return toPrint;
         }
@@ -494,14 +446,8 @@ namespace Microsoft.Interop.JavaScript
                     }
                     )))));
 
-<<<<<<< HEAD
-            return (PrintGeneratedSource(incrementalContext, wrapperToInnerStubBlock, wrapperName),
-                registration, registrationAttribute,
-                incrementalContext.Diagnostics.Array.AddRange(diagnostics.Diagnostics));
-=======
             return (PrintGeneratedSource(incrementalContext.ContainingSyntaxContext, wrapperToInnerStubBlock, wrapperName),
                 registration, registrationAttribute);
->>>>>>> upstream/main
         }
 
         private static ExpressionStatementSyntax CreateWrapperToInnerStubCall(ImmutableArray<TypePositionInfo> signatureElements, string innerWrapperName)

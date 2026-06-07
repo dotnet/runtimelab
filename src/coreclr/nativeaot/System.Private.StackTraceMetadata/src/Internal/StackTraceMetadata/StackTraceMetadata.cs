@@ -329,11 +329,6 @@ namespace Internal.StackTraceMetadata
         /// </summary>
         private sealed class StackTraceMetadataCallbacksImpl : StackTraceMetadataCallbacks
         {
-            public override IntPtr TryConvertFunctionPointerToStackTraceIp(IntPtr functionPointer)
-            {
-                return ConvertFunctionPointerToStackTraceIp(functionPointer);
-            }
-
             public override DiagnosticMethodInfo TryGetDiagnosticMethodInfoFromStartAddress(nint methodStartAddress)
             {
                 return GetDiagnosticMethodInfoFromStartAddressIfAvailable(methodStartAddress);

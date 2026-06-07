@@ -206,14 +206,10 @@ ValueNumFuncDef(HWI_##isa##_##name, ((numArgs == -1) ? -1 : (numArgs + 1)), ((fl
 #elif defined(TARGET_ARM)
 // No Hardware Intrinsics on ARM32
 
-<<<<<<< HEAD
 #elif defined(TARGET_LLVM)
 // No Hardware Intrinsics on WebAssembly
 
-#elif defined (TARGET_LOONGARCH64)
-=======
 #elif defined(TARGET_LOONGARCH64)
->>>>>>> upstream/main
     //TODO-LOONGARCH64-CQ: add LoongArch64's Hardware Intrinsics Instructions if supported.
 
 #elif defined (TARGET_RISCV64)

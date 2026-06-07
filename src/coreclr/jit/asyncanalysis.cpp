@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 #include "jitpch.h"
+#include "treelifeupdater.h"
 #include "async.h"
 
 // DataFlow::ForwardAnalysis callback used by DefaultValueAnalysis and

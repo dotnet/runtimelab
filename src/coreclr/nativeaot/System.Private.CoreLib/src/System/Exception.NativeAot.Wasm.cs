@@ -14,7 +14,7 @@ namespace System
             Debug.Assert(!isFirstRethrowFrame || isFirstFrame);
             if (RuntimeAugments.PreciseVirtualUnwind && (ip != 0))
             {
-                AppendStackIP(ip, isFirstRethrowFrame);
+                AppendStackIP(ip);
                 return true;
             }
             return false;

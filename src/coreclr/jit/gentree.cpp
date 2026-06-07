@@ -13551,22 +13551,16 @@ void Compiler::gtDispNode(GenTree* tree, IndentStack* indentStack, _In_ _In_opt_
 
 #if HAS_FIXED_REGISTER_SET
         // for tracking down problems in reguse prediction or liveness tracking
-<<<<<<< HEAD
 
 #if !defined(TARGET_LLVM)
-=======
->>>>>>> upstream/main
         if (verbose && 0)
         {
             printf(" RR=");
             dspRegMask(JitTls::GetCompiler()->codeGen->internalRegisters.GetAll(tree));
             printf("\n");
         }
-<<<<<<< HEAD
 #endif //!TARGET_LLVM
-=======
 #endif // HAS_FIXED_REGISTER_SET
->>>>>>> upstream/main
     }
 }
 
@@ -33026,17 +33020,13 @@ regNumber ReturnTypeDesc::GetABIReturnReg(unsigned idx, CorInfoCallConvExtension
             resultReg = varTypeIsIntegralOrI(GetReturnRegType(0)) ? REG_FLOATRET : REG_FLOATRET_1; // FA0 or FA1
         }
     }
-#endif
-
-<<<<<<< HEAD
 #elif defined(TARGET_LLVM)
     // Need something for verbose debugging.
     resultReg = REG_LLVM;
-#endif // TARGET_XXX
+#endif
 
-=======
+
 #if HAS_FIXED_REGISTER_SET
->>>>>>> upstream/main
     assert(resultReg != REG_NA);
 #endif
     return resultReg;

@@ -4983,15 +4983,6 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     // Insert GC Polls
     DoPhase(this, PHASE_INSERT_GC_POLLS, &Compiler::fgInsertGCPolls);
 
-<<<<<<< HEAD
-#if !defined(TARGET_LLVM) // For LLVM, codegen will handle these.
-    // Create any throw helper blocks that might be needed
-    //
-    DoPhase(this, PHASE_CREATE_THROW_HELPERS, &Compiler::fgCreateThrowHelperBlocks);
-#endif // !TARGET_LLVM
-
-=======
->>>>>>> upstream/main
     if (opts.OptimizationEnabled())
     {
         // Conditional to switch conversion, and switch peeling
@@ -5042,7 +5033,6 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     // call and register argument info, flowgraph and loop info, etc.
     compJitStats();
 
-<<<<<<< HEAD
 #if defined(TARGET_LLVM)
     assert(m_llvm != nullptr);
     DoPhase(this, PHASE_LOWER_LLVM, [this]() {
@@ -5086,8 +5076,6 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     }
 #endif // TARGET_ARM
 
-=======
->>>>>>> upstream/main
     if (compIsAsync())
     {
         DoPhase(this, PHASE_ASYNC, &Compiler::TransformAsync);
@@ -5832,6 +5820,7 @@ void Compiler::generatePatchpointInfo()
                 patchpointInfo->AsyncSynchronizationContextOffset());
     }
 
+#ifndef TARGET_LLVM
     // Record callee save registers.
     //
     regMaskTP rsPushRegs = codeGen->regSet.rsGetModifiedCalleeSavedRegsMask();
@@ -5856,6 +5845,7 @@ void Compiler::generatePatchpointInfo()
     JITDUMP("--OSR-- Tier0 callee saves: ");
     JITDUMPEXEC(dspRegMask(regMaskTP((regMaskSmall)patchpointInfo->CalleeSaveRegisters())));
     JITDUMP("\n");
+#endif // !TARGET_LLVM
 
     // Register this with the runtime.
     info.compCompHnd->setPatchpointInfo(patchpointInfo);

@@ -337,29 +337,25 @@ public:
 
 class WasmClassifier
 {
-<<<<<<< HEAD
+#if TARGET_LLVM
     const ClassifierInfo& m_info;
-    unsigned              m_stackArgSize = 0;
-=======
+#else
     unsigned m_localIndex = 0;
->>>>>>> upstream/main
+#endif
+    unsigned m_stackArgSize = 0;
 
 public:
     WasmClassifier(const ClassifierInfo& info);
 
     unsigned StackSize()
     {
-<<<<<<< HEAD
         return m_stackArgSize;
     }
 
-=======
-        return 0;
-    }
-
+#if !defined(TARGET_LLVM)
     static var_types ToJitType(CorInfoWasmType wasmType);
+#endif
 
->>>>>>> upstream/main
     ABIPassingInformation Classify(Compiler*    comp,
                                    var_types    type,
                                    ClassLayout* structLayout,
@@ -380,11 +376,7 @@ typedef Arm32Classifier PlatformClassifier;
 typedef RiscV64Classifier PlatformClassifier;
 #elif defined(TARGET_LOONGARCH64)
 typedef LoongArch64Classifier PlatformClassifier;
-<<<<<<< HEAD
-#elif defined(TARGET_LLVM)
-=======
-#elif defined(TARGET_WASM)
->>>>>>> upstream/main
+#elif defined(TARGET_LLVM) || defined(TARGET_WASM)
 typedef WasmClassifier PlatformClassifier;
 #endif
 

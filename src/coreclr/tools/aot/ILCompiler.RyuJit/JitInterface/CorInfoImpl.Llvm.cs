@@ -157,8 +157,8 @@ namespace Internal.JitInterface
             IMethodNode methodNode = _this._methodCodeNode;
             RyuJitCompilation compilation = _this._compilation;
 
-            string alternativeName = compilation.NodeFactory.GetSymbolAlternateName(methodNode, out _);
-            return (alternativeName != null) ? (byte*)_this.GetPin(StringToUTF8(alternativeName)) : null;
+            Utf8String alternativeName = compilation.NodeFactory.GetSymbolAlternateName(methodNode, out _);
+            return !alternativeName.IsNull ? (byte*)_this.GetPin(alternativeName) : null;
         }
 
         [UnmanagedCallersOnly]
@@ -187,7 +187,7 @@ namespace Internal.JitInterface
         private static IntPtr getExceptionThrownVariable(IntPtr thisHandle)
         {
             CorInfoImpl _this = GetThis(thisHandle);
-            ISymbolNode node = _this._compilation.NodeFactory.ExternDataSymbol("RhpExceptionThrown");
+            ISymbolNode node = _this._compilation.NodeFactory.ExternDataSymbol(new Utf8String("RhpExceptionThrown"));
             return _this.ObjectToHandle(node);
         }
 
@@ -277,7 +277,7 @@ namespace Internal.JitInterface
                 if ((pClause->Flags & CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_FILTER) != 0)
                 {
                     GetMangledFilterFuncletName(sb, pClause->FilterIndex);
-                    symbol = factory.ExternFunctionSymbol(sb.ToString());
+                    symbol = factory.ExternFunctionSymbol(sb.ToUtf8String());
                 }
                 else
                 {

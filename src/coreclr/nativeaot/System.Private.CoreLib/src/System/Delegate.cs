@@ -320,8 +320,7 @@ namespace System
 
                     functionPointer = unboxedPointer != 0 ? unboxedPointer : ldftnResult;
                 }
-                IntPtr ip = RuntimeAugments.StackTraceCallbacksIfAvailable?.TryConvertFunctionPointerToStackTraceIp(functionPointer) ?? 0;
-                return RuntimeAugments.StackTraceCallbacksIfAvailable?.TryGetDiagnosticMethodInfoFromStartAddress(ip);
+                return RuntimeAugments.StackTraceCallbacksIfAvailable?.TryGetDiagnosticMethodInfoFromStartAddress(functionPointer);
             }
         }
 

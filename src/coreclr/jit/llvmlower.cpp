@@ -56,13 +56,13 @@ void Llvm::AddUnhandledExceptionHandler()
     firstTryBlock->clearHndIndex();
 
     filterBlock->SetFlags(BBF_DONT_REMOVE | BBF_IMPORTED);
-    filterBlock->bbCatchTyp = BBCT_FILTER;
+    filterBlock->SetCatchType(BBCT_FILTER);
     filterBlock->clearTryIndex();
     filterBlock->setHndIndex(newEhIndex);
     filterBlock->bbRefs = 1; // Artificial ref count to satisfy assert in fgRemoveEmptyTryCatchOrTryFault.
 
     handlerBlock->SetFlags(BBF_DONT_REMOVE | BBF_IMPORTED);
-    handlerBlock->bbCatchTyp = BBCT_FILTER_HANDLER;
+    handlerBlock->SetCatchType(BBCT_FILTER_HANDLER);
     handlerBlock->clearTryIndex();
     handlerBlock->setHndIndex(newEhIndex);
     handlerBlock->bbRefs = 1; // Artificial ref count to satisfy assert in fgRemoveEmptyTryCatchOrTryFault.
@@ -426,12 +426,12 @@ void Llvm::lowerCall(GenTreeCall* callNode)
     // TODO-LLVM-CQ: enable fast shadow tail calls. Requires correct ABI handling.
     assert(!callNode->IsTailCall());
 
-    if (callNode->IsHelperCall(_compiler, CORINFO_HELP_RETHROW))
+    if (callNode->IsHelperCall(CORINFO_HELP_RETHROW))
     {
         lowerRethrow(callNode);
     }
     // "gtFoldExprConst" can attach a superflous argument to the overflow helper. Remove it.
-    else if (callNode->IsHelperCall(_compiler, CORINFO_HELP_OVERFLOW) && !callNode->gtArgs.IsEmpty())
+    else if (callNode->IsHelperCall(CORINFO_HELP_OVERFLOW) && !callNode->gtArgs.IsEmpty())
     {
         // TODO-LLVM: fix upstream to not attach this argument.
         CallArg* arg = callNode->gtArgs.GetArgByIndex(0);
@@ -484,7 +484,7 @@ void Llvm::lowerCall(GenTreeCall* callNode)
 
 void Llvm::lowerRethrow(GenTreeCall* callNode)
 {
-    assert(callNode->IsHelperCall(_compiler, CORINFO_HELP_RETHROW));
+    assert(callNode->IsHelperCall(CORINFO_HELP_RETHROW));
 
     // Language in ECMA 335 I.12.4.2.8.2.2 clearly states that rethrows nested inside finallys are
     // legal, however, neither C# nor the old verification system allow this. CoreCLR behavior was
@@ -708,7 +708,7 @@ void Llvm::lowerVirtualStubCall(GenTreeCall* callNode)
     // Discard the now-not-needed address in that case.
     if (callNode->gtCallType == CT_INDIRECT)
     {
-        GenTree* addr = callNode->gtCallAddr;
+        GenTree* addr = callNode->gtControlExpr;
         if (addr->OperIs(GT_LCL_VAR))
         {
             CurrentRange().Remove(addr);
@@ -721,7 +721,7 @@ void Llvm::lowerVirtualStubCall(GenTreeCall* callNode)
 
     // Finally, retarget our call. It is no longer VSD.
     callNode->gtCallType = CT_INDIRECT;
-    callNode->gtCallAddr = stubCall;
+    callNode->gtControlExpr = stubCall;
     callNode->gtStubCallStubAddr = nullptr;
     callNode->gtCallCookie = nullptr;
     callNode->gtFlags &= ~GTF_CALL_VIRT_STUB;

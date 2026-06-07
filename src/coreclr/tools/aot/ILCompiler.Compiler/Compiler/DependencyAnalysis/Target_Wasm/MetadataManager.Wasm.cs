@@ -6,6 +6,7 @@ using System.Diagnostics;
 using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysis.Wasm;
 
+using Internal.Text;
 using Internal.TypeSystem;
 
 namespace ILCompiler
@@ -50,7 +51,7 @@ namespace ILCompiler
             // Note that this check depends on us setting up a 'fake' ObjectInterner, just so that the compiler tracks
             // address-taken nodes. We're also depending on the implementation detail of reflection always "exposing"
             // methods (see "ReflectionInvokeMap.AddDependenciesDueToReflectability").
-            Debug.Assert(methodNode.Marked && factory.ObjectInterner.CanFold(methodNode.Method));
+            Debug.Assert(methodNode.Marked);
             MethodDesc method = methodNode.Method;
             return factory.AddressTakenMethodEntrypoint(method, unboxingStub: method.OwningType.IsValueType && !method.Signature.IsStatic).Marked;
         }
@@ -77,7 +78,7 @@ namespace ILCompiler
         private static bool IsPossibleDelegateTarget(NodeFactory factory, IWasmMethodCodeNode methodNode)
         {
             // Doing this precisely would require intrusive changes to upstream code; we make do with an approximation.
-            Debug.Assert(methodNode.Marked && factory.ObjectInterner.CanFold(methodNode.Method));
+            Debug.Assert(methodNode.Marked);
             MethodDesc method = methodNode.Method;
             return factory.AddressTakenMethodEntrypoint(method, unboxingStub: method.OwningType.IsValueType && !method.Signature.IsStatic).Marked;
         }
@@ -86,6 +87,6 @@ namespace ILCompiler
     public partial class ObjectDataInterner
     {
         public static ObjectDataInterner NullWithTracking { get; } =
-            new ObjectDataInterner(genericsOnly: false) { _symbolRemapping = new() { [new ExternFunctionSymbolNode("")] = null } };
+            new ObjectDataInterner() { _symbolRemapping = new() { [new ExternFunctionSymbolNode(Utf8String.Empty)] = null } };
     }
 }

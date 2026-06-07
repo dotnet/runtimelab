@@ -2,10 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-<<<<<<< HEAD
-using System.Diagnostics;
-=======
->>>>>>> upstream/main
 
 using ILCompiler.DependencyAnalysis.Wasm;
 
@@ -13,15 +9,17 @@ namespace ILCompiler.DependencyAnalysis
 {
     public partial class JumpStubNode
     {
+#if READYTORUN
         protected override void EmitCode(NodeFactory factory, ref WasmEmitter encoder, bool relocsOnly)
         {
-<<<<<<< HEAD
-            // Note: this node is currently never emitted on WASM.
-            Debug.Assert(relocsOnly || ShouldSkipEmittingObjectNode(factory));
-            encoder.Builder.EmitPointerReloc(_target);
-=======
             throw new NotImplementedException();
->>>>>>> upstream/main
+#else
+        protected override void EmitCode(NodeFactory factory, ref LlvmWasmEmitter encoder, bool relocsOnly)
+        {
+            // Note: this node is currently never emitted on WASM.
+            System.Diagnostics.Debug.Assert(relocsOnly || ShouldSkipEmittingObjectNode(factory));
+            encoder.Builder.EmitPointerReloc(_target);
+#endif
         }
     }
 }

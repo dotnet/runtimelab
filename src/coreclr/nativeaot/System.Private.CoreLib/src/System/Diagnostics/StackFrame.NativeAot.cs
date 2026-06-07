@@ -193,9 +193,6 @@ namespace System.Diagnostics
         /// </summary>
         private bool AppendStackFrameWithoutMethodBase(StringBuilder builder)
         {
-<<<<<<< HEAD
-            builder.Append(CreateStackTraceString(includeFileInfo: false, out _));
-=======
             builder.Append(_methodName);
             if (_methodGenericArgs != null)
             {
@@ -203,7 +200,6 @@ namespace System.Diagnostics
                 builder.Append(_methodGenericArgs);
                 builder.Append('>');
             }
->>>>>>> upstream/main
             return true;
         }
 
@@ -222,12 +218,7 @@ namespace System.Diagnostics
         {
             if (_ipAddress != Exception.EdiSeparator)
             {
-<<<<<<< HEAD
-                string s = CreateStackTraceString(_needFileInfo, out bool isStackTraceHidden);
-                if (!isStackTraceHidden)
-=======
                 if (!_isStackTraceHidden)
->>>>>>> upstream/main
                 {
                     // Passing a default string for "at" in case SR.UsingResourceKeys() is true
                     // as this is a special case and we don't want to have "Word_At" on stack traces.
@@ -257,14 +248,6 @@ namespace System.Diagnostics
             }
         }
 
-<<<<<<< HEAD
-#if !TARGET_WASM
-        private string CreateStackTraceString(bool includeFileInfo, out bool isStackTraceHidden)
-        {
-            return DeveloperExperience.Default.CreateStackTraceString(_ipAddress, includeFileInfo, out isStackTraceHidden);
-        }
-#endif
-=======
         private void AppendCommonStringRepresenation(StringBuilder builder, bool allowFallback)
         {
             if (_methodOwningType != null)
@@ -295,6 +278,5 @@ namespace System.Diagnostics
             AppendCommonStringRepresenation(sb, allowFallback: false);
             return sb.Length > 0 ? sb.ToString() : null;
         }
->>>>>>> upstream/main
     }
 }

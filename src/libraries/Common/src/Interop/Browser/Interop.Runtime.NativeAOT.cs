@@ -11,22 +11,10 @@ internal static partial class Interop
     {
         private const string JSLibrary = "System.Runtime.InteropServices.JavaScript";
 
-        [LibraryImport(JSLibrary, EntryPoint = "SystemInteropJS_ReleaseCSOwnedObject", StringMarshalling = StringMarshalling.Utf16)]
-        internal static unsafe partial void ReleaseCSOwnedObject(IntPtr jsHandle);
-        [LibraryImport(JSLibrary, EntryPoint = "SystemInteropJS_BindJSImportST", StringMarshalling = StringMarshalling.Utf16)]
-        public static unsafe partial IntPtr BindJSImportST(void* signature);
-        [LibraryImport(JSLibrary, EntryPoint = "SystemInteropJS_InvokeJSImportST")]
-        public static unsafe partial IntPtr InvokeJSImportST(int importHandle, nint args);
-        [LibraryImport(JSLibrary, EntryPoint = "SystemInteropJS_InvokeJSFunction")]
-        public static unsafe partial void InvokeJSFunction(IntPtr bound_function_js_handle, nint data);
         [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_invoke_js_import", StringMarshalling = StringMarshalling.Utf16)]
         public static unsafe partial void InvokeJSImport(IntPtr fn_handle, nint data);
         [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_bind_cs_function", StringMarshalling = StringMarshalling.Utf16)]
         public static unsafe partial void BindCSFunction(string fully_qualified_name, int fully_qualified_name_length, int signature_hash, void* signature, out int is_exception);
-        [LibraryImport(JSLibrary, EntryPoint = "SystemInteropJS_ResolveOrRejectPromise", StringMarshalling = StringMarshalling.Utf16)]
-        public static unsafe partial void ResolveOrRejectPromise(nint data);
-        [LibraryImport(JSLibrary, EntryPoint = "SystemInteropJS_CancelPromise", StringMarshalling = StringMarshalling.Utf16)]
-        public static unsafe partial void CancelPromise(IntPtr gcHandle);
 
 #if FEATURE_WASM_MANAGED_THREADS
         // Required by JavaScript/JSFunctionBinding.cs
@@ -50,13 +38,5 @@ internal static partial class Interop
         [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_cancel_promise_post")]
         public static unsafe partial void CancelPromisePost(nint targetNativeTID, nint taskHolderGCHandle);
 #endif
-
-        #region Not used by NativeAOT
-        public static IntPtr RegisterGCRoot(void* start, int bytesSize, IntPtr name) => throw new NotImplementedException();
-        public static void DeregisterGCRoot(IntPtr handle) => throw new NotImplementedException();
-        public static void AssemblyGetEntryPoint(IntPtr assemblyNamePtr, int auto_insert_breakpoint, void** monoMethodPtrPtr) => throw new NotImplementedException();
-        public static void BindAssemblyExports(IntPtr assemblyNamePtr) => throw new NotImplementedException();
-        public static void GetAssemblyExport(IntPtr assemblyNamePtr, IntPtr namespacePtr, IntPtr classnamePtr, IntPtr methodNamePtr, int signatureHash, IntPtr* monoMethodPtrPtr) => throw new NotImplementedException();
-        #endregion
     }
 }

@@ -29,12 +29,12 @@ namespace ILCompiler.DependencyAnalysis
     // the host environment). Thus, to achieve the experience of runtime erros on signature mismatches, we "hide"
     // the target behind an indirection.
     //
-    internal sealed class ExternMethodCellNode(string externMethodName) : ObjectNode, ISymbolDefinitionNode
+    internal sealed class ExternMethodCellNode(Utf8String externMethodName) : ObjectNode, ISymbolDefinitionNode
     {
         private WasmFunctionType? _signature;
         private object _methods;
 
-        public string ExternMethodName { get; } = externMethodName;
+        public Utf8String ExternMethodName { get; } = externMethodName;
         public WasmFunctionType Signature => _signature.Value;
 
         public int Offset => 0;

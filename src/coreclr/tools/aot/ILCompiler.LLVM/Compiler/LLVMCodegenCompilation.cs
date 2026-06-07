@@ -15,6 +15,7 @@ using ILLink.Shared;
 using Internal.IL;
 using Internal.IL.Stubs;
 using Internal.JitInterface;
+using Internal.Text;
 using Internal.TypeSystem;
 
 namespace ILCompiler
@@ -254,7 +255,7 @@ namespace ILCompiler
         public override ISymbolNode GetExternalMethodCell(MethodDesc method)
         {
             string name = PInvokeILProvider.GetDirectCallExternName(method);
-            return NodeFactory.ExternMethodCell(name, method);
+            return NodeFactory.ExternMethodCell(new Utf8String(name), method);
         }
 
         public override CorInfoLlvmEHModel GetLlvmExceptionHandlingModel() => Options.ExceptionHandlingModel;

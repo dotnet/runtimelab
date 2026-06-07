@@ -280,16 +280,16 @@ namespace Internal.JitInterface
             }
         }
 
-        public string GetMangledName(TypeDesc type)
+        public Utf8String GetMangledName(TypeDesc type)
         {
             // The default mangler produces simple names for these classes which collide with the C++ runtime.
             if (type.IsObject)
             {
-                return "System_Object";
+                return new Utf8String("System_Object");
             }
             if (type.IsString)
             {
-                return "System_String";
+                return new Utf8String("System_String");
             }
             return _compilation.NodeFactory.NameMangler.GetMangledTypeName(type);
         }
@@ -300,7 +300,7 @@ namespace Internal.JitInterface
         public static uint DebugTypeHandleToIndex(CORINFO_LLVM_DEBUG_TYPE_HANDLE handle) => (uint)handle;
         public static uint DebugMethodDeclHandleToIndex(CORINFO_LLVM_DEBUG_METHOD_DECL_HANDLE handle) => (uint)handle;
 
-        protected uint GetTypeForwardIndex(string name, CorInfoLlvmDebugTypeForwardKind kind)
+        protected uint GetTypeForwardIndex(Utf8String name, CorInfoLlvmDebugTypeForwardKind kind)
         {
             _utf8.Clear();
             CORINFO_LLVM_TYPE_DEBUG_INFO info;
@@ -313,14 +313,14 @@ namespace Internal.JitInterface
             }
         }
 
-        protected byte* GetOffsetAndAppendName(string name)
+        protected byte* GetOffsetAndAppendName(Utf8String name)
         {
             int offset = _utf8.Length;
             AppendName(name);
             return (byte*)offset;
         }
 
-        protected ReadOnlySpan<byte> AppendName(string name) => _utf8.Append(name).Append('\0').AsSpan();
+        protected ReadOnlySpan<byte> AppendName(Utf8String name) => _utf8.Append(name).Append('\0').AsSpan();
     }
 
     internal sealed class LlvmCodeDebugInfoEmit(RyuJitCompilation compilation, CorInfoImpl module) : LlvmDebugInfoEmit(compilation, module)
@@ -413,7 +413,7 @@ namespace Internal.JitInterface
             int staticFieldCount = statics.Length;
             var staticFieldsInfo = staticFieldCount != 0 ? new CORINFO_LLVM_STATIC_FIELD_DEBUG_INFO[staticFieldCount] : null;
 
-            string lastBaseSymbolName = null;
+            Utf8String lastBaseSymbolName = new Utf8String((byte [])null);
             byte* lastBaseSymbolNameOffset = null;
             for (int i = 0, s = 0, j = 0; j < fields.Length; j++)
             {
@@ -424,7 +424,7 @@ namespace Internal.JitInterface
                     ref CORINFO_LLVM_STATIC_FIELD_DEBUG_INFO fieldInfo = ref staticFieldsInfo[s++];
                     fieldInfo.Name = GetOffsetAndAppendName(field.Name);
                     fieldInfo.Type = IndexToDebugTypeHandle(field.FieldTypeIndex);
-                    if (lastBaseSymbolName == staticField.StaticDataName)
+                    if (!lastBaseSymbolName.IsNull && lastBaseSymbolName.Equals(staticField.StaticDataName))
                     {
                         fieldInfo.BaseSymbolName = lastBaseSymbolNameOffset;
                     }

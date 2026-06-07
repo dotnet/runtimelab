@@ -46,13 +46,12 @@
     <FeatureSharedLowLevelLock>true</FeatureSharedLowLevelLock>
   </PropertyGroup>
 
-<<<<<<< HEAD
   <PropertyGroup Condition="'$(TargetsWasm)' == 'true'">
     <FeaturePortableGetUnboxingStubTarget>true</FeaturePortableGetUnboxingStubTarget>
-=======
+  </PropertyGroup>
+
   <PropertyGroup>
     <Features>$(Features);runtime-async=on</Features>
->>>>>>> upstream/main
   </PropertyGroup>
 
   <!-- Sources -->
@@ -309,10 +308,6 @@
     <Compile Include="Internal\Runtime\FrozenObjectHeapManager.Wasm.cs" Condition="'$(TargetsWasm)' == 'true'" />
     <Compile Include="System\Environment.NativeAot.Unix.cs" />
     <Compile Include="System\Runtime\InteropServices\PInvokeMarshal.Unix.cs" />
-<<<<<<< HEAD
-    <Compile Include="System\Threading\LowLevelLifoSemaphore.Unix.cs" Condition="'$(TargetsSingleThreadedWasm)' != 'true'" />
-=======
->>>>>>> upstream/main
     <Compile Include="System\Threading\Thread.NativeAot.Unix.cs" />
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.Abort.cs">
       <Link>Interop\Unix\System.Native\Interop.Abort.cs</Link>

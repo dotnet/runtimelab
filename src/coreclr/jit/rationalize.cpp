@@ -1852,9 +1852,9 @@ Compiler::fgWalkResult Rationalizer::RewriteNode(GenTree** useEdge, Compiler::Ge
             if (!node->TypeIs(TYP_VOID) && node->gtGetOp1()->OperIs(GT_LCL_VAR))
             {
                 unsigned lclNum = node->gtGetOp1()->AsLclVar()->GetLclNum();
-                if (comp->lvaGetPromotionType(lclNum) == Compiler::PROMOTION_TYPE_INDEPENDENT)
+                if (m_compiler->lvaGetPromotionType(lclNum) == Compiler::PROMOTION_TYPE_INDEPENDENT)
                 {
-                    comp->lvaSetVarDoNotEnregister(lclNum DEBUGARG(DoNotEnregisterReason::BlockOpRet));
+                    m_compiler->lvaSetVarDoNotEnregister(lclNum DEBUGARG(DoNotEnregisterReason::BlockOpRet));
                 }
             }
             break;

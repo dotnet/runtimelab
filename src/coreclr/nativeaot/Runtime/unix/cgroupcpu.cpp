@@ -22,15 +22,9 @@ Abstract:
 #include <stdio.h>
 #include <string.h>
 #include <sys/resource.h>
-<<<<<<< HEAD
-#if defined(__APPLE__) || defined(__FreeBSD__)
-#include <sys/param.h>
-#include <sys/mount.h>
-#elif defined(TARGET_WASI)
+#if defined(TARGET_WASI)
 #include "../wasm/wasi.h"
-#elif !defined(__HAIKU__)
-=======
->>>>>>> upstream/main
+#endif !defined(TARGET_WASI)
 #include <sys/vfs.h>
 #include <errno.h>
 #include <limits>

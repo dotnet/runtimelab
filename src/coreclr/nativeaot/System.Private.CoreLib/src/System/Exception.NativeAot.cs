@@ -130,17 +130,12 @@ namespace System
                 // with another OutOfMemoryException, which may lead to infinite recursion.
                 bool fatalOutOfMemory = ex == PreallocatedOutOfMemoryException.Instance;
 
-<<<<<<< HEAD
-                if (!fatalOutOfMemory)
-#if TARGET_WASM
-                    ex.AppendStack(IP, isFirstFrame, isFirstRethrowFrame);
-#else
-                    ex.AppendStackIP(IP, isFirstRethrowFrame);
-#endif
-=======
                 if (!isFirstRethrowFrame && !fatalOutOfMemory)
+#if TARGET_WASM
+                    ex.AppendStack(IP, isFirstFrame, false);
+#else
                     ex.AppendStackIP(IP);
->>>>>>> upstream/main
+#endif
 
 #if FEATURE_PERFTRACING
                 if (isFirstFrame && NativeRuntimeEventSource.Log.IsEnabled())

@@ -18,13 +18,8 @@ namespace Internal.Runtime
         ByRefTypeMap                                = 11,
         // unused                                   = 12,
         EmbeddedMetadata                            = 13,
-<<<<<<< HEAD
         UnboxingStubMap                             = 14,
         UnboxingAndInstantiatingStubMap             = 15,
-=======
-        // unused                                   = 14,
-        // unused                                   = 15,
->>>>>>> upstream/main
         StructMarshallingStubMap                    = 16,
         DelegateMarshallingStubMap                  = 17,
         GenericVirtualMethodTable                   = 18,
@@ -38,12 +33,8 @@ namespace Internal.Runtime
         BlobIdResourceData                          = 25,
         BlobIdStackTraceEmbeddedMetadata            = 26,
         BlobIdStackTraceMethodRvaToTokenMapping     = 27,
-<<<<<<< HEAD
-        BlobIdWasmPreciseVirtualUnwindInfo          = 28,
-=======
         BlobIdStackTraceLineNumbers                 = 28,
         BlobIdStackTraceDocuments                   = 29,
->>>>>>> upstream/main
 
         //Native layout blobs:
         NativeLayoutInfo                            = 30,
@@ -53,5 +44,7 @@ namespace Internal.Runtime
         StaticsInfoHashtable                        = 34,
         GenericMethodsHashtable                     = 35,
         ExactMethodInstantiationsHashtable          = 36,
+
+        BlobIdWasmPreciseVirtualUnwindInfo          = 37,
     }
 }

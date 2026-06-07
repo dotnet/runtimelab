@@ -1741,13 +1741,13 @@ namespace Internal.IL
             return false;
         }
 
-<<<<<<< HEAD
         private static bool IsInterlockedMethod(MethodDesc method)
         {
             Debug.Assert(method.IsIntrinsic);
             return method.OwningType is MetadataType metadataType &&
                 metadataType.Name.SequenceEqual("Interlocked"u8) && metadataType.Namespace.SequenceEqual("System.Threading"u8);
-=======
+        }
+
         private static bool IsAsyncHelpersAwait(MethodDesc method)
         {
             if (method.IsIntrinsic && method.Name.SequenceEqual("Await"u8))
@@ -1782,7 +1782,6 @@ namespace Internal.IL
             }
 
             return false;
->>>>>>> upstream/main
         }
 
         private DefType GetWellKnownType(WellKnownType wellKnownType)

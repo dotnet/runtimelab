@@ -271,16 +271,7 @@ fi
       <WatcherRunFile>"$CORE_ROOT/watchdog" $_WatcherTimeoutMins</WatcherRunFile>
 
       <!-- Note that this overwrites CLRTestBashPreCommands rather than adding to it. -->
-<<<<<<< HEAD
       <CLRTestBashPreCommands Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(TargetArchitecture)' == 'wasm' And '$(RuntimeFlavor)' == 'mono'"><![CDATA[
-# Build wasm app containing the test dll
-__Command=""
-if [ ! -z ${__TestDotNetCmd+x} ] %3B then
-  __Command+=" $__TestDotNetCmd"
-else
-  __Command+=" dotnet"
-=======
-      <CLRTestBashPreCommands Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(TargetArchitecture)' == 'wasm'"><![CDATA[
 if [ -z "${RunWithNodeJS:-}" ] ; then
     # Build wasm app containing the test dll
     __Command=""
@@ -294,7 +285,6 @@ if [ -z "${RunWithNodeJS:-}" ] ; then
     export DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER=1
 
     $__Command msbuild $CORE_ROOT/wasm-test-runner/WasmTestRunner.proj /p:NetCoreAppCurrent=$(NetCoreAppCurrent) /p:TestAssemblyFileName=$(MsBuildProjectName).dll /p:TestBinDir=`pwd` $(CLRTestMSBuildArgs) || exit $?
->>>>>>> upstream/main
 fi
    ]]>
       </CLRTestBashPreCommands>

@@ -408,14 +408,9 @@ void TreeLifeUpdater<ForCodeGen>::DumpLifeDelta(GenTree* tree)
         printf("\n");
     }
 
-<<<<<<< HEAD
 #ifndef TARGET_LLVM
-    if (ForCodeGen && compiler->verbose &&
-        !VarSetOps::Equal(compiler, oldStackPtrsLife, compiler->codeGen->gcInfo.gcVarPtrSetCur))
-=======
     if (ForCodeGen && m_compiler->verbose &&
         !VarSetOps::Equal(m_compiler, oldStackPtrsLife, m_compiler->codeGen->gcInfo.gcVarPtrSetCur))
->>>>>>> upstream/main
     {
         printf("\t\t\t\t\t\t\tGC vars after [%06u]: ", Compiler::dspTreeID(tree));
         dumpConvertedVarSet(m_compiler, oldStackPtrsLife);

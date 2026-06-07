@@ -307,7 +307,6 @@ bool Llvm::helperCallMayVirtuallyUnwind(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_NEWARR_1_ALIGN8) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT }, HFIF_SS_ARG },
 
         // NYI in NativeAOT.
-        { FUNC(CORINFO_HELP_STRCNS) },
         { FUNC(CORINFO_HELP_INITCLASS) },
         { FUNC(CORINFO_HELP_INITINSTCLASS) },
 
@@ -362,9 +361,6 @@ bool Llvm::helperCallMayVirtuallyUnwind(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_FIELD_ACCESS_EXCEPTION) },
         { FUNC(CORINFO_HELP_CLASS_ACCESS_EXCEPTION) },
 
-        // Not used with funclet-based EH.
-        { FUNC(CORINFO_HELP_ENDCATCH) },
-
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\SynchronizedMethodHelpers.cs".
         { FUNC(CORINFO_HELP_MON_ENTER) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS, CORINFO_TYPE_BYREF }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_MON_EXIT) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS, CORINFO_TYPE_BYREF }, HFIF_SS_ARG },
@@ -415,6 +411,7 @@ bool Llvm::helperCallMayVirtuallyUnwind(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_GETDYNAMIC_NONGCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED) },
         { FUNC(CORINFO_HELP_GETDYNAMIC_NONGCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED2) },
         { FUNC(CORINFO_HELP_GETDYNAMIC_NONGCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED2_NOJITOPT) },
+        { FUNC(CORINFO_HELP_GETDIRECTONTHREADLOCALDATA_NONGCTHREADSTATIC_BASE) },
 
         // NYI in NativeAOT.
         { FUNC(CORINFO_HELP_DBG_IS_JUST_MY_CODE) },
@@ -523,6 +520,8 @@ bool Llvm::helperCallMayVirtuallyUnwind(CorInfoHelpFunc helperFunc) const
 
         // Implemented in "CoreLib\src\System\Runtime\TypeLoaderExports.cs".
         { FUNC(CORINFO_HELP_GVMLOOKUP_FOR_SLOT) CORINFO_TYPE_NATIVEINT, { CORINFO_TYPE_CLASS, CORINFO_TYPE_RT_HANDLE }, HFIF_SS_ARG }, // Oddity: IntPtr used for a pointer.
+
+        { FUNC(CORINFO_HELP_INTERFACELOOKUP_FOR_SLOT) },
 
         // Not used in NativeAOT (stack probing - not used for LLVM).
         { FUNC(CORINFO_HELP_STACK_PROBE) },

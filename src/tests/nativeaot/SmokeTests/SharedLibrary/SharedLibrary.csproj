@@ -5,13 +5,8 @@
     <CLRTestPriority>0</CLRTestPriority>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NativeLib>Shared</NativeLib>
-<<<<<<< HEAD
-
     <WasiReactorTestUsingNodeJS Condition="'$(TargetOS)' == 'wasi'">true</WasiReactorTestUsingNodeJS>
-
-=======
     <UseNativeLibPrefix>false</UseNativeLibPrefix>
->>>>>>> upstream/main
     <BuildAsStandalone>false</BuildAsStandalone>
 
     <!-- Unable to compile a project with the Library output type for apple mobile devices -->

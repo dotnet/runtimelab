@@ -362,7 +362,6 @@ REGDEF(STK,    8+KBASE,    0x0000,       "STK"  )
  #include "registerarm.h"
 #elif defined(TARGET_ARM64)
  #include "registerarm64.h"
-<<<<<<< HEAD
 
 #elif defined(TARGET_LLVM)
 
@@ -380,8 +379,6 @@ REGDEF(SHADOW_STACK_ARG,            6, 0x040, "SS_ARG")
 REGDEF(ORIGINAL_SHADOW_STACK_ARG,   7, 0x080, "ORIGINAL_SS_ARG")
 REGDEF(STK,                         8, 0x100, "SS")
 
-=======
->>>>>>> upstream/main
 #elif defined(TARGET_LOONGARCH64)
  #include "registerloongarch64.h"
 #elif defined(TARGET_RISCV64)

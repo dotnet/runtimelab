@@ -297,21 +297,13 @@ namespace Internal.TypeSystem
         }
 
         /// <summary>
-<<<<<<< HEAD
-        /// Returns True if compiling for WebAssembly
-=======
         /// Returns True if compiling for WebAssembly (Wasm32 or Wasm64)
->>>>>>> upstream/main
         /// </summary>
         public bool IsWasm
         {
             get
             {
-<<<<<<< HEAD
                 return Architecture == TargetArchitecture.Wasm32 || Architecture == TargetArchitecture.Wasm64;
-=======
-                return Architecture == TargetArchitecture.Wasm32;
->>>>>>> upstream/main
             }
         }
 

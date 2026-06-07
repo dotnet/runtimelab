@@ -5498,7 +5498,9 @@ public:
     BasicBlock** fgIndexToBlockMap = nullptr;
     bool fgWasmHasCatchResumptions = false;
     FlowGraphTryRegions* fgTryRegions = nullptr;
+#ifndef TARGET_LLVM
     EHClauseInfo* fgWasmEHInfo = nullptr;
+#endif
 #endif
 
     FlowGraphDfsTree* m_dfsTree = nullptr;
@@ -13432,7 +13434,9 @@ const instruction INS_BREAKPOINT = INS_ebreak;
 #endif // TARGET_RISCV64
 
 #ifdef TARGET_WASM
+#ifndef TARGET_LLVM
 const instruction INS_BREAKPOINT = INS_unreachable;
+#endif
 #endif
 
 /*****************************************************************************/

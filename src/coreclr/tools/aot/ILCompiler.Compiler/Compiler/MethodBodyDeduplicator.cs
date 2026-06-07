@@ -11,11 +11,7 @@ using Internal.TypeSystem;
 
 namespace ILCompiler
 {
-<<<<<<< HEAD:src/coreclr/tools/aot/ILCompiler.Compiler/Compiler/ObjectDataInterner.cs
-    public sealed partial class ObjectDataInterner
-=======
     public sealed class MethodBodyDeduplicator : IObjectDataDeduplicator
->>>>>>> upstream/main:src/coreclr/tools/aot/ILCompiler.Compiler/Compiler/MethodBodyDeduplicator.cs
     {
         private readonly bool _genericsOnly;
         private int _previousHashCount;

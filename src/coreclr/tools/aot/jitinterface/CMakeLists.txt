@@ -20,9 +20,6 @@ add_library_clr(jitinterface_${ARCH_HOST_NAME}
 target_link_libraries(jitinterface_${ARCH_HOST_NAME} PRIVATE minipal)
 
 install_clr(TARGETS jitinterface_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT jit)
-<<<<<<< HEAD
 install_clr(TARGETS jitinterface_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT llvmjit)
-=======
 install_clr(TARGETS jitinterface_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
->>>>>>> upstream/main
 install_clr(TARGETS jitinterface_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT alljits)

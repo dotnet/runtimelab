@@ -49,11 +49,8 @@ if /i "%1" == "x64"                                     (set __BuildArch=x64&shi
 if /i "%1" == "x86"                                     (set __BuildArch=x86&shift&goto Arg_Loop)
 if /i "%1" == "arm64"                                   (set __BuildArch=arm64&shift&goto Arg_Loop)
 if /i "%1" == "wasm"                                    (set __BuildArch=wasm&shift&goto Arg_Loop)
-<<<<<<< HEAD
 if /i "%1" == "wasi"                                    (set __TargetOS=wasi&shift&goto Arg_Loop)
 if /i "%1" == "browser"                                 (set __TargetOS=browser&shift&goto Arg_Loop)
-=======
->>>>>>> upstream/main
 
 if /i "%1" == "debug"                                   (set __BuildType=Debug&shift&goto Arg_Loop)
 if /i "%1" == "release"                                 (set __BuildType=Release&shift&goto Arg_Loop)

@@ -146,12 +146,8 @@ namespace Internal.JitInterface
                 TargetArchitecture.X64 => "x64",
                 TargetArchitecture.ARM => "arm",
                 TargetArchitecture.ARM64 => "arm64",
-<<<<<<< HEAD
-                TargetArchitecture.Wasm32 => "llvm32",
-                TargetArchitecture.Wasm64 => "llvm64",
-=======
                 TargetArchitecture.Wasm32 => "wasm",
->>>>>>> upstream/main
+                TargetArchitecture.Wasm64 => "llvm64",
                 TargetArchitecture.LoongArch64 => "loongarch64",
                 TargetArchitecture.RiscV64 => "riscv64",
                 _ => throw new NotImplementedException(target.Architecture.ToString())

@@ -5,16 +5,11 @@
   <Import Project="$(RepositoryEngineeringDir)AcquireEmscriptenSdk.targets" />
 
   <PropertyGroup>
-<<<<<<< HEAD
     <EMSDK_PATH Condition="'$(EMSDK_PATH)' == ''">$(EMSDK)</EMSDK_PATH>
 
-    <!-- FIXME: clean up the duplication with libraries Directory.Build.props -->
-    <NativeBinDir>$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'native', '$(NetCoreAppCurrent)-$(TargetOS)-$(Configuration)-$(TargetArchitecture)'))</NativeBinDir>
-    <NativeBinDir Condition="'$(RuntimeFlavor)' == 'CoreCLR'">$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'coreclr', '$(TargetOS).$(TargetArchitecture).$(Configuration)', 'aotsdk', 'dotnetjs'))</NativeBinDir>
-=======
->>>>>>> upstream/main
     <!-- only use for files that are not configuration dependent -->
     <NativeGeneratedFilesDir>$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'native', 'generated'))</NativeGeneratedFilesDir>
+    <NativeBinDir Condition="'$(RuntimeFlavor)' == 'CoreCLR'">$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'coreclr', '$(TargetOS).$(TargetArchitecture).$(Configuration)', 'aotsdk', 'dotnetjs'))</NativeBinDir>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -49,13 +44,8 @@
     <Error Condition="'$(EMSDK_PATH)' == ''" Text="The EMSDK_PATH environment variable should be set pointing to the emscripten SDK root dir."/>
   </Target>
 
-<<<<<<< HEAD
-  <UsingTask TaskName="ManagedToNativeGenerator" AssemblyFile="$(WasmAppBuilderTasksAssemblyPath)" TaskFactory="TaskHostFactory" />
-  <Target Name="GenerateManagedToNative" DependsOnTargets="CheckEnv;ResolveLibrariesFromLocalBuild" Condition="'$(RuntimeFlavor)' != 'CoreCLR'">
-=======
   <UsingTask TaskName="Microsoft.WebAssembly.Build.Tasks.Mono.ManagedToNativeGenerator" AssemblyFile="$(WasmAppBuilderTasksAssemblyPath)" TaskFactory="TaskHostFactory" />
-  <Target Name="GenerateManagedToNative" DependsOnTargets="CheckEnv;ResolveLibrariesFromLocalBuild">
->>>>>>> upstream/main
+  <Target Name="GenerateManagedToNative" DependsOnTargets="CheckEnv;ResolveLibrariesFromLocalBuild" Condition="'$(RuntimeFlavor)' != 'CoreCLR'">
     <PropertyGroup>
       <WasmPInvokeTablePath>$(WasmObjDir)\pinvoke-table.h</WasmPInvokeTablePath>
       <WasmInterpToNativeTablePath>$(WasmObjDir)\wasm_m2n_invoke.g.h</WasmInterpToNativeTablePath>
@@ -86,18 +76,12 @@
     </ManagedToNativeGenerator>
   </Target>
 
-<<<<<<< HEAD
-  <Target Name="GenerateEmccPropsAndRspFiles">
-=======
-
-
   <Target Name="GenerateEmccPropsAndRspFiles" DependsOnTargets="AcquireEmscriptenSdk">
     <PropertyGroup>
       <_EmccDefaultsRspPath>$(NativeBinDir)src\emcc-default.rsp</_EmccDefaultsRspPath>
       <_EmccCompileRspPath>$(NativeBinDir)src\emcc-compile.rsp</_EmccCompileRspPath>
       <_EmccLinkRspPath>$(NativeBinDir)src\emcc-link.rsp</_EmccLinkRspPath>
     </PropertyGroup>
->>>>>>> upstream/main
 
     <!-- Generate wasm-props.json -->
 

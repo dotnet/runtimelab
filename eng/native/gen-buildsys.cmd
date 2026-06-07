@@ -24,11 +24,8 @@ if /i "%__Os%" == "browser" (
         )
         set "EMSDK_QUIET=1" && call "%__repoRoot%\src\mono\browser\emsdk\emsdk_env.cmd"
     ) else (
-<<<<<<< HEAD
-        set EMSDK_QUIET=1 && call "%EMSDK%\emsdk_env"
-=======
-        set "EMSDK_QUIET=1" && call "%EMSDK_PATH%\emsdk_env.cmd"
->>>>>>> upstream/main
+        :: NAOT-LLVM: Different to upstream, we are keeping the emscripten name EMSDK, not EMSDK_PATH.
+        set EMSDK_QUIET=1 && call "%EMSDK%\emsdk_env.cmd"
     )
 )
 

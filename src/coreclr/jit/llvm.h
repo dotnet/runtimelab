@@ -47,9 +47,6 @@ using llvm::Twine;
 using SSAName = Compiler::SSAName;
 using structPassingKind = Compiler::structPassingKind;
 
-#define IMAGE_FILE_MACHINE_WASM32             0xFFFF
-#define IMAGE_FILE_MACHINE_WASM64             0xFFFE // TODO: appropriate values for this?  Used to check compilation is for intended target
-
 const int TARGET_POINTER_BITS = TARGET_POINTER_SIZE * BITS_PER_BYTE;
 
 // Part of the Jit/EE interface, must be kept in sync with the managed versions in "CorInfoImpl.Llvm.cs".

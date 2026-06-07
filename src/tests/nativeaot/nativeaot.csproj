@@ -1,25 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
-<<<<<<< HEAD
+  <ItemGroup Condition="'$(TargetsWasm)' != 'true'">
+    <DisabledProjects Include="*/**/Library.csproj" />
+    <DisabledProjects Include="*/**/HelloWasm/**/*.??proj" />
+  </ItemGroup>
 
-    <ItemGroup Condition="'$(TargetsWasm)' != 'true'">
-      <DisabledProjects Include="*/**/Library.csproj" />
-      <DisabledProjects Include="*/**/HelloWasm/**/*.??proj" />
-    </ItemGroup>
-
-    <!-- Wasm disabled projects are still in dirs.proj because Wasm is not using this merged test wrapper -->
-
-    <ItemGroup>
-      <MergedWrapperProjectReference Include="*/**/*.??proj" Exclude="@(DisabledProjects)" />
-    </ItemGroup>
-  
-    <Import Project="$(TestSourceDir)MergedTestRunner.targets" />
-  </Project>
-  
-=======
+  <!-- Wasm disabled projects are still in dirs.proj because Wasm is not using this merged test wrapper -->
   <ItemGroup>
-    <MergedWrapperProjectReference Include="*/**/*.??proj" Exclude="*/**/Library.csproj;MobileSmokeTest/MobileSmokeTest.csproj" />
+    <MergedWrapperProjectReference Include="*/**/*.??proj" Exclude="@(DisabledProjects);*/**/Library.csproj;MobileSmokeTest/MobileSmokeTest.csproj" />
   </ItemGroup>
 
   <Import Project="$(TestSourceDir)MergedTestRunner.targets" />
 </Project>
->>>>>>> upstream/main

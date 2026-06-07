@@ -2130,7 +2130,7 @@ void Llvm::buildMemoryBarrier(GenTree* node)
 void Llvm::buildCatchArg(GenTree* catchArg)
 {
     BasicBlock* block = CurrentBlock();
-    assert(catchArg->OperIs(GT_CATCH_ARG) && handlerGetsXcptnObj(block->bbCatchTyp));
+    assert(catchArg->OperIs(GT_CATCH_ARG) && handlerGetsXcptnObj(block->GetCatchType()));
     assert(catchArg == LIR::AsRange(block).FirstNonPhiNode());
 
     Value* catchArgValue;
@@ -2854,9 +2854,9 @@ FunctionType* Llvm::createFunctionType()
 llvm::FunctionCallee Llvm::consumeCallTarget(GenTreeCall* call)
 {
     Value* calleeValue;
-    if (call->IsVirtualVtable() || call->IsDelegateInvoke() || (call->gtCallType == CT_INDIRECT))
+    if (call->gtControlExpr != nullptr)
     {
-        GenTree* calleeNode = (call->gtCallType == CT_INDIRECT) ? call->gtCallAddr : call->gtControlExpr;
+        GenTree* calleeNode = call->gtControlExpr;
         calleeValue = consumeValue(calleeNode, getPtrLlvmType());
     }
     else

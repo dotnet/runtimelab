@@ -68,14 +68,7 @@ namespace ILCompiler.DependencyAnalysis
                     arm64Emitter.Builder.RequireInitialAlignment(alignment);
                     arm64Emitter.Builder.AddSymbol(this);
                     return arm64Emitter.Builder.ToObjectData();
-#if !READYTORUN
-                case TargetArchitecture.Wasm32:
-                case TargetArchitecture.Wasm64:
-                    Wasm.WasmEmitter wasmEmitter = new Wasm.WasmEmitter(factory, relocsOnly);
-                    EmitCode(factory, ref wasmEmitter, relocsOnly);
-                    wasmEmitter.Builder.AddSymbol(this);
-                    return wasmEmitter.Builder.ToObjectData();
-#endif
+
                 case TargetArchitecture.LoongArch64:
                     LoongArch64.LoongArch64Emitter loongarch64Emitter = new LoongArch64.LoongArch64Emitter(factory, relocsOnly);
                     EmitCode(factory, ref loongarch64Emitter, relocsOnly);
@@ -90,25 +83,35 @@ namespace ILCompiler.DependencyAnalysis
                     riscv64Emitter.Builder.AddSymbol(this);
                     return riscv64Emitter.Builder.ToObjectData();
 
+#if READYTORUN
                 case TargetArchitecture.Wasm32:
                     Wasm.WasmEmitter wasmEmitter = new Wasm.WasmEmitter(factory, relocsOnly);
                     EmitCode(factory, ref wasmEmitter, relocsOnly);
                     return wasmEmitter.Encode(this);
+#else
+                case TargetArchitecture.Wasm32:
+                case TargetArchitecture.Wasm64:
+                    Wasm.LlvmWasmEmitter llvmWasmEmitter = new Wasm.LlvmWasmEmitter(factory, relocsOnly);
+                    EmitCode(factory, ref llvmWasmEmitter, relocsOnly);
+                    llvmWasmEmitter.Builder.AddSymbol(this);
+                    return llvmWasmEmitter.Builder.ToObjectData();
+#endif
 
                 default:
                     throw new NotImplementedException();
             }
         }
 
-#if !READYTORUN
-        protected abstract void EmitCode(NodeFactory factory, ref Wasm.WasmEmitter instructionEncoder, bool relocsOnly);
-#endif
         protected abstract void EmitCode(NodeFactory factory, ref X64.X64Emitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref X86.X86Emitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref ARM.ARMEmitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref ARM64.ARM64Emitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref LoongArch64.LoongArch64Emitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref RiscV64.RiscV64Emitter instructionEncoder, bool relocsOnly);
+#if READYTORUN
         protected abstract void EmitCode(NodeFactory factory, ref Wasm.WasmEmitter instructionEncoder, bool relocsOnly);
+#else
+        protected abstract void EmitCode(NodeFactory factory, ref Wasm.LlvmWasmEmitter instructionEncoder, bool relocsOnly);
+#endif
     }
 }

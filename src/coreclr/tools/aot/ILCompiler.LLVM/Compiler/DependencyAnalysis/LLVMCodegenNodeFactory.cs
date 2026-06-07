@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using ILCompiler.DependencyAnalysis.Wasm;
 
 using Internal.JitInterface;
+using Internal.Text;
 using Internal.TypeSystem;
 
 namespace ILCompiler.DependencyAnalysis
@@ -54,7 +55,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public override bool TargetsEmulatedEH() => _ehModel is CorInfoLlvmEHModel.CORINFO_LLVM_EH_EMULATED;
 
-        internal ExternMethodCellNode ExternMethodCell(string name, MethodDesc method)
+        internal ExternMethodCellNode ExternMethodCell(Utf8String name, MethodDesc method)
         {
             Dictionary<string, ExternMethodCellNode> map = _externMethodCells;
 
@@ -62,7 +63,7 @@ namespace ILCompiler.DependencyAnalysis
             //
             lock (map)
             {
-                ref ExternMethodCellNode node = ref CollectionsMarshal.GetValueRefOrAddDefault(map, name, out bool exists);
+                ref ExternMethodCellNode node = ref CollectionsMarshal.GetValueRefOrAddDefault(map, name.ToString(), out bool exists);
                 if (!exists)
                 {
                     node = new ExternMethodCellNode(name);
@@ -78,15 +79,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             if (method.IsInternalCall)
             {
-                if (TypeSystemContext.IsSpecialUnboxingThunkTargetMethod(method))
-                {
-                    return MethodEntrypoint(TypeSystemContext.GetRealSpecialUnboxingThunkTargetMethod(method));
-                }
-                else if (TypeSystemContext.IsDefaultInterfaceMethodImplementationThunkTargetMethod(method))
-                {
-                    return MethodEntrypoint(TypeSystemContext.GetRealDefaultInterfaceMethodImplementationThunkTargetMethod(method));
-                }
-                else if (method.IsArrayAddressMethod())
+                if (method.IsArrayAddressMethod())
                 {
                     return MethodEntrypoint(((ArrayType)method.OwningType).GetArrayMethod(ArrayMethodKind.AddressWithHiddenArg));
                 }

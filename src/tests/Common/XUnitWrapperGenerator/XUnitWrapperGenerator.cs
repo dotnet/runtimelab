@@ -258,12 +258,8 @@ public sealed class XUnitWrapperGenerator : IIncrementalGenerator
 
         if (buildAsMergedRunner)
         {
-<<<<<<< HEAD
-            if (targetOS?.ToLowerInvariant() is "ios" or "iossimulator" or "tvos" or "tvossimulator" or "maccatalyst" or "android" or "browser" or "wasi")
-=======
             if ((targetOSLower is "ios" or "iossimulator" or "tvos" or "tvossimulator" or "maccatalyst" or "android")
                     || ((targetOSLower is "browser") && configOptions.GlobalOptions.RuntimeFlavor().ToLowerInvariant() == "mono"))
->>>>>>> upstream/main
             {
                 context.AddSource("XHarnessRunner.g.cs", GenerateXHarnessTestRunner(methods, aliasMap, assemblyName, targetOS));
             }

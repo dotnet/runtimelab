@@ -80,18 +80,18 @@ namespace ILCompiler.ObjectWriter
             Relocation[] relocations = data.Relocs;
             foreach (ref Relocation relocation in relocations.AsSpan())
             {
-                AddSymbol(relocation.Target);
+                AddSymbol(relocation.Target, new Utf8String((byte[])null));
             }
 
             ArrayBuilder<int> definedSymbolIndices = default;
             foreach (ISymbolDefinitionNode definedSymbol in data.DefinedSymbols)
             {
-                int symbolIndex = AddSymbol(definedSymbol, isDefinition: true);
+                int symbolIndex = AddSymbol(definedSymbol, new Utf8String((byte[])null), isDefinition: true);
                 definedSymbolIndices.Add(symbolIndex);
 
-                if (_compilation.NodeFactory.GetSymbolAlternateName(definedSymbol, out _) is string alternateName)
+                if (_compilation.NodeFactory.GetSymbolAlternateName(definedSymbol, out _) is Utf8String alternateName)
                 {
-                    symbolIndex = AddSymbol(definedSymbol, isDefinition: true, alternateName);
+                    symbolIndex = AddSymbol(definedSymbol, alternateName, isDefinition: true);
                     definedSymbolIndices.Add(symbolIndex);
                 }
             }
@@ -101,7 +101,7 @@ namespace ILCompiler.ObjectWriter
             wasmSection.AddLinkingSection(name, data.Data, checked((uint)data.Alignment), relocations, definedSymbolIndices.ToArray());
         }
 
-        private int AddSymbol(ISymbolNode symbol, bool isDefinition = false, string alternateName = null)
+        private int AddSymbol(ISymbolNode symbol, Utf8String alternateName, bool isDefinition = false)
         {
             void UpdateExistingSymbol(ref int symbolIndex)
             {
@@ -126,7 +126,7 @@ namespace ILCompiler.ObjectWriter
 
             Utf8String symbolName;
             ref int symbolIndexViaNode = ref Unsafe.NullRef<int>();
-            if (alternateName == null)
+            if (alternateName.IsNull)
             {
                 symbolIndexViaNode = ref CollectionsMarshal.GetValueRefOrAddDefault(_symbolNodeToSymbolIndexMap, symbol, out bool symbolExistsViaNode);
                 if (symbolExistsViaNode)
@@ -173,7 +173,7 @@ namespace ILCompiler.ObjectWriter
                 UpdateExistingSymbol(ref symbolIndexViaName);
             }
 
-            if (alternateName == null)
+            if (alternateName.IsNull)
             {
                 symbolIndexViaNode = symbolIndexViaName;
             }
@@ -411,9 +411,9 @@ namespace ILCompiler.ObjectWriter
                     string name = section.Name; // Same logic as "ElfObjectWriter.CreateSection".
                     utf8Name = name switch
                     {
-                        "rdata" => ".rodata",
-                        _ when name.StartsWith('_') || name.StartsWith('.') => name,
-                        _ => "." + name
+                        "rdata" => new Utf8String(".rodata"),
+                        _ when name.StartsWith('_') || name.StartsWith('.') => new Utf8String(name),
+                        _ => new Utf8String("." + name)
                     };
                 }
 

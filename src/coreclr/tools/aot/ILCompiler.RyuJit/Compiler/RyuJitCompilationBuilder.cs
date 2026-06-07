@@ -143,16 +143,12 @@ namespace ILCompiler
             if (_resilient)
                 options |= RyuJitCompilationOptions.UseResilience;
 
-<<<<<<< HEAD
             return CreateCompilation(options, jitFlagBuilder.ToArray());
         }
 
         protected virtual RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options, CorJitFlag[] jitFlags)
         {
-            ObjectDataInterner interner = _methodBodyFolding switch
-=======
             MethodBodyDeduplicator methodBodyDeduplicator = _methodBodyFolding switch
->>>>>>> upstream/main
             {
                 MethodBodyFoldingMode.Generic => new MethodBodyDeduplicator(genericsOnly: true),
                 MethodBodyFoldingMode.All => new MethodBodyDeduplicator(genericsOnly: false),

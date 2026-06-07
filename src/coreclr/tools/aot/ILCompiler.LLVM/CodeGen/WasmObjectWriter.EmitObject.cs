@@ -97,7 +97,7 @@ namespace ILCompiler.ObjectWriter
             public override ObjectData GetData(NodeFactory factory, bool relocsOnly)
             {
                 byte[] data = new byte[4];
-                ExternFunctionSymbolNode canary = new ExternFunctionSymbolNode("RhpGetStackTraceIpCanary");
+                ExternFunctionSymbolNode canary = new ExternFunctionSymbolNode(new Utf8String("RhpGetStackTraceIpCanary"));
                 Relocation reloc = new Relocation(RelocType.R_WASM_FUNCTION_INDEX_I32, 0, canary);
                 return new ObjectData(data, [reloc], data.Length, [this]);
             }
@@ -113,7 +113,7 @@ namespace ILCompiler.ObjectWriter
         /// </summary>
         private static bool IsStandardSection(ObjectNodeSection section)
         {
-            return section == ObjectNodeSection.DataSection || section == ObjectNodeSection.ReadOnlyDataSection || section == ObjectNodeSection.FoldableReadOnlyDataSection || section == ObjectNodeSection.TextSection || section == ObjectNodeSection.XDataSection || section == ObjectNodeSection.BssSection;
+            return section == ObjectNodeSection.DataSection || section == ObjectNodeSection.ReadOnlyDataSection || section == ObjectNodeSection.FoldableReadOnlyDataSection || section == ObjectNodeSection.TextSection || section == ObjectNodeSection.BssSection;
         }
     }
 }
