@@ -10,9 +10,9 @@ Open a new shell/command prompt window and run the following commands:
 ```bash
 # If targeting Browser (NodeJS):
 > dotnet publish -r browser-wasm
-> node bin\Release\net9.0\browser-wasm\publish\HelloWorld.js
+> node bin/Release/net10.0/browser-wasm/publish/HelloWorld.js
 
 # If targeting WASI:
 > dotnet publish -r wasi-wasm
-> wasmtime bin\Release\net9.0\wasi-wasm\publish\HelloWorld.wasm
+> wasmtime bin/Release/net10.0/wasi-wasm/publish/HelloWorld.wasm
 ```
