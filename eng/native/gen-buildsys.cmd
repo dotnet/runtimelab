@@ -146,6 +146,12 @@ echo %CMakeToolPrefix% "%CMakePath% %__ExtraCmakeParams% --no-warn-unused-cli -G
 
 if "%errorlevel%" == "0" (
     echo %__ExtraCmakeParams% > %__CmdLineOptionsUpToDateFile%
+
+    REM Avoid importing repo-level build props and targets into generated vcxprojs, it can confuse VS
+    if "!__CmakeGenerator:~0,13!" == "Visual Studio" (
+        echo ^<Project^>^</Project^> > !__IntermediatesDir!\Directory.Build.props
+        echo ^<Project^>^</Project^> > !__IntermediatesDir!\Directory.Build.targets
+    )
 )
 
 endlocal
