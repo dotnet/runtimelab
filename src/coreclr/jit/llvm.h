@@ -16,6 +16,7 @@
 
 // TODO-LLVM-Upstream: figure out how to fix these warnings in LLVM headers.
 #pragma warning(push)
+#pragma warning(disable : 4005)
 #pragma warning(disable : 4146)
 #pragma warning(disable : 4242)
 #pragma warning(disable : 4244)
@@ -623,7 +624,7 @@ private:
 
     Value* consumeInitVal(GenTree* initVal, uint8_t* pValue);
     void consumeInitValAndEmitInitBlk(GenTree* initVal, Value* addrValue, ClassLayout* layout);
-    void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
+    void storeObjAtAddress(Value* baseAddress, Value* data, ClassLayout* layout);
     void emitMemSet(Value* addr, uint8_t value, unsigned size);
 
     void emitJumpToThrowHelper(Value* jumpCondValue, CorInfoHelpFunc helperFunc DEBUGARG(GenTree* nodeThrowing));
