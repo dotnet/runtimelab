@@ -2513,8 +2513,8 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, ClassLayout* layou
 
     for (unsigned i = 0; i < fieldCount; i++)
     {
-        FieldDesc* fieldDesc = structDesc->getFieldDesc(i);
-        unsigned   fieldOffset = fieldDesc->getFieldOffset();
+        FieldDesc fieldDesc = structDesc->getFieldDesc(i);
+        unsigned fieldOffset = fieldDesc.getFieldOffset();
 
         Value* fieldData = nullptr;
         if (dataLayout != nullptr)
@@ -2533,10 +2533,10 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, ClassLayout* layou
         Value* address = gepOrAddr(baseAddress, fieldOffset);
         if (fieldData->getType()->isStructTy())
         {
-            assert(fieldDesc->getClassHandle() != NO_CLASS_HANDLE);
+            assert(fieldDesc.getClassHandle() != NO_CLASS_HANDLE);
 
             // recurse into struct
-            storeObjAtAddress(address, fieldData, _compiler->typGetObjLayout(fieldDesc->getClassHandle()));
+            storeObjAtAddress(address, fieldData, _compiler->typGetObjLayout(fieldDesc.getClassHandle()));
         }
         else
         {
