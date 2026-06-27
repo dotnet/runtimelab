@@ -1080,19 +1080,13 @@ public:
         // TODO-Cleanup: get rid of the NONE case, and fix everyplace that reads
         // undefined values
         regNumber reg = (regNumber)_gtRegNum;
-#if HAS_FIXED_REGISTER_SET
         assert((gtRegTag == GT_REGTAG_NONE) || genIsValidReg(reg) || (reg == REG_COUNT));
-#else
-        assert((gtRegTag == GT_REGTAG_NONE) || (reg == REG_COUNT));
-#endif // HAS_FIXED_REGISTER_SET
         return reg;
     }
 
     void SetRegNum(regNumber reg)
     {
-#if HAS_FIXED_REGISTER_SET
         genIsValidReg(reg);
-#endif // HAS_FIXED_REGISTER_SET
         _gtRegNum = (regNumberSmall)reg;
         INDEBUG(gtRegTag = GT_REGTAG_REG;)
         assert(_gtRegNum == reg);
