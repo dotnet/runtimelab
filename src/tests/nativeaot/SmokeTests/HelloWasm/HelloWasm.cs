@@ -164,6 +164,8 @@ internal unsafe partial class Program
         CpObjTest.CpObj(ref cpObjTestB, ref cpObjTestA);
         EndTest(cpObjTestB.Field == 1234);
 
+        TestComplexStructCpObj();
+
         StartTest("Static delegate test");
         Func<int> staticDelegate = StaticDelegateTarget;
         EndTest(staticDelegate() == 7);
@@ -474,7 +476,97 @@ internal unsafe partial class Program
     public unsafe static void JitUse<T>(T* arg) { }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
+    public unsafe static T* JitUseReturn<T>(T* arg) => arg;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public unsafe static void JitUse<T>(T arg) { }
+
+    private static ClassWithStructs s_gen2Obj;
+    private static ClassWithInlineArray s_gen2ObjInlArr;
+
+    private static void TestComplexStructCpObj()
+    {
+        StartTest("Complex CpObj test");
+
+        s_gen2Obj = new ClassWithStructs();
+        GC.Collect(); // Now in Gen1.
+        GC.Collect(); // Now in Gen2.
+        FillGen2Objs(); // Missed card update.
+
+        JitUse(new byte[100]);
+        GC.Collect(1); // Obj1/2 collected.
+        JitUse(new byte[100]);
+
+        // Expose the dangling refs.
+        if (s_gen2Obj.Objs.Obj1.Obj.GetType() != typeof(ClassWithFields) ||
+            s_gen2Obj.Objs.Obj2.Obj.GetType() != typeof(ClassWithFloat))
+        {
+            FailTest("single field wrapper structs");
+            return;
+        }
+
+        // Now do the same with inline array types.
+        s_gen2ObjInlArr = new ClassWithInlineArray();
+        GC.Collect();
+        GC.Collect();
+        FillGen2ObjsArr();
+
+        JitUse(new byte[100]);
+        GC.Collect(1);
+        JitUse(new byte[100]);
+
+        if (s_gen2ObjInlArr.Objs[256].GetType() != typeof(ClassWithFloat) ||
+            s_gen2ObjInlArr.Objs[257].GetType() != typeof(ClassWithFields))
+        {
+            FailTest("inline array");
+            return;
+        }
+
+        PassTest();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static unsafe void FillGen2Objs()
+    {
+        StructWithNestedObj objs = new() { Obj1 = { Obj = new ClassWithFields() }, Obj2 = { Obj = new ClassWithFloat() } };
+        s_gen2Obj.Objs = *JitUseReturn(&objs);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static unsafe void FillGen2ObjsArr()
+    {
+        StructWithInlArr objs = default;
+        objs[256] = new ClassWithFloat();
+        objs[257] = new ClassWithFields();
+        s_gen2ObjInlArr.Objs = *JitUseReturn(&objs);
+    }
+
+    class ClassWithStructs
+    {
+        public StructWithNestedObj Objs;
+    }
+
+    class ClassWithInlineArray
+    {
+        public StructWithInlArr Objs;
+    }
+
+    [InlineArray(258)]
+    struct StructWithInlArr
+    {
+        public object Obj;
+    }
+
+    struct StructWithObj
+    {
+        public object Obj;
+    }
+
+    struct StructWithNestedObj
+    {
+        public StructWithObj Obj1;
+        public StructWithObj Obj2;
+    }
 
     private unsafe static void TestJitUseStruct()
     {

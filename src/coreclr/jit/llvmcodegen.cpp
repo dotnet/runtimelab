@@ -1931,7 +1931,7 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     Value* dataValue = consumeValue(dataNode, getLlvmTypeForStruct(layout));
     if (layout->HasGCPtr() && ((blockOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0) && !addrNode->OperIs(GT_LCL_ADDR))
     {
-        storeObjAtAddress(addrValue, dataValue, getStructDesc(layout->GetClassHandle()));
+        storeObjAtAddress(addrValue, dataValue, layout);
     }
     else
     {
@@ -2486,8 +2486,9 @@ void Llvm::consumeInitValAndEmitInitBlk(GenTree* initVal, Value* addrValue, Clas
     emitMemSet(addrValue, constInitValue, layout->GetSize());
 }
 
-void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
+void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, ClassLayout* layout)
 {
+    StructDesc* structDesc = getStructDesc(layout->GetClassHandle());
     size_t fieldCount = structDesc->getFieldCount();
     unsigned lastLlvmFieldIndex = INT32_MAX;
 
@@ -2512,8 +2513,8 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
 
     for (unsigned i = 0; i < fieldCount; i++)
     {
-        FieldDesc* fieldDesc = structDesc->getFieldDesc(i);
-        unsigned   fieldOffset = fieldDesc->getFieldOffset();
+        FieldDesc fieldDesc = structDesc->getFieldDesc(i);
+        unsigned fieldOffset = fieldDesc.getFieldOffset();
 
         Value* fieldData = nullptr;
         if (dataLayout != nullptr)
@@ -2532,14 +2533,14 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
         Value* address = gepOrAddr(baseAddress, fieldOffset);
         if (fieldData->getType()->isStructTy())
         {
-            assert(fieldDesc->getClassHandle() != NO_CLASS_HANDLE);
+            assert(fieldDesc.getClassHandle() != NO_CLASS_HANDLE);
 
             // recurse into struct
-            storeObjAtAddress(address, fieldData, getStructDesc(fieldDesc->getClassHandle()));
+            storeObjAtAddress(address, fieldData, _compiler->typGetObjLayout(fieldDesc.getClassHandle()));
         }
         else
         {
-            if (fieldDesc->getCorType() == CORINFO_TYPE_CLASS)
+            if (layout->IsGCRef(fieldOffset / TARGET_POINTER_SIZE))
             {
                 // We can't be sure the address is on the heap, it could be the result of pointer arithmetic on a local var.
                 emitHelperCall(CORINFO_HELP_CHECKED_ASSIGN_REF, {address, fieldData});

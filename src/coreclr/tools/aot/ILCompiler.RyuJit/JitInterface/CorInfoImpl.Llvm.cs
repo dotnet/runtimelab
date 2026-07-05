@@ -367,6 +367,7 @@ namespace Internal.JitInterface
         public struct TypeDescriptor
         {
             public uint Size;
+            public uint ElementCount;
             public uint FieldCount;
             public CORINFO_FIELD_STRUCT_** Fields; // array of CORINFO_FIELD_STRUCT_*
             public uint HasSignificantPadding; // Change to a uint flags if we need more bools
@@ -406,6 +407,15 @@ namespace Internal.JitInterface
             };
 
             pTypeDescriptor->Size = (uint)(type.IsValueType ? type.InstanceFieldSize : type.InstanceByteCount).AsInt;
+            if (type is MetadataType { IsInlineArray: true })
+            {
+                int elementSize = _this.HandleToObject(fields[0]).FieldType.GetElementSize().AsInt;
+                pTypeDescriptor->ElementCount = pTypeDescriptor->Size / (uint)elementSize;
+            }
+            else
+            {
+                pTypeDescriptor->ElementCount = 0;
+            }
             pTypeDescriptor->FieldCount = fieldCount;
             pTypeDescriptor->Fields = (CORINFO_FIELD_STRUCT_**)_this.GetPin(fields);
             pTypeDescriptor->HasSignificantPadding = hasSignificantPadding ? 1u : 0u;

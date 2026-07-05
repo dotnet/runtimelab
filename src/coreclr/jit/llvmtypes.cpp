@@ -1,4 +1,4 @@
-// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET FFoundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 // ================================================================================================================
@@ -12,18 +12,19 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
     StructDesc* structDesc;
     if (!m_context->StructDescMap.Lookup(structHandle, &structDesc))
     {
-        TypeDescriptor structTypeDescriptor;
-        GetTypeDescriptor(structHandle, &structTypeDescriptor);
+        TypeDescriptor type;
+        GetTypeDescriptor(structHandle, &type);
 
-        unsigned structSize = structTypeDescriptor.Size;
+        unsigned structSize = type.Size;
+        unsigned sparseFieldsCount = type.ElementCount != 0 ? structSize / type.ElementCount : structSize;
         jitstd::vector<CORINFO_FIELD_HANDLE> sparseFields(
-            structSize, NO_FIELD_HANDLE, _compiler->getAllocator(CMK_Codegen));
-        jitstd::vector<unsigned> sparseFieldSizes(structSize, 0, _compiler->getAllocator(CMK_Codegen));
+            sparseFieldsCount, NO_FIELD_HANDLE, _compiler->getAllocator(CMK_Codegen));
+        jitstd::vector<unsigned> sparseFieldSizes(sparseFieldsCount, 0, _compiler->getAllocator(CMK_Codegen));
 
         // determine the largest field for unions, and get fields in order of offset
-        for (unsigned i = 0; i < structTypeDescriptor.FieldCount; i++)
+        for (unsigned i = 0; i < type.FieldCount; i++)
         {
-            CORINFO_FIELD_HANDLE fieldHandle = structTypeDescriptor.Fields[i];
+            CORINFO_FIELD_HANDLE fieldHandle = type.Fields[i];
             unsigned             fldOffset   = m_info->compCompHnd->getFieldOffset(fieldHandle);
 
             assert(fldOffset < structSize);
@@ -44,7 +45,7 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
         // count the struct fields after replacing fields with equal offsets
         unsigned fieldCount = 0;
         unsigned i          = 0;
-        while(i < structSize)
+        while (i < sparseFieldsCount)
         {
             if (sparseFields[i] != nullptr)
             {
@@ -63,10 +64,8 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
         }
 
         FieldDesc* fields = new FieldDesc[fieldCount];
-        structDesc = new StructDesc(structSize, fieldCount, fields, structTypeDescriptor.HasSignificantPadding);
-
-        unsigned fieldIx = 0;
-        for (unsigned fldOffset = 0; fldOffset < structSize; fldOffset++)
+        unsigned   fieldIx = 0;
+        for (unsigned fldOffset = 0; fldOffset < sparseFieldsCount; fldOffset++)
         {
             if (sparseFields[fldOffset] == nullptr)
             {
@@ -81,6 +80,14 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
             fieldIx++;
         }
 
+        if (type.ElementCount != 0)
+        {
+            structDesc = StructDesc::ForInlineArray(structSize, type.ElementCount, fields, type.HasSignificantPadding);
+        }
+        else
+        {
+            structDesc = StructDesc::ForStruct(structSize, fieldCount, fields, type.HasSignificantPadding);
+        }
         m_context->StructDescMap.Set(structHandle, structDesc);
     }
 
@@ -120,24 +127,24 @@ Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
             unsigned prevElementSize = 0;
             for (unsigned fieldIx = 0; fieldIx < fieldCount; fieldIx++)
             {
-                FieldDesc* fieldDesc = structDesc->getFieldDesc(fieldIx);
+                FieldDesc fieldDesc = structDesc->getFieldDesc(fieldIx);
 
                 // Pad to this field if necessary
-                unsigned paddingSize = fieldDesc->getFieldOffset() - lastOffset - prevElementSize;
+                unsigned paddingSize = fieldDesc.getFieldOffset() - lastOffset - prevElementSize;
                 if (paddingSize > 0)
                 {
                     addPaddingFields(paddingSize, llvmFields);
                     totalSize += paddingSize;
                 }
 
-                CorInfoType fieldCorType = fieldDesc->getCorType();
+                CorInfoType fieldCorType = fieldDesc.getCorType();
 
-                unsigned fieldSize = getElementSize(fieldDesc->getClassHandle(), fieldCorType);
-                Type* fieldLlvmType = getLlvmTypeForCorInfoType(fieldCorType, fieldDesc->getClassHandle());
+                unsigned fieldSize = getElementSize(fieldDesc.getClassHandle(), fieldCorType);
+                Type* fieldLlvmType = getLlvmTypeForCorInfoType(fieldCorType, fieldDesc.getClassHandle());
                 llvmFields.Push(fieldLlvmType);
 
                 totalSize += fieldSize;
-                lastOffset = fieldDesc->getFieldOffset();
+                lastOffset = fieldDesc.getFieldOffset();
                 prevElementSize = fieldSize;
             }
 
