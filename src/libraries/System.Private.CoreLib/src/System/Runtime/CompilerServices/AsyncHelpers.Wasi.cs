@@ -9,13 +9,6 @@ namespace System.Runtime.CompilerServices
 {
     public static partial class AsyncHelpers
     {
-        // On WASI the process's main thread is the event-loop pump.
-        // Route the compiler-generated async entry point through it
-        // instead of AsyncHelpers.NonBrowser.cs's GetAwaiter().GetResult(),
-        // whose blocking wait throws PNSE on !IsMultithreadingSupported.
-        // The poll helper pumps the loop to completion and then propagates the
-        // result with await semantics via GetAwaiter().GetResult().
-
         /// <summary>
         /// This method is intended to be used by a compiler-generated async entry point.
         /// </summary>
