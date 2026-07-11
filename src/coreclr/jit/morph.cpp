@@ -1795,6 +1795,7 @@ void CallArgs::AddFinalArgsAndDetermineABIInfo(Compiler* comp, GenTreeCall* call
     }
 #endif // defined(FEATURE_READYTORUN)
 
+#if !defined(TARGET_LLVM)
 #if defined(TARGET_WASM)
     // On WASM, we need to add an initial argument for the stack pointer for managed calls.
     if (!call->IsUnmanaged())
@@ -1803,6 +1804,7 @@ void CallArgs::AddFinalArgsAndDetermineABIInfo(Compiler* comp, GenTreeCall* call
         PushFront(comp, NewCallArg::Primitive(stackPointer).WellKnown(WellKnownArg::WasmShadowStackPointer));
     }
 #endif // defined(TARGET_WASM)
+#endif // !defined(TARGET_LLVM)
 
     ClassifierInfo info;
     info.CallConv = call->GetUnmanagedCallConv();

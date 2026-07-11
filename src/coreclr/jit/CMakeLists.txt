@@ -247,7 +247,7 @@ set( JIT_WASM64_SOURCES
   llvmlssa.cpp
   llvmcodegen.cpp
   llvmdebuginfo.cpp
-  registeropswasm.cpp
+  regMaskTPOps.cpp
 )
 set( JIT_WASM32_SOURCES
   targetllvm.cpp
@@ -257,7 +257,7 @@ set( JIT_WASM32_SOURCES
   llvmlssa.cpp
   llvmcodegen.cpp
   llvmdebuginfo.cpp
-  registeropswasm.cpp
+  regMaskTPOps.cpp
 )
 
 set( JIT_ARM_SOURCES

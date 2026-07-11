@@ -771,8 +771,11 @@ inline unsigned theFixedRetBuffArgNum(CorInfoCallConvExtension callConv)
 
 #if HAS_FIXED_REGISTER_SET
 static_assert(REG_FIRST == 0);
+// TODO-LLVM: If we turn off HAS_FIXED_REGISTER_SET for LLVM, we can remove this 
+#if !defined(TARGET_LLVM)
 static_assert(REG_INT_FIRST < REG_INT_LAST);
 static_assert(REG_FP_FIRST < REG_FP_LAST);
+#endif // !defined(TARGET_LLVM)
 
 #if CPU_HAS_BYTE_REGS
 inline bool isByteReg(regNumber reg)

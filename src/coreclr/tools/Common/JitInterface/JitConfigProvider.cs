@@ -146,8 +146,9 @@ namespace Internal.JitInterface
                 TargetArchitecture.X64 => "x64",
                 TargetArchitecture.ARM => "arm",
                 TargetArchitecture.ARM64 => "arm64",
-                TargetArchitecture.Wasm32 => "wasm",
-                TargetArchitecture.Wasm64 => "llvm64",
+                // NAOT-LLVM: NAOT has a different jit dll to R2R.
+                TargetArchitecture.Wasm32 => target.Abi == TargetAbi.NativeAot ? "llvm32" : "wasm32",
+                TargetArchitecture.Wasm64 => target.Abi == TargetAbi.NativeAot ? "llvm64" : "wasm64" /* TODO: wasm64 does not exist yet */,
                 TargetArchitecture.LoongArch64 => "loongarch64",
                 TargetArchitecture.RiscV64 => "riscv64",
                 _ => throw new NotImplementedException(target.Architecture.ToString())

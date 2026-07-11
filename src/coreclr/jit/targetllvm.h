@@ -57,6 +57,9 @@
   #define FIRST_FP_ARGREG          REG_F0
   #define LAST_FP_ARGREG           REG_F0
 
+#if defined(TARGET_LLVM)
+  #define HAS_FIXED_REGISTER_SET   1       // We set this for LLVM for now to avoid more code changes.
+#endif
   #define REGNUM_BITS              6       // number of bits in a REG_*
   #define REGMASK_BITS             32      // number of bits in a REGNUM_MASK
 #if defined(TARGET_LLVM_WASM32)            // morph phase uses this
@@ -139,5 +142,3 @@
   #define RBM_FLTARG_REGS          RBM_F0
 
   // clang-format on
-
-  #include "registeropswasm.h"
