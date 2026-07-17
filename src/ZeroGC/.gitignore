@@ -1,0 +1,19 @@
+# Build outputs
+native/obj/
+native/x64/
+native/*.pdb
+native/*.ilk
+native/*.exp
+native/*.lib
+native/*.obj
+native/tools/*.exe
+native/tools/*.obj
+native/tools/*.dll
+
+# Sample app build/publish output (regenerate via build.ps1 + dotnet publish)
+samples/**/bin/
+samples/**/obj/
+samples/**/publish/
+
+# Raw benchmark dumps (keep report.html, regenerate json via run-benchmarks.ps1)
+results/*.dmp

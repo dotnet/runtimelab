@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ZeroGC vs Regular GC - Benchmark Report</title>
+<style>
+  body { font-family: Segoe UI, Arial, sans-serif; margin: 2rem; background: #f7f8fa; color: #1a1a1a; }
+  h1 { margin-bottom: 0.2rem; }
+  .subtitle { color: #666; margin-top: 0; }
+  section { background: #fff; border-radius: 8px; padding: 1.2rem 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  h2 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+  table.cmp { width: 100%; border-collapse: collapse; }
+  table.cmp td, table.cmp th { padding: 0.5rem 0.7rem; text-align: left; vertical-align: middle; }
+  table.cmp thead th { border-bottom: 2px solid #ddd; font-size: 0.85rem; color: #555; }
+  table.cmp tbody tr:nth-child(odd) { background: #fafbfc; }
+  table.cmp td:first-child { font-weight: 600; width: 14rem; }
+  .barTrack { display:inline-block; width: 140px; height: 10px; background: #eee; border-radius: 5px; margin-left: 0.6rem; vertical-align: middle; overflow:hidden; }
+  .barFill { height: 100%; border-radius: 5px; }
+  .legend span { display:inline-block; margin-right:1.5rem; }
+  .legend .sw { display:inline-block; width:12px;height:12px;border-radius:3px;margin-right:0.4rem;vertical-align:middle; }
+  .callout { background:#fff8e6; border:1px solid #f0d98c; border-radius:6px; padding:1rem 1.2rem; margin-bottom:1.5rem; }
+  code { background:#f0f0f0; padding:0.1rem 0.35rem; border-radius:4px; }
+  footer { color:#888; font-size:0.85rem; margin-top:2rem; }
+</style>
+</head>
+<body>
+  <h1>ZeroGC vs. Regular CoreCLR GC</h1>
+  <p class="subtitle">Generated 2026-07-17 21:28:26 on this machine. Same throttled workload shape run against both GC configurations.</p>
+
+  <div class="legend">
+    <span><span class="sw" style="background:#2b7de9"></span>Regular GC (default Workstation/Server GC)</span>
+    <span><span class="sw" style="background:#e94f2b"></span>ZeroGC (allocate-only, never-collect standalone GC)</span>
+  </div>
+
+  <div class="callout">
+    <strong>What is ZeroGC?</strong> ZeroGC is a custom standalone CoreCLR GC (loaded via
+    <code>DOTNET_GCName=ZeroGC.dll</code>) modeled after the "Epsilon"/"no-op" GC idea (and the
+    author's earlier <a href="https://github.com/kkokosa/UpsilonGC">UpsilonGC</a> experiment): it
+    implements the full <code>IGCHeap</code>/<code>IGCHandleManager</code> ABI, but its allocator is a
+    simple bump-pointer arena that <em>never</em> collects, compacts, or reclaims memory - every
+    object allocated for the lifetime of the process stays resident. It exposes the same
+    <code>GC.CollectionCount</code>, <code>GC.GetTotalAllocatedBytes</code>, and
+    <code>GC.GetGCMemoryInfo()</code> counters as the real GC, so apps and tools observe 0
+    collections and monotonically growing memory instead of an error.
+  </div>
+
+  <section>
+  <h2>Console app benchmark</h2>
+  <table class="cmp">
+    <thead>
+      <tr><th>Metric</th><th>Regular GC (CoreCLR (Workstation))</th><th></th><th>ZeroGC (ZeroGC.dll)</th><th></th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Duration (s)</td>
+        <td>180.0</td><td></td>
+        <td>180.0</td><td></td>
+      </tr>
+      <tr>
+        <td>Operations / Requests</td>
+        <td>2,841,751</td><td></td>
+        <td>2,842,001</td><td></td>
+      </tr>
+      <tr>
+        <td>Throughput (ops/sec)</td>
+        <td>15,786.3<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td>
+        <td>15,788.0<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td>
+      </tr>
+      <tr>
+        <td>Total allocated bytes</td>
+        <td>406.16 MB<div class='barTrack'><div class='barFill' style='width:57%;background:#2b7de9'></div></div></td><td></td>
+        <td>711.07 MB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td>
+      </tr>
+      <tr>
+        <td>Gen0 collections</td>
+        <td>25<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td>
+        <td>0<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td>
+      </tr>
+      <tr>
+        <td>Gen1 collections</td>
+        <td>2</td><td></td>
+        <td>0</td><td></td>
+      </tr>
+      <tr>
+        <td>Gen2 collections</td>
+        <td>1</td><td></td>
+        <td>0</td><td></td>
+      </tr>
+      <tr>
+        <td>GC heap size (GetGCMemoryInfo)</td>
+        <td>279.52 KB</td><td></td>
+        <td>712.57 MB</td><td></td>
+      </tr>
+      <tr>
+        <td>Total committed bytes</td>
+        <td>20.54 MB<div class='barTrack'><div class='barFill' style='width:3%;background:#2b7de9'></div></div></td><td></td>
+        <td>712.57 MB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td>
+      </tr>
+      <tr>
+        <td>Process working set</td>
+        <td>47.19 MB<div class='barTrack'><div class='barFill' style='width:11%;background:#2b7de9'></div></div></td><td></td>
+        <td>445.67 MB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td>
+      </tr>
+      <tr>
+        <td>Peak working set</td>
+        <td>47.19 MB</td><td></td>
+        <td>445.67 MB</td><td></td>
+      </tr>
+      <tr>
+        <td>GC pause time %</td>
+        <td>0.000%</td><td></td>
+        <td>0.000%</td><td></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+  <section>
+  <h2>ASP.NET Core (Kestrel minimal API) benchmark</h2>
+  <table class="cmp">
+    <thead>
+      <tr><th>Metric</th><th>Regular GC (CoreCLR (Server))</th><th></th><th>ZeroGC (ZeroGC.dll)</th><th></th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Duration (s)</td>
+        <td>180.0</td><td></td>
+        <td>180.0</td><td></td>
+      </tr>
+      <tr>
+        <td>Operations / Requests</td>
+        <td>45,536</td><td></td>
+        <td>45,564</td><td></td>
+      </tr>
+      <tr>
+        <td>Throughput (ops/sec)</td>
+        <td>253.0<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td>
+        <td>253.1<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td>
+      </tr>
+      <tr>
+        <td>Total allocated bytes</td>
+        <td>386.82 MB<div class='barTrack'><div class='barFill' style='width:26%;background:#2b7de9'></div></div></td><td></td>
+        <td>1.44 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td>
+      </tr>
+      <tr>
+        <td>Gen0 collections</td>
+        <td>152<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td>
+        <td>0<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td>
+      </tr>
+      <tr>
+        <td>Gen1 collections</td>
+        <td>1</td><td></td>
+        <td>0</td><td></td>
+      </tr>
+      <tr>
+        <td>Gen2 collections</td>
+        <td>0</td><td></td>
+        <td>0</td><td></td>
+      </tr>
+      <tr>
+        <td>GC heap size (GetGCMemoryInfo)</td>
+        <td>3.21 MB</td><td></td>
+        <td>1.44 GB</td><td></td>
+      </tr>
+      <tr>
+        <td>Total committed bytes</td>
+        <td>5.04 MB<div class='barTrack'><div class='barFill' style='width:0%;background:#2b7de9'></div></div></td><td></td>
+        <td>1.44 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td>
+      </tr>
+      <tr>
+        <td>Process working set</td>
+        <td>65.22 MB<div class='barTrack'><div class='barFill' style='width:14%;background:#2b7de9'></div></div></td><td></td>
+        <td>480.75 MB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td>
+      </tr>
+      <tr>
+        <td>Peak working set</td>
+        <td>72.79 MB</td><td></td>
+        <td>480.75 MB</td><td></td>
+      </tr>
+      <tr>
+        <td>GC pause time %</td>
+        <td>0.030%</td><td></td>
+        <td>0.000%</td><td></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+  <div class="callout">
+    <strong>How to read this:</strong> throughput (ops/sec) should be similar between the two GCs
+    for a given workload, since both throttle to the same target request/operation rate - the
+    interesting difference is in <em>collections</em> (ZeroGC always reports 0 across all
+    generations) and <em>memory growth</em> (ZeroGC's committed/working-set bytes grow roughly
+    linearly with total bytes allocated, since nothing is ever reclaimed, whereas the regular GC's
+    footprint stays roughly flat thanks to periodic gen0/1/2 collections).
+  </div>
+
+  <footer>
+    ZeroGC source: <code>src/ZeroGC/native</code> in this repository. Benchmark harness:
+    <code>src/ZeroGC/run-benchmarks.ps1</code> / <code>generate-report.ps1</code>.
+    Raw JSON: <code>results.json</code> in the same folder as this report.
+  </footer>
+</body>
+</html>
