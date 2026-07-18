@@ -6,8 +6,18 @@
 // counters to stdout as a single JSON line so the harness can parse it.
 
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Runtime;
 using System.Text.Json;
+
+// Custom Meter so `dotnet-counters collect` can capture a uniform
+// "operations" throughput time series (rate/sec) for this app, the same way
+// it captures built-in GC counters like gen-0-gc-count or time-in-gc. This
+// lets the benchmark harness derive a real throughput-over-time chart
+// without parsing custom app output.
+var meter = new Meter("ZeroGC.Bench");
+long opsForCounter = 0;
+var opsCounter = meter.CreateCounter<long>("operations", description: "Completed benchmark operations");
 
 int durationSeconds = args.Length > 0 && int.TryParse(args[0], out var d) ? d : 60;
 string label = args.Length > 1 ? args[1] : "run";
@@ -61,6 +71,9 @@ while (sw.Elapsed < deadline)
         large[0] = 1;
         ops++;
     }
+
+    opsCounter.Add(ops - opsForCounter);
+    opsForCounter = ops;
 
     // Throttle to a realistic sustained allocation rate. A GC that never
     // reclaims memory would otherwise commit many tens of GB per minute at

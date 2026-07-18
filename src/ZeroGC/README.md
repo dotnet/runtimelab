@@ -74,12 +74,14 @@ src/ZeroGC/
     tools/symresolve.cpp  Debug-only dbghelp-based crash symbol resolver (see below)
   samples/
     ConsoleApp/           Allocation-heavy console benchmark app
-    WebApi/               Self-driving ASP.NET Core (Kestrel) benchmark app
-  run-benchmarks.ps1       Orchestrates console+webapi runs under both GCs
-  generate-report.ps1      Renders results/results.json -> results/report.html
+    WebApi/               Self-driving ASP.NET Core (Kestrel) benchmark app (8 concurrent workers)
+    GCPerfSim/            Vendored dotnet/performance allocation-pattern simulator (unmodified)
+  run-benchmarks.ps1       Orchestrates all 5 scenarios x 3 GC modes via dotnet-counters
+  generate-report.ps1      Renders results/results-full.json -> results/report.html
   results/
-    results.json           Raw benchmark output from the last run-benchmarks.ps1 run
+    results-full.json      Raw benchmark output (summary + percentiles + time series) from the last run
     report.html             Self-contained HTML comparison report (the deliverable artifact)
+    raw/                    Per-run dotnet-counters CSV captures (supplementary/debug data)
 ```
 
 ## Building ZeroGC.dll
@@ -112,7 +114,10 @@ dotnet YourApp.dll
 Unset (`Remove-Item Env:DOTNET_GCName`) or set to nothing to fall back to the
 regular (Workstation/Server) GC.
 
-## Sample apps
+## Sample apps and workloads
+
+Five workloads are benchmarked, each once per GC configuration (Workstation,
+Server, ZeroGC):
 
 - **ConsoleApp** — a tight allocation loop (allocates short strings/objects
   into a `List<T>` sized batch, throttled via `Thread.Sleep(1)` per outer
@@ -120,18 +125,49 @@ regular (Workstation/Server) GC.
   GC counters as a `##RESULT##{json}` line.
 - **WebApi** — a minimal ASP.NET Core Kestrel app exposing `/api/work` (an
   allocation + JSON-serialization endpoint) and `/api/ping`; on startup, it
-  spawns a background task that self-drives load against `/api/work` via an
-  in-process `HttpClient` for a configured duration, then reports the same
-  `##RESULT##` JSON shape and exits.
+  spawns 8 concurrent in-process `HttpClient` worker loops that self-drive
+  load against `/api/work` for a configured duration (a single throttled
+  loop tops out around ~60 req/sec due to Windows timer granularity, too
+  little to exercise the GC meaningfully — 8 concurrent workers scale
+  throughput roughly 8x while keeping each worker's own memory growth rate,
+  and therefore the total run's memory growth, bounded and predictable).
+  Reports the same `##RESULT##` JSON shape as ConsoleApp and exits.
+- **GCPerfSim** (`samples/GCPerfSim/`) — vendored unmodified from
+  [dotnet/performance](https://github.com/dotnet/performance/tree/main/src/benchmarks/gc/GCPerfSim)
+  (MIT licensed), used for 3 more realistic allocation-pattern scenarios that
+  the two hand-written apps above don't exercise well on their own:
+  - **gcperfsim-webserver**: moderate-survival, high-throughput SOH churn
+    modeling per-request allocation (`-tc 4 -tlgb 0.5 -sohsr 200-3000 -sohsi 15`).
+  - **gcperfsim-cache**: LOH-heavy, higher-survival workload modeling a
+    cache/large-buffer-heavy service (`-tc 2 -tlgb 0.3 -lohar 100 -lohsr 100000-300000`).
+  - **gcperfsim-churn**: many threads, small objects, low survival, modeling
+    high-throughput transient object churn (`-tc 8 -tlgb 0.1 -sohsr 200-600 -sohsi 200`).
 
-Both apps have their own `global.json` + empty `Directory.Build.props`/
-`.targets` overrides so they can be built/published independently of this
-repo's root Arcade-SDK-based build files.
+  All three scenarios pass `-at simple` (GCPerfSim's `SimpleItem` allocation
+  type) and add `-c 300000` (extra CPU compute between allocations, which
+  dominates wall-clock time far more than GC pause overhead does — this
+  keeps run duration roughly comparable across all 3 GC modes even though
+  ZeroGC has zero pause time). **`-at simple` is a deliberate, permanent
+  choice**: GCPerfSim's default `ReferenceItem` allocation type has a
+  pre-existing bug in its survivor-list bookkeeping (`OldArr.NonEmptyLength`
+  can underflow in `MemoryAlloc.DoSurvive`, later causing an
+  `IndexOutOfRangeException`) that reproduces intermittently at the
+  multi-hundred-second scale used here; `SimpleItem` avoids that code path
+  entirely and was verified crash-free across all 3 scenarios at full scale.
+  Each scenario is bounded by `-tagb` (total allocation across all threads,
+  scaled from a `BaseTagbFor600s` constant in `run-benchmarks.ps1`) rather
+  than a wall-clock timeout, since GCPerfSim's own `-totalMins` is unreliable
+  as a hard stop and `-tagb` is also the memory-safety mechanism that keeps a
+  ZeroGC run's worst-case memory bounded regardless of allocation speed.
+
+Both hand-written sample apps have their own `global.json` + empty
+`Directory.Build.props`/`.targets` overrides (GCPerfSim too) so they build
+independently of this repo's root Arcade-SDK-based build files.
 
 To publish a sample manually:
 
 ```powershell
-cd src\ZeroGC\samples\ConsoleApp   # or WebApi
+cd src\ZeroGC\samples\ConsoleApp   # or WebApi, or GCPerfSim
 dotnet publish -c Release -r win-x64 --self-contained -o publish
 copy ..\..\native\ZeroGC.dll publish\
 ```
@@ -139,49 +175,76 @@ copy ..\..\native\ZeroGC.dll publish\
 ## Running the benchmark suite
 
 ```powershell
+dotnet tool install --global dotnet-counters   # one-time
+$env:PATH += ";$env:USERPROFILE\.dotnet\tools"
 cd src\ZeroGC
-.\run-benchmarks.ps1 -DurationSeconds 180
+.\run-benchmarks.ps1 -DurationSeconds 600
 ```
 
-This runs 4 benchmarks (ConsoleApp x {regular GC, ZeroGC}, WebApi x
-{regular GC, ZeroGC}), each for `-DurationSeconds` (default 180s/3 min),
-collects results into `results\results.json`, and calls
-`generate-report.ps1` automatically to produce `results\report.html`.
+This runs all 5 workloads x 3 GC modes (Workstation, Server, ZeroGC) = 15
+runs total, each for `-DurationSeconds` (default 600s/10 min for GCPerfSim
+scenarios; ConsoleApp/WebApi honor it as a wall-clock duration; GCPerfSim
+scenarios honor it by linearly scaling their calibrated `-tagb` allocation
+budget, so actual wall time is only approximately `-DurationSeconds`).
 
-Both sample workloads are throttled (`Thread.Sleep(1)` / `Task.Delay(1)`)
-so that a multi-minute run under ZeroGC doesn't exhaust machine memory —
-measured growth is roughly 24 MB/s (ConsoleApp) and 80 MB/s (WebApi) at the
-throttled rate used in this repo; scale `-DurationSeconds` down on
-memory-constrained machines.
+For every run, `dotnet-counters collect` attaches to the target process for
+the whole duration and captures a genuine second-by-second time series (GC
+pause time, working set, committed bytes, heap size, collection counts,
+allocation rate, and — for ConsoleApp/WebApi — a custom `ZeroGC.Bench`
+`operations` throughput counter) via the standard `System.Runtime`
+EventCounters/Meters every .NET process exposes. This works identically for
+ZeroGC because its `IGCHeap` counters
+(`GC.CollectionCount`/`GetTotalAllocatedBytes`/`GetGCMemoryInfo`) feed the
+same counters as the built-in GC — no ZeroGC-specific tooling is required.
+GC-mode environment variables (`DOTNET_gcServer`, `DOTNET_GCName`) are
+scoped only to each child process via `ProcessStartInfo.EnvironmentVariables`
+— never set in the parent shell, since `dotnet-counters` is itself a .NET
+process and would otherwise try to load the same GC config for itself.
 
-## Results (3-minute runs, this machine)
+Results are written incrementally to `results\results-full.json` after each
+run (crash-safe: a failure partway through the suite doesn't lose already-
+completed runs), then `generate-report.ps1` is invoked automatically to
+produce `results\report.html`.
 
-See `results/report.html` for the full self-contained comparison report
-(tables + bar charts). Summary from the last recorded run:
+Both hand-written sample workloads are throttled so a multi-minute run under
+ZeroGC doesn't exhaust machine memory; each GCPerfSim scenario is bounded by
+its calibrated `-tagb` (see above) for the same reason. Scale
+`-DurationSeconds` down on memory-constrained machines.
 
-| Metric (ConsoleApp, 180s) | Regular GC | ZeroGC |
-|---|---|---|
-| Throughput | 15,786 ops/sec | 15,788 ops/sec |
-| Total allocated | 406 MB | 711 MB |
-| Gen0/1/2 collections | 25 / 2 / 1 | 0 / 0 / 0 |
-| Committed bytes | 20.5 MB | 712.6 MB |
-| Working set | 47.2 MB | 445.7 MB |
+## Results (10-minute runs, this machine)
 
-| Metric (WebApi, 180s) | Regular GC | ZeroGC |
-|---|---|---|
-| Throughput | 253.0 req/sec | 253.1 req/sec |
-| Total allocated | 386.8 MB | 1.44 GB |
-| Gen0/1/2 collections | 152 / 1 / 0 | 0 / 0 / 0 |
-| Committed bytes | 5.0 MB | 1.44 GB |
-| Working set | 65.2 MB | 480.8 MB |
+See `results/report.html` for the full self-contained comparison report:
+per-scenario comparison tables (throughput, allocation, collection counts,
+heap/committed/working-set memory) for all 3 GC modes, a percentile table
+(avg/p50/p90/p99 for GC pause time %, working set, and throughput), and
+inline SVG time-series charts (GC pause % / working set / throughput over
+the full run) with one line per GC mode.
 
-**Takeaway:** throughput is essentially identical (both workloads are
-throttled to the same target rate, and neither is GC-bound at this
-allocation rate), which is expected — the interesting difference is that
-ZeroGC always reports 0 collections and its committed/working-set memory
-grows in lockstep with total bytes allocated, while the regular GC's
-footprint stays roughly flat thanks to periodic gen0/1/2 collections
-reclaiming garbage.
+**Highlights across all 5 workloads:**
+
+- **Throughput/allocation-rate parity:** Workstation, Server, and ZeroGC are
+  all within a few percent of each other on ops/sec (ConsoleApp/WebApi) or
+  MB/s allocation throughput (GCPerfSim) for every scenario — none of these
+  workloads are GC-bound enough at these allocation rates for GC pause time
+  to dominate wall-clock time, and the GCPerfSim scenarios' `-c 300000`
+  compute cost dominates further.
+- **GC pause time %:** ZeroGC is always exactly 0% (there is nothing to
+  pause for). Workstation/Server GC pause time stays under ~1% even in the
+  most GC-active scenario (gcperfsim-cache), consistent with modern
+  background/concurrent GC design.
+- **Memory footprint diverges sharply and predictably:** ZeroGC's working
+  set, committed bytes, and GC heap size all grow monotonically and track
+  total bytes allocated (e.g. in gcperfsim-cache, ZeroGC's working set grows
+  from ~1.5 GB to ~6 GB over the 10-minute run), while Workstation/Server GC
+  keep their footprint roughly flat via periodic gen0/1/2 collections
+  (hundreds of gen0 collections, tens of gen1, single-digit-to-low-teens
+  gen2 over the same run).
+- **"Total allocated" needs a caveat:** ZeroGC reports a noticeably higher
+  "Total allocated" figure than Workstation/Server for the same workload.
+  This is expected, not a bug — see the report's inline callout: the real
+  GC's `GetTotalAllocatedBytes(precise: false)` is a fast approximation that
+  can undercount with many allocating threads, while ZeroGC returns its
+  arena's exact bump-pointer position (a true, exact count).
 
 ## Debugging notes / lessons learned
 

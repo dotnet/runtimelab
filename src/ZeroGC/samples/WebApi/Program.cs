@@ -8,8 +8,14 @@
 // both can be compared/plotted uniformly.
 
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Runtime;
 using System.Text.Json;
+
+// Same custom Meter convention as ConsoleApp - lets `dotnet-counters collect`
+// capture a uniform request-throughput time series across both sample apps.
+var meter = new Meter("ZeroGC.Bench");
+var opsCounter = meter.CreateCounter<long>("operations", description: "Completed benchmark operations");
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders(); // keep stdout free for the ##RESULT## line
@@ -35,12 +41,12 @@ app.MapGet("/api/ping", () => "pong");
 app.Lifetime.ApplicationStarted.Register(() =>
 {
     // Kick off the self-driving load generator once Kestrel is actually listening.
-    _ = Task.Run(() => RunBenchmarkAndExitAsync(app));
+    _ = Task.Run(() => RunBenchmarkAndExitAsync(app, opsCounter));
 });
 
 app.Run();
 
-static async Task RunBenchmarkAndExitAsync(WebApplication app)
+static async Task RunBenchmarkAndExitAsync(WebApplication app, Counter<long> opsCounter)
 {
     int durationSeconds = int.TryParse(Environment.GetEnvironmentVariable("ZEROGC_BENCH_DURATION_SECONDS"), out var d) ? d : 60;
     string label = Environment.GetEnvironmentVariable("ZEROGC_BENCH_LABEL") ?? "run";
@@ -58,38 +64,54 @@ static async Task RunBenchmarkAndExitAsync(WebApplication app)
 
     using var client = new HttpClient { BaseAddress = new Uri(baseUrl), Timeout = TimeSpan.FromSeconds(10) };
 
-    var rng = new Random(12345);
+    // Warm up JIT / connection pool before measuring.
+    await client.GetStringAsync("/api/ping");
+
+    // Drive load with several concurrent worker loops rather than one
+    // sequential loop. A single loop throttled via Task.Delay(1) tops out
+    // around ~60 req/sec (bounded by Windows timer granularity, ~16ms),
+    // which is too little traffic to generate meaningful GC pressure over a
+    // multi-minute run. N concurrent workers (each still individually
+    // throttled the same way) multiply aggregate throughput roughly by N
+    // while keeping the per-worker allocation/memory-growth rate - and
+    // therefore total run memory - predictable and bounded regardless of
+    // which GC is loaded.
+    int workerCount = int.TryParse(Environment.GetEnvironmentVariable("ZEROGC_BENCH_WEBAPI_WORKERS"), out var wc) ? wc : 8;
+
     long requests = 0;
     long errors = 0;
     var sw = Stopwatch.StartNew();
     var deadline = TimeSpan.FromSeconds(durationSeconds);
     var proc = Process.GetCurrentProcess();
 
-    // Warm up JIT / connection pool before measuring.
-    await client.GetStringAsync("/api/ping");
-
-    while (sw.Elapsed < deadline)
+    async Task WorkerAsync(int workerId)
     {
-        try
+        var rng = new Random(12345 + workerId);
+        using var workerClient = new HttpClient { BaseAddress = new Uri(baseUrl), Timeout = TimeSpan.FromSeconds(10) };
+        while (sw.Elapsed < deadline)
         {
-            int size = rng.Next(5, 50);
-            var resp = await client.GetStringAsync($"/api/work?size={size}");
-            requests++;
-            if (resp.Length == -1) Console.WriteLine(resp); // never true; prevents dead-code elimination
-        }
-        catch
-        {
-            errors++;
-        }
+            try
+            {
+                int size = rng.Next(5, 50);
+                var resp = await workerClient.GetStringAsync($"/api/work?size={size}");
+                Interlocked.Increment(ref requests);
+                opsCounter.Add(1);
+                if (resp.Length == -1) Console.WriteLine(resp); // never true; prevents dead-code elimination
+            }
+            catch
+            {
+                Interlocked.Increment(ref errors);
+            }
 
-        // Throttle to a realistic sustained request rate (see ConsoleApp
-        // sample for why: an unthrottled loop against a never-collecting GC
-        // would commit unbounded memory very quickly).
-        if (requests % 4 == 0)
-        {
+            // Per-worker throttle (see comment above): keeps aggregate
+            // memory growth bounded and predictable while still scaling
+            // total throughput with workerCount.
             await Task.Delay(1);
         }
     }
+
+    var workers = Enumerable.Range(0, workerCount).Select(WorkerAsync).ToArray();
+    await Task.WhenAll(workers);
 
     sw.Stop();
     proc.Refresh();
