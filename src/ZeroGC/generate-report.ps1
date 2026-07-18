@@ -10,9 +10,10 @@
       - a comparison table (duration, throughput, total allocated, gen0/1/2
         collections, heap/committed/working-set memory, GC pause time
         average + p50/p90/p99/max) across all three GC configurations
-      - time-series line charts (inline SVG) for GC pause % over time,
-        working set over time, and throughput (ops/sec or MB/s allocated)
-        over time, one overlaid line per GC configuration
+      - time-series line charts (inline SVG) for GC pause time (ms) over
+        time, working set over time, and throughput (ops/sec or MB/s
+        allocated) over time, plus grouped bar charts of GC pause time (ms)
+        percentiles, one overlaid line/bar per GC configuration
 #>
 param(
     [string]$ResultsJson = "$PSScriptRoot\results\results-full.json",
@@ -255,12 +256,11 @@ foreach ($scenarioId in $scenarioOrder) {
         $rowsHtml += "<tr><td>$($mr.Label)</td>$($cells -join '')</tr>`n"
     }
 
-    # GC pause time %, GC pause time ms, working set, throughput percentile tables.
-    $pauseStatsByMode = @{}; $pauseMsStatsByMode = @{}; $wsStatsByMode = @{}; $throughputStatsByMode = @{}
+    # GC pause time (ms), working set, throughput percentile tables.
+    $pauseMsStatsByMode = @{}; $wsStatsByMode = @{}; $throughputStatsByMode = @{}
     foreach ($modeId in $gcModeOrder) {
         $m = $byMode[$modeId]
         if ($m) {
-            $pauseStatsByMode[$modeId] = $m.PauseTimePctStats
             $pauseMsStatsByMode[$modeId] = Get-PauseMsStats $m
             $wsStatsByMode[$modeId] = $m.WorkingSetStats
             $throughputStatsByMode[$modeId] = if ($isGcPerfSim) { $m.AllocRateMBStats } else { $m.OpsPerSecStats }
@@ -268,27 +268,23 @@ foreach ($scenarioId in $scenarioOrder) {
     }
     $pauseHeaderCells = ($gcModeOrder | ForEach-Object { "<th colspan='4'>$($gcModeLabel[$_])</th>" }) -join ""
     $subHeaderCells = ($gcModeOrder | ForEach-Object { "<th>avg</th><th>p50</th><th>p90</th><th>p99</th>" }) -join ""
-    $pauseRow = Stats-Row "GC pause time %" $pauseStatsByMode { param($v) "{0:N3}%" -f $v }
     $pauseMsRow = Stats-Row "GC pause time (ms per ~1s sample)" $pauseMsStatsByMode { param($v) "{0:N2} ms" -f $v }
     $wsRow = Stats-Row "Working set (MB)" $wsStatsByMode { param($v) "{0:N0}" -f ($v / 1MB) }
     $throughputUnit = if ($isGcPerfSim) { "MB/s" } else { "ops/sec" }
     $throughputRow = Stats-Row "Throughput ($throughputUnit)" $throughputStatsByMode { param($v) "{0:N1}" -f $v }
 
     # Time-series charts.
-    $pauseSeries = @{}; $pauseMsSeries = @{}; $wsSeries = @{}; $throughputSeries = @{}
+    $pauseMsSeries = @{}; $wsSeries = @{}; $throughputSeries = @{}
     foreach ($modeId in $gcModeOrder) {
         $m = $byMode[$modeId]
         if (-not $m) { continue }
-        $pauseSeries[$modeId] = $m.TimeSeries.PauseTimePct
         $pauseMsSeries[$modeId] = Get-PauseMsSeries $m
         $wsSeries[$modeId] = $m.TimeSeries.WorkingSetMB
         $throughputSeries[$modeId] = if ($isGcPerfSim) { $m.TimeSeries.AllocRateMB } else { $m.TimeSeries.OpsPerSec }
     }
-    $pauseChart = New-LineChartSvg -SeriesByMode $pauseSeries -YSuffix "%"
     $pauseMsChart = New-LineChartSvg -SeriesByMode $pauseMsSeries -YSuffix " ms"
     $wsChart = New-LineChartSvg -SeriesByMode $wsSeries -YSuffix " MB"
     $throughputChart = New-LineChartSvg -SeriesByMode $throughputSeries -YSuffix " $throughputUnit"
-    $pausePctChart = New-PauseStatsBarChartSvg -StatsByMode $pauseStatsByMode -YSuffix "%" -Decimals 2
     $pauseMsBarChart = New-PauseStatsBarChartSvg -StatsByMode $pauseMsStatsByMode -YSuffix " ms" -Decimals 2
 
     $legendHtml = ($gcModeOrder | ForEach-Object {
@@ -309,7 +305,6 @@ $rowsHtml
   <table class="cmp stats">
     <thead><tr><th></th>$pauseHeaderCells</tr><tr><th>Metric</th>$subHeaderCells</tr></thead>
     <tbody>
-      $pauseRow
       $pauseMsRow
       $wsRow
       $throughputRow
@@ -317,10 +312,6 @@ $rowsHtml
   </table>
 
   <div class="chartsGrid">
-    <div class="chartCard">
-      <h4>GC pause time % over time</h4>
-      $pauseChart
-    </div>
     <div class="chartCard">
       <h4>GC pause time (ms) over time</h4>
       $pauseMsChart
@@ -330,16 +321,12 @@ $rowsHtml
       $throughputChart
     </div>
     <div class="chartCard">
-      <h4>Working set (MB) over time</h4>
-      $wsChart
-    </div>
-    <div class="chartCard">
-      <h4>GC pause time % percentiles (avg / p50 / p90 / p99 / max, full run)</h4>
-      $pausePctChart
-    </div>
-    <div class="chartCard">
       <h4>GC pause time (ms) percentiles (avg / p50 / p90 / p99 / max, full run)</h4>
       $pauseMsBarChart
+    </div>
+    <div class="chartCard">
+      <h4>Working set (MB) over time</h4>
+      $wsChart
     </div>
   </div>
   <div class="legend small">$legendHtml</div>
@@ -408,7 +395,7 @@ $html = @"
   $sections
 
   <div class="callout">
-    <strong>How to read this:</strong> ZeroGC always reports 0% GC pause time and 0 collections
+    <strong>How to read this:</strong> ZeroGC always reports 0 ms GC pause time and 0 collections
     across all generations - there is nothing to compact or trace. Its memory (working
     set/committed bytes/heap size) grows monotonically and roughly tracks total bytes allocated,
     since nothing is ever reclaimed, whereas Workstation/Server GC's footprint stays roughly flat
