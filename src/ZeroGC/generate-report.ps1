@@ -219,6 +219,7 @@ foreach ($scenarioId in $scenarioOrder) {
     $anyRun = $byMode.Values | Select-Object -First 1
     $scenarioName = $anyRun.ScenarioName
     $isGcPerfSim = $scenarioId -like "gcperfsim*"
+    $isGen2Stress = $scenarioId -eq "gen2stress"
     $throughputLabel = if ($isGcPerfSim) { "Allocation throughput (MB/s)" } else { "Throughput (ops/sec)" }
 
     $maxAlloc = ($byMode.Values | ForEach-Object { $_.Summary.TotalAllocatedBytes } | Measure-Object -Maximum).Maximum
@@ -245,6 +246,13 @@ foreach ($scenarioId in $scenarioOrder) {
         @{ Label = "Total committed bytes"; Get = { param($m) Fmt-Bytes $m.Summary.TotalCommittedBytes }; Bar = $true; Max = $maxCommitted; Val = { param($m) $m.Summary.TotalCommittedBytes } }
         @{ Label = "Peak working set"; Get = { param($m) Fmt-Bytes $m.Summary.WorkingSetBytes }; Bar = $true; Max = $maxWs; Val = { param($m) $m.Summary.WorkingSetBytes } }
     )
+    if ($isGen2Stress) {
+        $maxForcedPause = ($byMode.Values | ForEach-Object { $_.Summary.ForcedGen2PauseMaxMs } | Where-Object { $_ } | Measure-Object -Maximum).Maximum
+        $metricRows += @{ Label = "Forced blocking gen2 GC pause (avg)"; Get = { param($m) "$(Fmt-Dec $m.Summary.ForcedGen2PauseAvgMs 1) ms" }
+            Bar = $true; Max = $maxForcedPause; Val = { param($m) $m.Summary.ForcedGen2PauseAvgMs } }
+        $metricRows += @{ Label = "Forced blocking gen2 GC pause (max)"; Get = { param($m) "$(Fmt-Dec $m.Summary.ForcedGen2PauseMaxMs 1) ms" }
+            Bar = $true; Max = $maxForcedPause; Val = { param($m) $m.Summary.ForcedGen2PauseMaxMs } }
+    }
     foreach ($mr in $metricRows) {
         $cells = foreach ($modeId in $gcModeOrder) {
             $m = $byMode[$modeId]

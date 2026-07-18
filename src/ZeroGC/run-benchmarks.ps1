@@ -27,7 +27,7 @@
 param(
     [int]$DurationSeconds = 600,
     [string]$OutDir = "$PSScriptRoot\results",
-    [string[]]$Scenarios = @("console", "webapi", "gcperfsim-webserver", "gcperfsim-cache", "gcperfsim-churn", "zeroalloc", "dotllm-serve"),
+    [string[]]$Scenarios = @("console", "webapi", "gcperfsim-webserver", "gcperfsim-cache", "gcperfsim-churn", "zeroalloc", "dotllm-serve", "gen2stress"),
     [string[]]$GcModes = @("workstation", "server", "zerogc"),
     [int]$CounterRefreshIntervalSeconds = 1,
     [string]$DotLlmModelFile = "$env:USERPROFILE\.dotllm\models\QuantFactory\SmolLM-135M-GGUF\SmolLM-135M.Q4_K_M.gguf",
@@ -107,7 +107,12 @@ $allScenarios = @(
     # scenarios demonstrate that Workstation/Server/ZeroGC all perform
     # near-identically when there's nothing to collect.
     (New-Scenario "zeroalloc" "Console: near-zero-allocation numeric compute (matrix multiply)" "zeroalloc"),
-    (New-Scenario "dotllm-serve" "dotLLM: zero-alloc-inference HTTP server (github.com/kkokosa/dotLLM)" "dotllm-serve")
+    (New-Scenario "dotllm-serve" "dotLLM: zero-alloc-inference HTTP server (github.com/kkokosa/dotLLM)" "dotllm-serve"),
+    # A large, long-lived object graph + disabled concurrent GC so gen2
+    # collections are fully blocking, deliberately triggering multi-hundred-
+    # millisecond pauses under Workstation/Server GC (contrasted against
+    # ZeroGC's ~0ms no-op "collection").
+    (New-Scenario "gen2stress" "Console: long blocking gen2 GC stress (large live object graph)" "gen2stress" "500 5")
 )
 
 $gcModeDefs = @(
@@ -531,6 +536,33 @@ foreach ($scenarioId in $Scenarios) {
                     GcName               = $gcMode.DisplayName
                 }
                 $durationActual = $DurationSeconds
+            }
+            "gen2stress" {
+                $publishDir = Join-Path $root "samples\Gen2StressApp\publish"
+                $run = Invoke-MonitoredRun -ExePath (Join-Path $publishDir "Gen2StressApp.exe") -WorkingDirectory $publishDir `
+                    -Arguments "$DurationSeconds $label $($scenario.Args)" -ExtraEnv $gcMode.Env -RemoveEnvKeys $gcMode.RemoveEnv -CsvBasePath $csvBase -AttachDelayMs 3000
+                $resultJson = Get-ResultLineJson $run.StdOut
+                if (-not $resultJson) { Write-Host $run.StdOut; Write-Host $run.StdErr; throw "No ##RESULT## for $label" }
+                $summary = [ordered]@{
+                    OperationsTotal      = $resultJson.Operations
+                    OpsPerSecondOverall  = $resultJson.OpsPerSecond
+                    TotalAllocatedBytes  = $resultJson.TotalAllocatedBytes
+                    Gen0Collections      = $resultJson.Gen0Collections
+                    Gen1Collections      = $resultJson.Gen1Collections
+                    Gen2Collections      = $resultJson.Gen2Collections
+                    WorkingSetBytes      = $resultJson.WorkingSetBytes
+                    PeakWorkingSetBytes  = $resultJson.PeakWorkingSetBytes
+                    HeapSizeBytes        = $resultJson.HeapSizeBytes
+                    TotalCommittedBytes  = $resultJson.TotalCommittedBytes
+                    GcName               = $resultJson.GcName
+                    ForcedGen2Collections = $resultJson.ForcedGen2Collections
+                    ForcedGen2PauseAvgMs  = $resultJson.ForcedGen2PauseAvgMs
+                    ForcedGen2PauseMaxMs  = $resultJson.ForcedGen2PauseMaxMs
+                    ForcedGen2PauseMinMs  = $resultJson.ForcedGen2PauseMinMs
+                    ForcedGen2PauseSamplesMs = $resultJson.ForcedGen2PauseSamplesMs
+                    RetainedObjectCount   = $resultJson.RetainedObjectCount
+                }
+                $durationActual = $resultJson.DurationSeconds
             }
         }
 
