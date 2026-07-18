@@ -52,7 +52,7 @@ function New-LineChartSvg {
         [hashtable]$SeriesByMode,
         [string]$YSuffix = "",
         [int]$Width = 720,
-        [int]$Height = 190
+        [int]$Height = 220
     )
     $maxT = 0.0; $maxV = 0.0
     foreach ($modeId in $SeriesByMode.Keys) {
@@ -101,6 +101,74 @@ function New-LineChartSvg {
   <line x1='$padL' y1='$($padT+$plotH)' x2='$($padL+$plotW)' y2='$($padT+$plotH)' stroke='#ccc' stroke-width='1'/>
   $polylines
   $xAxisLabel
+</svg>
+"@
+}
+
+# Renders an inline, self-contained SVG grouped bar chart comparing
+# Avg/P50/P90/P99/Max GC pause time % across GC modes. $StatsByMode is a
+# hashtable: gcModeId -> stats object (Avg/P50/P90/P99/Max/...).
+function New-PauseStatsBarChartSvg {
+    param(
+        [hashtable]$StatsByMode,
+        [int]$Width = 720,
+        [int]$Height = 260
+    )
+    $categories = @("Avg", "P50", "P90", "P99", "Max")
+    $modesPresent = @($gcModeOrder | Where-Object { $StatsByMode.ContainsKey($_) -and $StatsByMode[$_] })
+
+    $maxV = 0.0
+    foreach ($modeId in $modesPresent) {
+        foreach ($cat in $categories) {
+            $v = [double]$StatsByMode[$modeId].$cat
+            if ($v -gt $maxV) { $maxV = $v }
+        }
+    }
+    if ($maxV -le 0) { $maxV = 1 }
+    $maxV = $maxV * 1.15 # headroom so tallest bar doesn't touch the top edge
+
+    $padL = 54; $padB = 30; $padT = 10; $padR = 10
+    $plotW = $Width - $padL - $padR
+    $plotH = $Height - $padT - $padB
+
+    $gridLines = ""
+    for ($i = 0; $i -le 4; $i++) {
+        $gy = $padT + $plotH - ($i / 4.0) * $plotH
+        $val = ($i / 4.0) * $maxV
+        $gridLines += "<line x1='$padL' y1='$gy' x2='$($padL+$plotW)' y2='$gy' stroke='#eee' stroke-width='1'/>"
+        $gridLines += "<text x='2' y='$($gy+3)' font-size='9' fill='#888'>$(Fmt-Dec $val 2)%</text>`n"
+    }
+
+    $groupW = $plotW / $categories.Count
+    $barGap = 4
+    $modeCount = [Math]::Max($modesPresent.Count, 1)
+    $barW = [Math]::Max(4, ($groupW - $barGap * ($modeCount + 1)) / $modeCount)
+
+    $bars = ""
+    $catLabels = ""
+    for ($ci = 0; $ci -lt $categories.Count; $ci++) {
+        $cat = $categories[$ci]
+        $groupX = $padL + $ci * $groupW
+        $mi = 0
+        foreach ($modeId in $modesPresent) {
+            $v = [double]$StatsByMode[$modeId].$cat
+            $barH = ($v / $maxV) * $plotH
+            $bx = $groupX + $barGap + $mi * ($barW + $barGap)
+            $by = $padT + $plotH - $barH
+            $color = $gcModeColor[$modeId]
+            $bars += "<rect x='$([Math]::Round($bx,1))' y='$([Math]::Round($by,1))' width='$([Math]::Round($barW,1))' height='$([Math]::Round($barH,1))' fill='$color' opacity='0.9'><title>$($gcModeLabel[$modeId]) $cat`: $(Fmt-Dec $v 3)%</title></rect>`n"
+            $mi++
+        }
+        $catLabels += "<text x='$($groupX + $groupW/2)' y='$($Height-8)' font-size='10' fill='#666' text-anchor='middle'>$cat</text>"
+    }
+
+    return @"
+<svg viewBox='0 0 $Width $Height' width='100%' height='$Height' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
+  $gridLines
+  <line x1='$padL' y1='$padT' x2='$padL' y2='$($padT+$plotH)' stroke='#ccc' stroke-width='1'/>
+  <line x1='$padL' y1='$($padT+$plotH)' x2='$($padL+$plotW)' y2='$($padT+$plotH)' stroke='#ccc' stroke-width='1'/>
+  $bars
+  $catLabels
 </svg>
 "@
 }
@@ -194,6 +262,7 @@ foreach ($scenarioId in $scenarioOrder) {
     $pauseChart = New-LineChartSvg -SeriesByMode $pauseSeries -YSuffix "%"
     $wsChart = New-LineChartSvg -SeriesByMode $wsSeries -YSuffix " MB"
     $throughputChart = New-LineChartSvg -SeriesByMode $throughputSeries -YSuffix " $throughputUnit"
+    $pausePctChart = New-PauseStatsBarChartSvg -StatsByMode $pauseStatsByMode
 
     $legendHtml = ($gcModeOrder | ForEach-Object {
         "<span><span class='sw' style='background:$($gcModeColor[$_])'></span>$($gcModeLabel[$_])</span>"
@@ -225,12 +294,16 @@ $rowsHtml
       $pauseChart
     </div>
     <div class="chartCard">
-      <h4>Working set (MB) over time</h4>
-      $wsChart
-    </div>
-    <div class="chartCard">
       <h4>Throughput ($throughputUnit) over time</h4>
       $throughputChart
+    </div>
+    <div class="chartCard">
+      <h4>GC pause time % percentiles (avg / p50 / p90 / p99 / max, full run)</h4>
+      $pausePctChart
+    </div>
+    <div class="chartCard">
+      <h4>Working set (MB) over time</h4>
+      $wsChart
     </div>
   </div>
   <div class="legend small">$legendHtml</div>
@@ -266,8 +339,9 @@ $html = @"
   .callout { background:#fff8e6; border:1px solid #f0d98c; border-radius:6px; padding:1rem 1.2rem; margin-bottom:1.5rem; }
   code { background:#f0f0f0; padding:0.1rem 0.35rem; border-radius:4px; }
   footer { color:#888; font-size:0.85rem; margin-top:2rem; }
-  .chartsGrid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; margin-top: 0.8rem; }
+  .chartsGrid { display:grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; margin-top: 0.8rem; }
   .chartCard { background:#fbfbfd; border:1px solid #eee; border-radius:8px; padding:0.6rem 0.7rem; }
+  @media (max-width: 900px) { .chartsGrid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
