@@ -27,9 +27,11 @@
 param(
     [int]$DurationSeconds = 600,
     [string]$OutDir = "$PSScriptRoot\results",
-    [string[]]$Scenarios = @("console", "webapi", "gcperfsim-webserver", "gcperfsim-cache", "gcperfsim-churn"),
+    [string[]]$Scenarios = @("console", "webapi", "gcperfsim-webserver", "gcperfsim-cache", "gcperfsim-churn", "zeroalloc", "dotllm-serve"),
     [string[]]$GcModes = @("workstation", "server", "zerogc"),
-    [int]$CounterRefreshIntervalSeconds = 1
+    [int]$CounterRefreshIntervalSeconds = 1,
+    [string]$DotLlmModelFile = "$env:USERPROFILE\.dotllm\models\QuantFactory\SmolLM-135M-GGUF\SmolLM-135M.Q4_K_M.gguf",
+    [int]$DotLlmPort = 8099
 )
 
 $ErrorActionPreference = "Stop"
@@ -43,6 +45,35 @@ if (-not $dotnetCounters) {
     if (Test-Path $candidate) { $dotnetCounters = $candidate } else { throw "dotnet-counters not found. Install via: dotnet tool install --global dotnet-counters" }
 }
 else { $dotnetCounters = $dotnetCounters.Source }
+
+# dotllm (https://github.com/kkokosa/dotLLM) is only required for the
+# "dotllm-serve" scenario - a real-world, (near-)zero-allocation LLM
+# inference server. Resolved lazily so the rest of the suite still runs on
+# machines that don't have it installed.
+$dotLlmExe = $null
+if ($Scenarios -contains "dotllm-serve") {
+    $dotLlmCmd = Get-Command dotllm -ErrorAction SilentlyContinue
+    if ($dotLlmCmd) { $dotLlmExe = $dotLlmCmd.Source }
+    else {
+        $candidate = Join-Path $env:USERPROFILE ".dotnet\tools\dotllm.exe"
+        if (Test-Path $candidate) { $dotLlmExe = $candidate }
+    }
+    if (-not $dotLlmExe) {
+        throw "dotllm not found but 'dotllm-serve' scenario was requested. Install via: dotnet tool install -g DotLLM.Cli --prerelease"
+    }
+    if (-not (Test-Path $DotLlmModelFile)) {
+        throw "dotLLM model file not found at '$DotLlmModelFile'. Pull it first: dotllm model pull QuantFactory/SmolLM-135M-GGUF --file SmolLM-135M.Q4_K_M.gguf"
+    }
+    # For GC-plugin loading (DOTNET_GCName=ZeroGC.dll), CoreCLR resolves the
+    # plugin relative to the app's own directory - not the apphost.exe's
+    # folder in ~/.dotnet/tools, but the actual managed assembly's directory
+    # under the global tool's .store layout. Copy ZeroGC.dll there so the
+    # zerogc GC mode can load for this scenario too.
+    $dotLlmAppDll = Get-ChildItem (Join-Path $env:USERPROFILE ".dotnet\tools\.store\dotllm.cli") -Recurse -Filter "DotLLM.Cli.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($dotLlmAppDll) {
+        Copy-Item $gcDll -Destination $dotLlmAppDll.DirectoryName -Force
+    }
+}
 
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 $rawDir = Join-Path $OutDir "raw"
@@ -69,7 +100,14 @@ $allScenarios = @(
     (New-Scenario "gcperfsim-cache" "GCPerfSim: cache / large-object-heavy workload" "gcperfsim" `
         "-tc 2 -tlgb 0.3 -lohar 100 -sohsr 500-4000 -sohsi 8 -lohsr 100000-300000 -lohsi 4 -at simple -c 300000" 5.3),
     (New-Scenario "gcperfsim-churn" "GCPerfSim: high-throughput transient object churn" "gcperfsim" `
-        "-tc 8 -tlgb 0.1 -lohar 0 -sohsr 200-600 -sohsi 200 -at simple -c 300000" 3.4)
+        "-tc 8 -tlgb 0.1 -lohar 0 -sohsr 200-600 -sohsi 200 -at simple -c 300000" 3.4),
+    # --- Zero-alloc scenarios: the point isn't to stress the GC, it's the
+    # opposite - when an app allocates almost nothing, the choice of GC
+    # (including never collecting at all) shouldn't matter. These two
+    # scenarios demonstrate that Workstation/Server/ZeroGC all perform
+    # near-identically when there's nothing to collect.
+    (New-Scenario "zeroalloc" "Console: near-zero-allocation numeric compute (matrix multiply)" "zeroalloc"),
+    (New-Scenario "dotllm-serve" "dotLLM: zero-alloc-inference HTTP server (github.com/kkokosa/dotLLM)" "dotllm-serve")
 )
 
 $gcModeDefs = @(
@@ -204,6 +242,125 @@ function Invoke-MonitoredRun {
     }
 }
 
+# Monitors a long-running HTTP server process for scenarios where the
+# harness (not the target app) controls when the run ends. Key difference
+# from Invoke-MonitoredRun: dotnet-counters is invoked with --duration so it
+# auto-stops and flushes a valid CSV on its own after a fixed time span,
+# regardless of whether the server is still alive. The server process is
+# force-killed only AFTER dotnet-counters has already exited cleanly -
+# killing it first would make dotnet-counters throw (ServerNotAvailableException)
+# and write no CSV at all.
+#
+# Load is driven by a background job that repeatedly POSTs small inference
+# requests and records one completed-request count per wall-clock second;
+# that per-second count is returned as a synthetic "operations" series in
+# exactly the same {T=seconds; V=count} shape Parse-CountersCsv produces,
+# so it plugs into the existing stats/percentile/downsampling pipeline
+# unmodified.
+function Invoke-MonitoredServerRun {
+    param(
+        [string]$ExePath,
+        [string]$WorkingDirectory,
+        [string]$Arguments,
+        [hashtable]$ExtraEnv,
+        [string[]]$RemoveEnvKeys,
+        [string]$CsvBasePath,
+        [string]$ReadyUrl,
+        [string]$RequestUrl,
+        [string]$RequestBodyJson,
+        [int]$RunSeconds,
+        [int]$ReadyTimeoutSeconds = 90
+    )
+
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $ExePath
+    $psi.WorkingDirectory = $WorkingDirectory
+    $psi.Arguments = $Arguments
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.UseShellExecute = $false
+    foreach ($k in $RemoveEnvKeys) { $psi.EnvironmentVariables.Remove($k) | Out-Null }
+    foreach ($k in $ExtraEnv.Keys) { $psi.EnvironmentVariables[$k] = $ExtraEnv[$k] }
+
+    $proc = [System.Diagnostics.Process]::Start($psi)
+    $stdoutTask = $proc.StandardOutput.ReadToEndAsync()
+    $stderrTask = $proc.StandardError.ReadToEndAsync()
+
+    # Wait for the server to actually accept requests (model load + warm-up
+    # can take several seconds) before starting the timed measurement window.
+    $ready = $false
+    $readyDeadline = (Get-Date).AddSeconds($ReadyTimeoutSeconds)
+    while ((Get-Date) -lt $readyDeadline) {
+        if ($proc.HasExited) { break }
+        try {
+            Invoke-RestMethod -Uri $ReadyUrl -Method Post -Body $RequestBodyJson -ContentType "application/json" -TimeoutSec 10 | Out-Null
+            $ready = $true
+            break
+        }
+        catch { Start-Sleep -Milliseconds 500 }
+    }
+    if (-not $ready) {
+        if (-not $proc.HasExited) { $proc.Kill() }
+        throw "Server at $ReadyUrl did not become ready within $ReadyTimeoutSeconds s (stdout: $($stdoutTask.Result); stderr: $($stderrTask.Result))"
+    }
+
+    # Background load-driver job: sequential requests (dotLLM processes them
+    # one at a time anyway), recording a completed-request count per second.
+    $job = Start-Job -ScriptBlock {
+        param($Url, $BodyJson, $DurationSec)
+        $sw = [System.Diagnostics.Stopwatch]::StartNew()
+        $perSecond = @{}
+        while ($sw.Elapsed.TotalSeconds -lt $DurationSec) {
+            try {
+                Invoke-RestMethod -Uri $Url -Method Post -Body $BodyJson -ContentType "application/json" -TimeoutSec 30 | Out-Null
+                $sec = [int][Math]::Floor($sw.Elapsed.TotalSeconds)
+                if ($perSecond.ContainsKey($sec)) { $perSecond[$sec] = $perSecond[$sec] + 1 } else { $perSecond[$sec] = 1 }
+            }
+            catch { Start-Sleep -Milliseconds 200 }
+        }
+        return $perSecond
+    } -ArgumentList $RequestUrl, $RequestBodyJson, $RunSeconds
+
+    # dotnet-counters --duration makes it stop and flush a complete CSV on
+    # its own after this span, independent of the server's lifetime. Give it
+    # a little slack over the load-driver duration so the last few seconds
+    # of load are fully captured.
+    $durSpan = [TimeSpan]::FromSeconds($RunSeconds + 5)
+    $durArg = "{0:00}:{1:00}:{2:00}:{3:00}" -f $durSpan.Days, $durSpan.Hours, $durSpan.Minutes, $durSpan.Seconds
+    $dcArgs = @("collect", "-p", $proc.Id, "--refresh-interval", $CounterRefreshIntervalSeconds,
+        "--format", "csv", "--counters", "System.Runtime,ZeroGC.Bench", "-o", $CsvBasePath, "--duration", $durArg)
+    & $dotnetCounters @dcArgs *> (Join-Path $rawDir "dotnet-counters.log") 2>&1
+
+    # dotnet-counters has now exited cleanly on its own - safe to reap the
+    # load-driver job and finally kill the server.
+    Wait-Job -Job $job -Timeout 30 | Out-Null
+    $perSecondCounts = Receive-Job -Job $job -ErrorAction SilentlyContinue
+    Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
+
+    if (-not $proc.HasExited) { $proc.Kill() }
+    $proc.WaitForExit(15000) | Out-Null
+
+    $csvPath = "$CsvBasePath.csv"
+    $series = if (Test-Path $csvPath) { Parse-CountersCsv $csvPath } else { @{} }
+
+    # Build a synthetic "operations" series (requests completed per second)
+    # in the same {T=seconds-since-start; V=value} shape used elsewhere.
+    $opsSeries = @()
+    if ($perSecondCounts) {
+        foreach ($sec in ($perSecondCounts.Keys | Sort-Object)) {
+            $opsSeries += @{ T = [double]$sec; V = [double]$perSecondCounts[$sec] }
+        }
+    }
+    $series["operations"] = $opsSeries
+    $totalOps = ($perSecondCounts.Values | Measure-Object -Sum).Sum
+    if (-not $totalOps) { $totalOps = 0 }
+
+    return [pscustomobject]@{
+        Series   = $series
+        TotalOps = $totalOps
+    }
+}
+
 function Get-ResultLineJson([string]$StdOut) {
     $line = ($StdOut -split "`n") | Where-Object { $_ -like "##RESULT##*" } | Select-Object -Last 1
     if (-not $line) { return $null }
@@ -329,6 +486,69 @@ foreach ($scenarioId in $Scenarios) {
                 $durationActual = $stats.SecondsTaken
                 if ($run.Series.Count -eq 0) { Write-Host $run.StdOut; Write-Host $run.StdErr; throw "No counters captured for $label" }
             }
+            "zeroalloc" {
+                $publishDir = Join-Path $root "samples\ZeroAllocApp\publish"
+                $run = Invoke-MonitoredRun -ExePath (Join-Path $publishDir "ZeroAllocApp.exe") -WorkingDirectory $publishDir `
+                    -Arguments "$DurationSeconds $label" -ExtraEnv $gcMode.Env -RemoveEnvKeys $gcMode.RemoveEnv -CsvBasePath $csvBase
+                $resultJson = Get-ResultLineJson $run.StdOut
+                if (-not $resultJson) { Write-Host $run.StdOut; Write-Host $run.StdErr; throw "No ##RESULT## for $label" }
+                $summary = [ordered]@{
+                    OperationsTotal      = $resultJson.Operations
+                    OpsPerSecondOverall  = $resultJson.OpsPerSecond
+                    TotalAllocatedBytes  = $resultJson.TotalAllocatedBytes
+                    BytesAllocatedThisThreadDuringRun = $resultJson.BytesAllocatedThisThreadDuringRun
+                    Gen0Collections      = $resultJson.Gen0Collections
+                    Gen1Collections      = $resultJson.Gen1Collections
+                    Gen2Collections      = $resultJson.Gen2Collections
+                    WorkingSetBytes      = $resultJson.WorkingSetBytes
+                    PeakWorkingSetBytes  = $resultJson.PeakWorkingSetBytes
+                    HeapSizeBytes        = $resultJson.HeapSizeBytes
+                    TotalCommittedBytes  = $resultJson.TotalCommittedBytes
+                    GcName               = $resultJson.GcName
+                }
+                $durationActual = $resultJson.DurationSeconds
+            }
+            "dotllm-serve" {
+                $reqBody = '{"model":"SmolLM-135M.Q4_K_M.gguf","prompt":"The capital of France is","max_tokens":16}'
+                $baseUrl = "http://localhost:$DotLlmPort/v1/completions"
+                $env2 = @{} + $gcMode.Env
+                $svrRun = Invoke-MonitoredServerRun -ExePath $dotLlmExe -WorkingDirectory $root `
+                    -Arguments "serve `"$DotLlmModelFile`" --port $DotLlmPort --no-browser --no-ui" `
+                    -ExtraEnv $env2 -RemoveEnvKeys $gcMode.RemoveEnv -CsvBasePath $csvBase `
+                    -ReadyUrl $baseUrl -RequestUrl $baseUrl -RequestBodyJson $reqBody -RunSeconds $DurationSeconds
+                $run = [pscustomobject]@{ Series = $svrRun.Series }
+                $summary = [ordered]@{
+                    OperationsTotal      = $svrRun.TotalOps
+                    OpsPerSecondOverall  = $(if ($DurationSeconds -gt 0) { $svrRun.TotalOps / $DurationSeconds } else { 0 })
+                    TotalAllocatedBytes  = $null
+                    Gen0Collections      = $null
+                    Gen1Collections      = $null
+                    Gen2Collections      = $null
+                    WorkingSetBytes      = $null
+                    PeakWorkingSetBytes  = $null
+                    HeapSizeBytes        = $null
+                    TotalCommittedBytes  = $null
+                    GcName               = $gcMode.DisplayName
+                }
+                $durationActual = $DurationSeconds
+            }
+        }
+
+        # Fill in allocation/collection-count summary fields from the raw
+        # counters series for scenarios (server-based ones) that can't
+        # self-report these via a ##RESULT## line.
+        if ($null -eq $summary.TotalAllocatedBytes -and $run.Series["alloc_rate"]) {
+            $allocRawVals = @($run.Series["alloc_rate"] | ForEach-Object { $_.V })
+            if ($allocRawVals.Count -gt 0) { $summary.TotalAllocatedBytes = ($allocRawVals | Measure-Object -Sum).Sum }
+        }
+        if ($null -eq $summary.Gen0Collections -and $run.Series["gen0_collections"]) {
+            $summary.Gen0Collections = [int](@($run.Series["gen0_collections"] | ForEach-Object { $_.V }) | Measure-Object -Sum).Sum
+        }
+        if ($null -eq $summary.Gen1Collections -and $run.Series["gen1_collections"]) {
+            $summary.Gen1Collections = [int](@($run.Series["gen1_collections"] | ForEach-Object { $_.V }) | Measure-Object -Sum).Sum
+        }
+        if ($null -eq $summary.Gen2Collections -and $run.Series["gen2_collections"]) {
+            $summary.Gen2Collections = [int](@($run.Series["gen2_collections"] | ForEach-Object { $_.V }) | Measure-Object -Sum).Sum
         }
 
         # Fill in working-set/committed-bytes summary from counters if the

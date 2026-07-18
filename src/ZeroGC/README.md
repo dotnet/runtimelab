@@ -76,7 +76,8 @@ src/ZeroGC/
     ConsoleApp/           Allocation-heavy console benchmark app
     WebApi/               Self-driving ASP.NET Core (Kestrel) benchmark app (8 concurrent workers)
     GCPerfSim/            Vendored dotnet/performance allocation-pattern simulator (unmodified)
-  run-benchmarks.ps1       Orchestrates all 5 scenarios x 3 GC modes via dotnet-counters
+    ZeroAllocApp/         Near-zero-allocation numeric compute (matrix multiply) benchmark app
+  run-benchmarks.ps1       Orchestrates all 7 scenarios x 3 GC modes via dotnet-counters
   generate-report.ps1      Renders results/results-full.json -> results/report.html
   results/
     results-full.json      Raw benchmark output (summary + percentiles + time series) from the last run
@@ -116,7 +117,7 @@ regular (Workstation/Server) GC.
 
 ## Sample apps and workloads
 
-Five workloads are benchmarked, each once per GC configuration (Workstation,
+Seven workloads are benchmarked, each once per GC configuration (Workstation,
 Server, ZeroGC):
 
 - **ConsoleApp** — a tight allocation loop (allocates short strings/objects
@@ -159,15 +160,52 @@ Server, ZeroGC):
   than a wall-clock timeout, since GCPerfSim's own `-totalMins` is unreliable
   as a hard stop and `-tagb` is also the memory-safety mechanism that keeps a
   ZeroGC run's worst-case memory bounded regardless of allocation speed.
+- **ZeroAllocApp** (`samples/ZeroAllocApp/`) — a hand-rolled, genuinely
+  near-zero-allocation numeric workload: dense 96x96 float matrix
+  multiplication on buffers allocated once at startup and reused every
+  iteration (the output buffer is cleared with `Array.Clear`, not
+  reallocated). Reports the same `##RESULT##` JSON shape as ConsoleApp, plus
+  `BytesAllocatedThisThreadDuringRun` (a `GC.GetAllocatedBytesForCurrentThread()`
+  delta) to make the "near-zero-alloc" claim empirically verifiable. The
+  point of this scenario is the opposite of the others: it demonstrates that
+  when an app doesn't allocate, the GC's collection strategy (including never
+  collecting at all, as ZeroGC does) can't meaningfully affect it — all 3 GC
+  modes should show near-identical throughput and ~0 collections.
+- **dotLLM serve** (`dotllm-serve` scenario) — a real-world, near-zero-alloc
+  .NET application: [dotLLM](https://github.com/kkokosa/dotLLM), a
+  from-scratch C#/.NET LLM inference engine that avoids managed-heap
+  allocations on its hot inference path (it uses `NativeMemory.AlignedAlloc`
+  for tensors). The harness starts `dotllm serve <model> --no-browser --no-ui`
+  (an OpenAI-compatible HTTP API on `localhost:8099`, tested here with the
+  tiny `QuantFactory/SmolLM-135M-GGUF` `Q4_K_M` model for CI-friendly run
+  times), waits for it to become ready, then drives sequential
+  `POST /v1/completions` requests for the run's duration from a background
+  job while `dotnet-counters` captures the usual counters.
+  - Setup: `dotnet tool install -g DotLLM.Cli --prerelease`, then
+    `dotllm model pull QuantFactory/SmolLM-135M-GGUF --file SmolLM-135M.Q4_K_M.gguf`.
+  - Unlike the other scenarios, the target process here never exits on its
+    own — `run-benchmarks.ps1` uses a separate `Invoke-MonitoredServerRun`
+    helper that invokes `dotnet-counters collect --duration <span>` so it
+    auto-stops and flushes a valid CSV after a fixed time span regardless of
+    the server's lifetime, then force-kills the server only *after*
+    `dotnet-counters` has already exited cleanly. (Killing the target first
+    causes `dotnet-counters` to throw `ServerNotAvailableException` and write
+    no CSV at all — a real failure mode hit and worked around during
+    development of this scenario.) A synthetic per-second `operations`
+    series is built from the background HTTP load-driver's own completed-
+    request timestamps and merged in the same shape `dotnet-counters`
+    produces, so it plugs into the existing stats/percentile pipeline
+    unmodified.
 
 Both hand-written sample apps have their own `global.json` + empty
-`Directory.Build.props`/`.targets` overrides (GCPerfSim too) so they build
-independently of this repo's root Arcade-SDK-based build files.
+`Directory.Build.props`/`.targets` overrides (GCPerfSim and ZeroAllocApp
+too) so they build independently of this repo's root Arcade-SDK-based
+build files.
 
 To publish a sample manually:
 
 ```powershell
-cd src\ZeroGC\samples\ConsoleApp   # or WebApi, or GCPerfSim
+cd src\ZeroGC\samples\ConsoleApp   # or WebApi, GCPerfSim, ZeroAllocApp
 dotnet publish -c Release -r win-x64 --self-contained -o publish
 copy ..\..\native\ZeroGC.dll publish\
 ```
@@ -181,19 +219,22 @@ cd src\ZeroGC
 .\run-benchmarks.ps1 -DurationSeconds 600
 ```
 
-This runs all 5 workloads x 3 GC modes (Workstation, Server, ZeroGC) = 15
+This runs all 7 workloads x 3 GC modes (Workstation, Server, ZeroGC) = 21
 runs total, each for `-DurationSeconds` (default 600s/10 min for GCPerfSim
-scenarios; ConsoleApp/WebApi honor it as a wall-clock duration; GCPerfSim
-scenarios honor it by linearly scaling their calibrated `-tagb` allocation
-budget, so actual wall time is only approximately `-DurationSeconds`).
+scenarios; ConsoleApp/WebApi/ZeroAllocApp/dotllm-serve honor it as a
+wall-clock duration; GCPerfSim scenarios honor it by linearly scaling their
+calibrated `-tagb` allocation budget, so actual wall time is only
+approximately `-DurationSeconds`). The `dotllm-serve` scenario additionally
+requires the `dotllm` global tool and a pulled model — see above — and can
+be excluded via `-Scenarios` if unavailable.
 
 For every run, `dotnet-counters collect` attaches to the target process for
 the whole duration and captures a genuine second-by-second time series (GC
 pause time, working set, committed bytes, heap size, collection counts,
-allocation rate, and — for ConsoleApp/WebApi — a custom `ZeroGC.Bench`
-`operations` throughput counter) via the standard `System.Runtime`
-EventCounters/Meters every .NET process exposes. This works identically for
-ZeroGC because its `IGCHeap` counters
+allocation rate, and — for ConsoleApp/WebApi/ZeroAllocApp/dotllm-serve — a
+custom `ZeroGC.Bench` `operations` throughput counter) via the standard
+`System.Runtime` EventCounters/Meters every .NET process exposes. This works
+identically for ZeroGC because its `IGCHeap` counters
 (`GC.CollectionCount`/`GetTotalAllocatedBytes`/`GetGCMemoryInfo`) feed the
 same counters as the built-in GC — no ZeroGC-specific tooling is required.
 GC-mode environment variables (`DOTNET_gcServer`, `DOTNET_GCName`) are
@@ -208,39 +249,40 @@ produce `results\report.html`.
 
 Both hand-written sample workloads are throttled so a multi-minute run under
 ZeroGC doesn't exhaust machine memory; each GCPerfSim scenario is bounded by
-its calibrated `-tagb` (see above) for the same reason. Scale
-`-DurationSeconds` down on memory-constrained machines.
+its calibrated `-tagb` (see above) for the same reason. ZeroAllocApp and
+dotllm-serve barely allocate at all, so their memory growth is a non-issue
+regardless of GC mode. Scale `-DurationSeconds` down on memory-constrained
+machines.
 
 ## Results (10-minute runs, this machine)
 
 See `results/report.html` for the full self-contained comparison report:
 per-scenario comparison tables (throughput, allocation, collection counts,
 heap/committed/working-set memory) for all 3 GC modes, a percentile table
-(avg/p50/p90/p99 for GC pause time — both as % of wall-clock time and in
-absolute ms — plus working set and throughput), and six inline SVG charts
-per scenario laid out in a 2-column grid: GC pause time % over time, GC
-pause time in ms over time, throughput over time, working set over time,
-and grouped avg/p50/p90/p99/max bar charts for both the %-based and
-ms-based pause time stats — one line/bar per GC mode.
+(avg/p50/p90/p99 for GC pause time in ms, plus working set and throughput),
+and four inline SVG charts per scenario laid out in a 2x2 grid: GC pause
+time in ms over time, throughput over time, working set over time, and a
+grouped avg/p50/p90/p99/max bar chart for pause time in ms —
+one line/bar per GC mode.
 
 GC pause time in ms is derived from `dotnet-counters`' `dotnet.gc.pause.time`
 histogram, sampled once per second (`--refresh-interval 1`): each raw sample
 already equals the seconds of GC pause observed within that ~1s window, so
-`ms = %-of-time-in-that-window * 10` exactly — no extra instrumentation was
-needed to get an absolute-time view alongside the percentage view.
+`ms = seconds-in-that-window * 1000` directly — no extra instrumentation was
+needed to get an absolute-time view.
 
-**Highlights across all 5 workloads:**
+**Highlights across all 7 workloads:**
 
 - **Throughput/allocation-rate parity:** Workstation, Server, and ZeroGC are
-  all within a few percent of each other on ops/sec (ConsoleApp/WebApi) or
-  MB/s allocation throughput (GCPerfSim) for every scenario — none of these
-  workloads are GC-bound enough at these allocation rates for GC pause time
-  to dominate wall-clock time, and the GCPerfSim scenarios' `-c 300000`
-  compute cost dominates further.
-- **GC pause time:** ZeroGC is always exactly 0% / 0 ms (there is nothing to
-  pause for). Workstation/Server GC pause time stays under ~1% (a few ms per
-  second sampled) even in the most GC-active scenario (gcperfsim-cache),
-  consistent with modern background/concurrent GC design.
+  all within a few percent of each other on ops/sec (ConsoleApp/WebApi/
+  ZeroAllocApp/dotllm-serve) or MB/s allocation throughput (GCPerfSim) for
+  every scenario — none of these workloads are GC-bound enough at these
+  allocation rates for GC pause time to dominate wall-clock time, and the
+  GCPerfSim scenarios' `-c 300000` compute cost dominates further.
+- **GC pause time:** ZeroGC is always exactly 0 ms (there is nothing to
+  pause for). Workstation/Server GC pause time stays under ~1% of wall time
+  (a few ms per second sampled) even in the most GC-active scenario
+  (gcperfsim-cache), consistent with modern background/concurrent GC design.
 - **Memory footprint diverges sharply and predictably:** ZeroGC's working
   set, committed bytes, and GC heap size all grow monotonically and track
   total bytes allocated (e.g. in gcperfsim-cache, ZeroGC's working set grows
@@ -248,6 +290,12 @@ needed to get an absolute-time view alongside the percentage view.
   keep their footprint roughly flat via periodic gen0/1/2 collections
   (hundreds of gen0 collections, tens of gen1, single-digit-to-low-teens
   gen2 over the same run).
+- **Zero-alloc workloads erase the difference entirely:** ZeroAllocApp and
+  dotllm-serve barely allocate anything on their hot paths, and across all 3
+  GC modes their throughput, working set, and collection counts are all
+  within noise of each other — when there's (almost) nothing to collect, it
+  genuinely doesn't matter whether the GC collects at all. This is the
+  intended counterpoint to the GC-heavy scenarios above.
 - **"Total allocated" needs a caveat:** ZeroGC reports a noticeably higher
   "Total allocated" figure than Workstation/Server for the same workload.
   This is expected, not a bug — see the report's inline callout: the real
