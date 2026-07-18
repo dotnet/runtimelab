@@ -106,11 +106,13 @@ function New-LineChartSvg {
 }
 
 # Renders an inline, self-contained SVG grouped bar chart comparing
-# Avg/P50/P90/P99/Max GC pause time % across GC modes. $StatsByMode is a
-# hashtable: gcModeId -> stats object (Avg/P50/P90/P99/Max/...).
+# Avg/P50/P90/P99/Max GC pause time (in % or ms) across GC modes.
+# $StatsByMode is a hashtable: gcModeId -> stats object (Avg/P50/P90/P99/Max/...).
 function New-PauseStatsBarChartSvg {
     param(
         [hashtable]$StatsByMode,
+        [string]$YSuffix = "%",
+        [int]$Decimals = 2,
         [int]$Width = 720,
         [int]$Height = 260
     )
@@ -136,7 +138,7 @@ function New-PauseStatsBarChartSvg {
         $gy = $padT + $plotH - ($i / 4.0) * $plotH
         $val = ($i / 4.0) * $maxV
         $gridLines += "<line x1='$padL' y1='$gy' x2='$($padL+$plotW)' y2='$gy' stroke='#eee' stroke-width='1'/>"
-        $gridLines += "<text x='2' y='$($gy+3)' font-size='9' fill='#888'>$(Fmt-Dec $val 2)%</text>`n"
+        $gridLines += "<text x='2' y='$($gy+3)' font-size='9' fill='#888'>$(Fmt-Dec $val $Decimals)$YSuffix</text>`n"
     }
 
     $groupW = $plotW / $categories.Count
@@ -156,7 +158,7 @@ function New-PauseStatsBarChartSvg {
             $bx = $groupX + $barGap + $mi * ($barW + $barGap)
             $by = $padT + $plotH - $barH
             $color = $gcModeColor[$modeId]
-            $bars += "<rect x='$([Math]::Round($bx,1))' y='$([Math]::Round($by,1))' width='$([Math]::Round($barW,1))' height='$([Math]::Round($barH,1))' fill='$color' opacity='0.9'><title>$($gcModeLabel[$modeId]) $cat`: $(Fmt-Dec $v 3)%</title></rect>`n"
+            $bars += "<rect x='$([Math]::Round($bx,1))' y='$([Math]::Round($by,1))' width='$([Math]::Round($barW,1))' height='$([Math]::Round($barH,1))' fill='$color' opacity='0.9'><title>$($gcModeLabel[$modeId]) $cat`: $(Fmt-Dec $v 3)$YSuffix</title></rect>`n"
             $mi++
         }
         $catLabels += "<text x='$($groupX + $groupW/2)' y='$($Height-8)' font-size='10' fill='#666' text-anchor='middle'>$cat</text>"
@@ -180,6 +182,26 @@ function Stats-Row($label, $statsByMode, $fmt) {
         else { "<td>$(& $fmt $s.Avg)</td><td>$(& $fmt $s.P50)</td><td>$(& $fmt $s.P90)</td><td>$(& $fmt $s.P99)</td>" }
     }
     return "<tr><td>$label</td>$($cells -join '')</tr>"
+}
+
+# GC pause time is captured natively as a %-of-wall-clock-time stat/series
+# (PauseTimePctStats / TimeSeries.PauseTimePct). Since dotnet-counters
+# samples "dotnet.gc.pause.time" once per second (--refresh-interval 1),
+# each raw sample already equals the seconds of pause within that ~1s
+# window, so ms-of-pause = pct-of-time * 10 exactly. Older results-full.json
+# files (produced before ms tracking was added to run-benchmarks.ps1) won't
+# have PauseTimeMsStats/TimeSeries.PauseTimeMs, so derive them here on the
+# fly instead of requiring a full benchmark re-run.
+function Get-PauseMsStats($run) {
+    if ($run.PauseTimeMsStats) { return $run.PauseTimeMsStats }
+    if (-not $run.PauseTimePctStats) { return $null }
+    $s = $run.PauseTimePctStats
+    return [ordered]@{ Avg = $s.Avg * 10.0; P50 = $s.P50 * 10.0; P90 = $s.P90 * 10.0; P99 = $s.P99 * 10.0; Max = $s.Max * 10.0; Min = $s.Min * 10.0; Count = $s.Count }
+}
+function Get-PauseMsSeries($run) {
+    if ($run.TimeSeries.PauseTimeMs) { return $run.TimeSeries.PauseTimeMs }
+    if (-not $run.TimeSeries.PauseTimePct) { return @() }
+    return @($run.TimeSeries.PauseTimePct | ForEach-Object { @{ T = $_.T; V = [Math]::Round($_.V * 10.0, 3) } })
 }
 
 $genDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
@@ -233,12 +255,13 @@ foreach ($scenarioId in $scenarioOrder) {
         $rowsHtml += "<tr><td>$($mr.Label)</td>$($cells -join '')</tr>`n"
     }
 
-    # GC pause time %, working set, throughput percentile tables.
-    $pauseStatsByMode = @{}; $wsStatsByMode = @{}; $throughputStatsByMode = @{}
+    # GC pause time %, GC pause time ms, working set, throughput percentile tables.
+    $pauseStatsByMode = @{}; $pauseMsStatsByMode = @{}; $wsStatsByMode = @{}; $throughputStatsByMode = @{}
     foreach ($modeId in $gcModeOrder) {
         $m = $byMode[$modeId]
         if ($m) {
             $pauseStatsByMode[$modeId] = $m.PauseTimePctStats
+            $pauseMsStatsByMode[$modeId] = Get-PauseMsStats $m
             $wsStatsByMode[$modeId] = $m.WorkingSetStats
             $throughputStatsByMode[$modeId] = if ($isGcPerfSim) { $m.AllocRateMBStats } else { $m.OpsPerSecStats }
         }
@@ -246,23 +269,27 @@ foreach ($scenarioId in $scenarioOrder) {
     $pauseHeaderCells = ($gcModeOrder | ForEach-Object { "<th colspan='4'>$($gcModeLabel[$_])</th>" }) -join ""
     $subHeaderCells = ($gcModeOrder | ForEach-Object { "<th>avg</th><th>p50</th><th>p90</th><th>p99</th>" }) -join ""
     $pauseRow = Stats-Row "GC pause time %" $pauseStatsByMode { param($v) "{0:N3}%" -f $v }
+    $pauseMsRow = Stats-Row "GC pause time (ms per ~1s sample)" $pauseMsStatsByMode { param($v) "{0:N2} ms" -f $v }
     $wsRow = Stats-Row "Working set (MB)" $wsStatsByMode { param($v) "{0:N0}" -f ($v / 1MB) }
     $throughputUnit = if ($isGcPerfSim) { "MB/s" } else { "ops/sec" }
     $throughputRow = Stats-Row "Throughput ($throughputUnit)" $throughputStatsByMode { param($v) "{0:N1}" -f $v }
 
     # Time-series charts.
-    $pauseSeries = @{}; $wsSeries = @{}; $throughputSeries = @{}
+    $pauseSeries = @{}; $pauseMsSeries = @{}; $wsSeries = @{}; $throughputSeries = @{}
     foreach ($modeId in $gcModeOrder) {
         $m = $byMode[$modeId]
         if (-not $m) { continue }
         $pauseSeries[$modeId] = $m.TimeSeries.PauseTimePct
+        $pauseMsSeries[$modeId] = Get-PauseMsSeries $m
         $wsSeries[$modeId] = $m.TimeSeries.WorkingSetMB
         $throughputSeries[$modeId] = if ($isGcPerfSim) { $m.TimeSeries.AllocRateMB } else { $m.TimeSeries.OpsPerSec }
     }
     $pauseChart = New-LineChartSvg -SeriesByMode $pauseSeries -YSuffix "%"
+    $pauseMsChart = New-LineChartSvg -SeriesByMode $pauseMsSeries -YSuffix " ms"
     $wsChart = New-LineChartSvg -SeriesByMode $wsSeries -YSuffix " MB"
     $throughputChart = New-LineChartSvg -SeriesByMode $throughputSeries -YSuffix " $throughputUnit"
-    $pausePctChart = New-PauseStatsBarChartSvg -StatsByMode $pauseStatsByMode
+    $pausePctChart = New-PauseStatsBarChartSvg -StatsByMode $pauseStatsByMode -YSuffix "%" -Decimals 2
+    $pauseMsBarChart = New-PauseStatsBarChartSvg -StatsByMode $pauseMsStatsByMode -YSuffix " ms" -Decimals 2
 
     $legendHtml = ($gcModeOrder | ForEach-Object {
         "<span><span class='sw' style='background:$($gcModeColor[$_])'></span>$($gcModeLabel[$_])</span>"
@@ -283,6 +310,7 @@ $rowsHtml
     <thead><tr><th></th>$pauseHeaderCells</tr><tr><th>Metric</th>$subHeaderCells</tr></thead>
     <tbody>
       $pauseRow
+      $pauseMsRow
       $wsRow
       $throughputRow
     </tbody>
@@ -294,16 +322,24 @@ $rowsHtml
       $pauseChart
     </div>
     <div class="chartCard">
+      <h4>GC pause time (ms) over time</h4>
+      $pauseMsChart
+    </div>
+    <div class="chartCard">
       <h4>Throughput ($throughputUnit) over time</h4>
       $throughputChart
+    </div>
+    <div class="chartCard">
+      <h4>Working set (MB) over time</h4>
+      $wsChart
     </div>
     <div class="chartCard">
       <h4>GC pause time % percentiles (avg / p50 / p90 / p99 / max, full run)</h4>
       $pausePctChart
     </div>
     <div class="chartCard">
-      <h4>Working set (MB) over time</h4>
-      $wsChart
+      <h4>GC pause time (ms) percentiles (avg / p50 / p90 / p99 / max, full run)</h4>
+      $pauseMsBarChart
     </div>
   </div>
   <div class="legend small">$legendHtml</div>

@@ -344,6 +344,7 @@ foreach ($scenarioId in $Scenarios) {
 
         # Percentile/avg stats for the interesting time-series metrics.
         $pauseVals = @($run.Series["pause_time"] | ForEach-Object { $_.V * 100.0 }) # seconds/sec -> %
+        $pauseMsVals = @($run.Series["pause_time"] | ForEach-Object { $_.V * 1000.0 }) # seconds/sec, ~1s sample window -> ms of pause in that window
         $wsValsAll = @($run.Series["working_set"] | ForEach-Object { $_.V })
         $allocRateVals = @($run.Series["alloc_rate"] | ForEach-Object { $_.V / 1MB }) # MB/s
         $opsVals = @($run.Series["operations"] | ForEach-Object { $_.V })
@@ -360,11 +361,13 @@ foreach ($scenarioId in $Scenarios) {
             DurationSeconds = $durationActual
             Summary         = $summary
             PauseTimePctStats = (Get-Stats $pauseVals)
+            PauseTimeMsStats  = (Get-Stats $pauseMsVals)
             WorkingSetStats   = (Get-Stats $wsValsAll)
             AllocRateMBStats  = (Get-Stats $allocRateVals)
             OpsPerSecStats    = (Get-Stats $opsVals)
             TimeSeries = [ordered]@{
                 PauseTimePct = Get-Downsampled (@($run.Series["pause_time"] | ForEach-Object { @{ T = $_.T; V = [Math]::Round($_.V * 100.0, 4) } }))
+                PauseTimeMs  = Get-Downsampled (@($run.Series["pause_time"] | ForEach-Object { @{ T = $_.T; V = [Math]::Round($_.V * 1000.0, 3) } }))
                 WorkingSetMB = Get-Downsampled (@($run.Series["working_set"] | ForEach-Object { @{ T = $_.T; V = [Math]::Round($_.V / 1MB, 2) } }))
                 AllocRateMB  = Get-Downsampled (@($run.Series["alloc_rate"] | ForEach-Object { @{ T = $_.T; V = [Math]::Round($_.V / 1MB, 2) } }))
                 OpsPerSec    = Get-Downsampled (@($run.Series["operations"] | ForEach-Object { @{ T = $_.T; V = [Math]::Round($_.V, 1) } }))
