@@ -28,12 +28,18 @@
   .chartsGrid { display:grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; margin-top: 0.8rem; }
   .chartCard { background:#fbfbfd; border:1px solid #eee; border-radius:8px; padding:0.6rem 0.7rem; }
   .sparseNote { font-size: 0.78rem; color: #a05a00; background:#fff8e6; border:1px solid #f0d98c; border-radius:5px; padding:0.35rem 0.55rem; margin:0.3rem 0 0.4rem 0; }
+  .statsDetails summary { cursor: pointer; list-style: none; }
+  .statsDetails summary::-webkit-details-marker { display: none; }
+  .statsDetails summary h3 { display: inline-block; margin: 1.5rem 0 0 0; }
+  .statsDetails summary h3::before { content: "▶ "; font-size: 0.75em; color: #888; }
+  .statsDetails[open] summary h3::before { content: "▼ "; }
+  .statsDetails table { margin-top: 0.6rem; }
   @media (max-width: 900px) { .chartsGrid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
   <h1>ZeroGC vs. Workstation GC vs. Server GC</h1>
-  <p class="subtitle">Generated 2026-07-20 15:30:53 on this machine. Eleven workloads (2 hand-written sample apps, 5 GCPerfSim scenarios, 2 zero-alloc scenarios, dotLLM inference, and a growing-cache scenario), each run once per GC configuration.</p>
+  <p class="subtitle">Generated 2026-07-20 18:25:28 on this machine. Eleven workloads (2 hand-written sample apps, 5 GCPerfSim scenarios, 2 zero-alloc scenarios, dotLLM inference, and a growing-cache scenario), each run once per GC configuration.</p>
 
   <div class="legend">
     <span><span class="sw" style="background:#2b7de9"></span>Workstation GC (default, non-concurrent-by-default background GC)</span>
@@ -74,15 +80,17 @@
     </tbody>
   </table>
 
-  <h3>GC pause time / memory / throughput percentiles (over the full run)</h3>
-  <table class="cmp stats">
-    <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
-    <tbody>
-      <tr><td>GC pause time (ms per ~1s sample)</td><td>0.02 ms</td><td>0.00 ms</td><td>0.13 ms</td><td>0.20 ms</td><td>0.18 ms</td><td>0.19 ms</td><td>0.22 ms</td><td>0.28 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
-      <tr><td>Working set (MB)</td><td>51</td><td>51</td><td>51</td><td>51</td><td>39</td><td>39</td><td>39</td><td>39</td><td>716</td><td>720</td><td>1,235</td><td>1,356</td></tr>
-      <tr><td>Throughput (ops/sec)</td><td>15,788.0</td><td>15,750.0</td><td>16,000.0</td><td>16,000.0</td><td>15,789.7</td><td>15,750.0</td><td>16,000.0</td><td>16,000.0</td><td>15,196.1</td><td>15,500.0</td><td>16,000.0</td><td>16,250.0</td></tr>
-    </tbody>
-  </table>
+  <details class="statsDetails" open>
+    <summary><h3>GC pause time / memory / throughput percentiles (over the full run)</h3></summary>
+    <table class="cmp stats">
+      <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
+      <tbody>
+        <tr><td>GC pause time (ms per ~1s sample)</td><td>0.02 ms</td><td>0.00 ms</td><td>0.13 ms</td><td>0.20 ms</td><td>0.18 ms</td><td>0.19 ms</td><td>0.22 ms</td><td>0.28 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
+        <tr><td>Working set (MB)</td><td>51</td><td>51</td><td>51</td><td>51</td><td>39</td><td>39</td><td>39</td><td>39</td><td>716</td><td>720</td><td>1,235</td><td>1,356</td></tr>
+        <tr><td>Throughput (ops/sec)</td><td>15,788.0</td><td>15,750.0</td><td>16,000.0</td><td>16,000.0</td><td>15,789.7</td><td>15,750.0</td><td>16,000.0</td><td>16,000.0</td><td>15,196.1</td><td>15,500.0</td><td>16,000.0</td><td>16,250.0</td></tr>
+      </tbody>
+    </table>
+  </details>
 
   <div class="chartsGrid">
     <div class="chartCard">
@@ -192,15 +200,17 @@
     </tbody>
   </table>
 
-  <h3>GC pause time / memory / throughput percentiles (over the full run)</h3>
-  <table class="cmp stats">
-    <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
-    <tbody>
-      <tr><td>GC pause time (ms per ~1s sample)</td><td>0.23 ms</td><td>0.00 ms</td><td>0.79 ms</td><td>1.19 ms</td><td>0.95 ms</td><td>0.96 ms</td><td>1.52 ms</td><td>1.83 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
-      <tr><td>Working set (MB)</td><td>85</td><td>85</td><td>86</td><td>89</td><td>73</td><td>73</td><td>74</td><td>80</td><td>1,461</td><td>1,460</td><td>2,509</td><td>2,746</td></tr>
-      <tr><td>Throughput (ops/sec)</td><td>507.3</td><td>504.0</td><td>513.0</td><td>526.0</td><td>507.4</td><td>504.0</td><td>513.0</td><td>524.0</td><td>508.0</td><td>504.0</td><td>521.0</td><td>554.0</td></tr>
-    </tbody>
-  </table>
+  <details class="statsDetails" open>
+    <summary><h3>GC pause time / memory / throughput percentiles (over the full run)</h3></summary>
+    <table class="cmp stats">
+      <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
+      <tbody>
+        <tr><td>GC pause time (ms per ~1s sample)</td><td>0.23 ms</td><td>0.00 ms</td><td>0.79 ms</td><td>1.19 ms</td><td>0.95 ms</td><td>0.96 ms</td><td>1.52 ms</td><td>1.83 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
+        <tr><td>Working set (MB)</td><td>85</td><td>85</td><td>86</td><td>89</td><td>73</td><td>73</td><td>74</td><td>80</td><td>1,461</td><td>1,460</td><td>2,509</td><td>2,746</td></tr>
+        <tr><td>Throughput (ops/sec)</td><td>507.3</td><td>504.0</td><td>513.0</td><td>526.0</td><td>507.4</td><td>504.0</td><td>513.0</td><td>524.0</td><td>508.0</td><td>504.0</td><td>521.0</td><td>554.0</td></tr>
+      </tbody>
+    </table>
+  </details>
 
   <div class="chartsGrid">
     <div class="chartCard">
@@ -310,15 +320,17 @@
     </tbody>
   </table>
 
-  <h3>GC pause time / memory / throughput percentiles (over the full run)</h3>
-  <table class="cmp stats">
-    <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
-    <tbody>
-      <tr><td>GC pause time (ms per ~1s sample)</td><td>1.40 ms</td><td>1.43 ms</td><td>2.75 ms</td><td>3.51 ms</td><td>0.45 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>14.05 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
-      <tr><td>Working set (MB)</td><td>836</td><td>865</td><td>934</td><td>949</td><td>994</td><td>1,011</td><td>1,071</td><td>1,086</td><td>4,322</td><td>4,314</td><td>7,309</td><td>7,982</td></tr>
-      <tr><td>Throughput (MB/s)</td><td>11.1</td><td>11.1</td><td>11.3</td><td>11.5</td><td>7.9</td><td>11.0</td><td>11.3</td><td>11.5</td><td>11.1</td><td>0.0</td><td>0.0</td><td>192.0</td></tr>
-    </tbody>
-  </table>
+  <details class="statsDetails" open>
+    <summary><h3>GC pause time / memory / throughput percentiles (over the full run)</h3></summary>
+    <table class="cmp stats">
+      <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
+      <tbody>
+        <tr><td>GC pause time (ms per ~1s sample)</td><td>1.40 ms</td><td>1.43 ms</td><td>2.75 ms</td><td>3.51 ms</td><td>0.45 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>14.05 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
+        <tr><td>Working set (MB)</td><td>836</td><td>865</td><td>934</td><td>949</td><td>994</td><td>1,011</td><td>1,071</td><td>1,086</td><td>4,322</td><td>4,314</td><td>7,309</td><td>7,982</td></tr>
+        <tr><td>Throughput (MB/s)</td><td>11.1</td><td>11.1</td><td>11.3</td><td>11.5</td><td>7.9</td><td>11.0</td><td>11.3</td><td>11.5</td><td>11.1</td><td>0.0</td><td>0.0</td><td>192.0</td></tr>
+      </tbody>
+    </table>
+  </details>
 
   <div class="chartsGrid">
     <div class="chartCard">
@@ -428,15 +440,17 @@
     </tbody>
   </table>
 
-  <h3>GC pause time / memory / throughput percentiles (over the full run)</h3>
-  <table class="cmp stats">
-    <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
-    <tbody>
-      <tr><td>GC pause time (ms per ~1s sample)</td><td>1.41 ms</td><td>1.49 ms</td><td>3.54 ms</td><td>4.58 ms</td><td>0.32 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>7.72 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
-      <tr><td>Working set (MB)</td><td>830</td><td>897</td><td>1,056</td><td>1,089</td><td>849</td><td>893</td><td>913</td><td>915</td><td>3,028</td><td>3,028</td><td>5,150</td><td>5,618</td></tr>
-      <tr><td>Throughput (MB/s)</td><td>8.6</td><td>8.6</td><td>9.3</td><td>9.8</td><td>8.7</td><td>8.6</td><td>9.5</td><td>10.0</td><td>9.0</td><td>0.0</td><td>0.0</td><td>128.0</td></tr>
-    </tbody>
-  </table>
+  <details class="statsDetails" open>
+    <summary><h3>GC pause time / memory / throughput percentiles (over the full run)</h3></summary>
+    <table class="cmp stats">
+      <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
+      <tbody>
+        <tr><td>GC pause time (ms per ~1s sample)</td><td>1.41 ms</td><td>1.49 ms</td><td>3.54 ms</td><td>4.58 ms</td><td>0.32 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>7.72 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
+        <tr><td>Working set (MB)</td><td>830</td><td>897</td><td>1,056</td><td>1,089</td><td>849</td><td>893</td><td>913</td><td>915</td><td>3,028</td><td>3,028</td><td>5,150</td><td>5,618</td></tr>
+        <tr><td>Throughput (MB/s)</td><td>8.6</td><td>8.6</td><td>9.3</td><td>9.8</td><td>8.7</td><td>8.6</td><td>9.5</td><td>10.0</td><td>9.0</td><td>0.0</td><td>0.0</td><td>128.0</td></tr>
+      </tbody>
+    </table>
+  </details>
 
   <div class="chartsGrid">
     <div class="chartCard">
@@ -546,15 +560,17 @@
     </tbody>
   </table>
 
-  <h3>GC pause time / memory / throughput percentiles (over the full run)</h3>
-  <table class="cmp stats">
-    <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
-    <tbody>
-      <tr><td>GC pause time (ms per ~1s sample)</td><td>0.52 ms</td><td>0.00 ms</td><td>1.63 ms</td><td>2.24 ms</td><td>0.90 ms</td><td>1.00 ms</td><td>1.62 ms</td><td>2.38 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
-      <tr><td>Working set (MB)</td><td>172</td><td>172</td><td>176</td><td>176</td><td>214</td><td>211</td><td>232</td><td>244</td><td>1,997</td><td>2,004</td><td>3,447</td><td>3,771</td></tr>
-      <tr><td>Throughput (MB/s)</td><td>5.7</td><td>5.7</td><td>5.8</td><td>5.9</td><td>4.2</td><td>5.7</td><td>5.8</td><td>6.0</td><td>5.6</td><td>0.0</td><td>0.0</td><td>192.0</td></tr>
-    </tbody>
-  </table>
+  <details class="statsDetails" open>
+    <summary><h3>GC pause time / memory / throughput percentiles (over the full run)</h3></summary>
+    <table class="cmp stats">
+      <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
+      <tbody>
+        <tr><td>GC pause time (ms per ~1s sample)</td><td>0.52 ms</td><td>0.00 ms</td><td>1.63 ms</td><td>2.24 ms</td><td>0.90 ms</td><td>1.00 ms</td><td>1.62 ms</td><td>2.38 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
+        <tr><td>Working set (MB)</td><td>172</td><td>172</td><td>176</td><td>176</td><td>214</td><td>211</td><td>232</td><td>244</td><td>1,997</td><td>2,004</td><td>3,447</td><td>3,771</td></tr>
+        <tr><td>Throughput (MB/s)</td><td>5.7</td><td>5.7</td><td>5.8</td><td>5.9</td><td>4.2</td><td>5.7</td><td>5.8</td><td>6.0</td><td>5.6</td><td>0.0</td><td>0.0</td><td>192.0</td></tr>
+      </tbody>
+    </table>
+  </details>
 
   <div class="chartsGrid">
     <div class="chartCard">
@@ -664,15 +680,17 @@
     </tbody>
   </table>
 
-  <h3>GC pause time / memory / throughput percentiles (over the full run)</h3>
-  <table class="cmp stats">
-    <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
-    <tbody>
-      <tr><td>GC pause time (ms per ~1s sample)</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.01 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.21 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
-      <tr><td>Working set (MB)</td><td>43</td><td>43</td><td>49</td><td>51</td><td>43</td><td>43</td><td>44</td><td>44</td><td>57</td><td>57</td><td>64</td><td>66</td></tr>
-      <tr><td>Throughput (ops/sec)</td><td>1,166.5</td><td>1,169.0</td><td>1,180.0</td><td>1,247.0</td><td>1,170.4</td><td>1,171.0</td><td>1,180.0</td><td>1,274.0</td><td>1,169.5</td><td>1,169.0</td><td>1,182.0</td><td>1,263.0</td></tr>
-    </tbody>
-  </table>
+  <details class="statsDetails" open>
+    <summary><h3>GC pause time / memory / throughput percentiles (over the full run)</h3></summary>
+    <table class="cmp stats">
+      <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
+      <tbody>
+        <tr><td>GC pause time (ms per ~1s sample)</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.01 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.21 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
+        <tr><td>Working set (MB)</td><td>43</td><td>43</td><td>49</td><td>51</td><td>43</td><td>43</td><td>44</td><td>44</td><td>57</td><td>57</td><td>64</td><td>66</td></tr>
+        <tr><td>Throughput (ops/sec)</td><td>1,166.5</td><td>1,169.0</td><td>1,180.0</td><td>1,247.0</td><td>1,170.4</td><td>1,171.0</td><td>1,180.0</td><td>1,274.0</td><td>1,169.5</td><td>1,169.0</td><td>1,182.0</td><td>1,263.0</td></tr>
+      </tbody>
+    </table>
+  </details>
 
   <div class="chartsGrid">
     <div class="chartCard">
@@ -782,15 +800,17 @@
     </tbody>
   </table>
 
-  <h3>GC pause time / memory / throughput percentiles (over the full run)</h3>
-  <table class="cmp stats">
-    <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
-    <tbody>
-      <tr><td>GC pause time (ms per ~1s sample)</td><td>0.05 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.01 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
-      <tr><td>Working set (MB)</td><td>321</td><td>322</td><td>325</td><td>325</td><td>339</td><td>341</td><td>356</td><td>360</td><td>594</td><td>598</td><td>736</td><td>768</td></tr>
-      <tr><td>Throughput (ops/sec)</td><td>2.5</td><td>2.0</td><td>4.0</td><td>5.0</td><td>3.0</td><td>3.0</td><td>5.0</td><td>6.0</td><td>5.1</td><td>5.0</td><td>8.0</td><td>9.0</td></tr>
-    </tbody>
-  </table>
+  <details class="statsDetails" open>
+    <summary><h3>GC pause time / memory / throughput percentiles (over the full run)</h3></summary>
+    <table class="cmp stats">
+      <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
+      <tbody>
+        <tr><td>GC pause time (ms per ~1s sample)</td><td>0.05 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.01 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
+        <tr><td>Working set (MB)</td><td>321</td><td>322</td><td>325</td><td>325</td><td>339</td><td>341</td><td>356</td><td>360</td><td>594</td><td>598</td><td>736</td><td>768</td></tr>
+        <tr><td>Throughput (ops/sec)</td><td>2.5</td><td>2.0</td><td>4.0</td><td>5.0</td><td>3.0</td><td>3.0</td><td>5.0</td><td>6.0</td><td>5.1</td><td>5.0</td><td>8.0</td><td>9.0</td></tr>
+      </tbody>
+    </table>
+  </details>
 
   <div class="chartsGrid">
     <div class="chartCard">
@@ -904,15 +924,17 @@
     </tbody>
   </table>
 
-  <h3>GC pause time / memory / throughput percentiles (over the full run)</h3>
-  <table class="cmp stats">
-    <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
-    <tbody>
-      <tr><td>GC pause time (ms per ~1s sample)</td><td>13.74 ms</td><td>13.16 ms</td><td>37.35 ms</td><td>46.11 ms</td><td>14.46 ms</td><td>0.00 ms</td><td>41.69 ms</td><td>282.72 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
-      <tr><td>Working set (MB)</td><td>3,330</td><td>3,654</td><td>5,560</td><td>6,688</td><td>3,641</td><td>3,906</td><td>6,025</td><td>7,670</td><td>3,781</td><td>3,965</td><td>6,466</td><td>7,800</td></tr>
-      <tr><td>Throughput (ops/sec)</td><td>62.5</td><td>63.0</td><td>64.0</td><td>65.0</td><td>62.9</td><td>63.0</td><td>65.0</td><td>74.0</td><td>63.1</td><td>63.0</td><td>64.0</td><td>64.0</td></tr>
-    </tbody>
-  </table>
+  <details class="statsDetails" open>
+    <summary><h3>GC pause time / memory / throughput percentiles (over the full run)</h3></summary>
+    <table class="cmp stats">
+      <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
+      <tbody>
+        <tr><td>GC pause time (ms per ~1s sample)</td><td>13.74 ms</td><td>13.16 ms</td><td>37.35 ms</td><td>46.11 ms</td><td>14.46 ms</td><td>0.00 ms</td><td>41.69 ms</td><td>282.72 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
+        <tr><td>Working set (MB)</td><td>3,330</td><td>3,654</td><td>5,560</td><td>6,688</td><td>3,641</td><td>3,906</td><td>6,025</td><td>7,670</td><td>3,781</td><td>3,965</td><td>6,466</td><td>7,800</td></tr>
+        <tr><td>Throughput (ops/sec)</td><td>62.5</td><td>63.0</td><td>64.0</td><td>65.0</td><td>62.9</td><td>63.0</td><td>65.0</td><td>74.0</td><td>63.1</td><td>63.0</td><td>64.0</td><td>64.0</td></tr>
+      </tbody>
+    </table>
+  </details>
 
   <div class="chartsGrid">
     <div class="chartCard">
@@ -1022,15 +1044,17 @@
     </tbody>
   </table>
 
-  <h3>GC pause time / memory / throughput percentiles (over the full run)</h3>
-  <table class="cmp stats">
-    <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
-    <tbody>
-      <tr><td>GC pause time (ms per ~1s sample)</td><td>0.03 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
-      <tr><td>Working set (MB)</td><td>2,308</td><td>2,310</td><td>2,316</td><td>2,316</td><td>2,323</td><td>2,325</td><td>2,340</td><td>2,343</td><td>2,445</td><td>2,444</td><td>2,475</td><td>2,482</td></tr>
-      <tr><td>Throughput (ops/sec)</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr>
-    </tbody>
-  </table>
+  <details class="statsDetails" open>
+    <summary><h3>GC pause time / memory / throughput percentiles (over the full run)</h3></summary>
+    <table class="cmp stats">
+      <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
+      <tbody>
+        <tr><td>GC pause time (ms per ~1s sample)</td><td>0.03 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
+        <tr><td>Working set (MB)</td><td>2,308</td><td>2,310</td><td>2,316</td><td>2,316</td><td>2,323</td><td>2,325</td><td>2,340</td><td>2,343</td><td>2,445</td><td>2,444</td><td>2,475</td><td>2,482</td></tr>
+        <tr><td>Throughput (ops/sec)</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td></tr>
+      </tbody>
+    </table>
+  </details>
 
   <div class="chartsGrid">
     <div class="chartCard">
@@ -1140,15 +1164,17 @@
     </tbody>
   </table>
 
-  <h3>GC pause time / memory / throughput percentiles (over the full run)</h3>
-  <table class="cmp stats">
-    <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
-    <tbody>
-      <tr><td>GC pause time (ms per ~1s sample)</td><td>514.30 ms</td><td>418.85 ms</td><td>671.64 ms</td><td>725.91 ms</td><td>569.60 ms</td><td>565.85 ms</td><td>573.35 ms</td><td>573.35 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
-      <tr><td>Working set (MB)</td><td>901</td><td>993</td><td>1,052</td><td>1,073</td><td>931</td><td>904</td><td>1,178</td><td>1,178</td><td>47,196</td><td>47,196</td><td>47,196</td><td>47,196</td></tr>
-      <tr><td>Throughput (MB/s)</td><td>3,528.2</td><td>3,703.1</td><td>4,264.5</td><td>4,916.2</td><td>12,249.5</td><td>11,084.3</td><td>13,414.8</td><td>13,414.8</td><td>0.0</td><td>0.0</td><td>0.0</td><td>0.0</td></tr>
-    </tbody>
-  </table>
+  <details class="statsDetails" open>
+    <summary><h3>GC pause time / memory / throughput percentiles (over the full run)</h3></summary>
+    <table class="cmp stats">
+      <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
+      <tbody>
+        <tr><td>GC pause time (ms per ~1s sample)</td><td>514.30 ms</td><td>418.85 ms</td><td>671.64 ms</td><td>725.91 ms</td><td>569.60 ms</td><td>565.85 ms</td><td>573.35 ms</td><td>573.35 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
+        <tr><td>Working set (MB)</td><td>901</td><td>993</td><td>1,052</td><td>1,073</td><td>931</td><td>904</td><td>1,178</td><td>1,178</td><td>47,196</td><td>47,196</td><td>47,196</td><td>47,196</td></tr>
+        <tr><td>Throughput (MB/s)</td><td>3,528.2</td><td>3,703.1</td><td>4,264.5</td><td>4,916.2</td><td>12,249.5</td><td>11,084.3</td><td>13,414.8</td><td>13,414.8</td><td>0.0</td><td>0.0</td><td>0.0</td><td>0.0</td></tr>
+      </tbody>
+    </table>
+  </details>
 
   <div class="chartsGrid">
     <div class="chartCard">
@@ -1256,15 +1282,17 @@
     </tbody>
   </table>
 
-  <h3>GC pause time / memory / throughput percentiles (over the full run)</h3>
-  <table class="cmp stats">
-    <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
-    <tbody>
-      <tr><td>GC pause time (ms per ~1s sample)</td><td>398.60 ms</td><td>314.34 ms</td><td>565.26 ms</td><td>592.86 ms</td><td>184.57 ms</td><td>199.97 ms</td><td>246.08 ms</td><td>246.08 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
-      <tr><td>Working set (MB)</td><td>866</td><td>926</td><td>1,062</td><td>1,082</td><td>955</td><td>1,033</td><td>1,139</td><td>1,139</td><td>29,797</td><td>27,692</td><td>46,454</td><td>46,454</td></tr>
-      <tr><td>Throughput (MB/s)</td><td>3,202.0</td><td>3,245.6</td><td>3,685.7</td><td>3,760.7</td><td>4,944.6</td><td>4,874.2</td><td>5,608.6</td><td>5,608.6</td><td>5,056.0</td><td>5,312.0</td><td>5,632.0</td><td>5,632.0</td></tr>
-    </tbody>
-  </table>
+  <details class="statsDetails" open>
+    <summary><h3>GC pause time / memory / throughput percentiles (over the full run)</h3></summary>
+    <table class="cmp stats">
+      <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
+      <tbody>
+        <tr><td>GC pause time (ms per ~1s sample)</td><td>398.60 ms</td><td>314.34 ms</td><td>565.26 ms</td><td>592.86 ms</td><td>184.57 ms</td><td>199.97 ms</td><td>246.08 ms</td><td>246.08 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
+        <tr><td>Working set (MB)</td><td>866</td><td>926</td><td>1,062</td><td>1,082</td><td>955</td><td>1,033</td><td>1,139</td><td>1,139</td><td>29,797</td><td>27,692</td><td>46,454</td><td>46,454</td></tr>
+        <tr><td>Throughput (MB/s)</td><td>3,202.0</td><td>3,245.6</td><td>3,685.7</td><td>3,760.7</td><td>4,944.6</td><td>4,874.2</td><td>5,608.6</td><td>5,608.6</td><td>5,056.0</td><td>5,312.0</td><td>5,632.0</td><td>5,632.0</td></tr>
+      </tbody>
+    </table>
+  </details>
 
   <div class="chartsGrid">
     <div class="chartCard">

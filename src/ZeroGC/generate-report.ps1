@@ -337,15 +337,17 @@ $rowsHtml
     </tbody>
   </table>
 
-  <h3>GC pause time / memory / throughput percentiles (over the full run)</h3>
-  <table class="cmp stats">
-    <thead><tr><th></th>$pauseHeaderCells</tr><tr><th>Metric</th>$subHeaderCells</tr></thead>
-    <tbody>
-      $pauseMsRow
-      $wsRow
-      $throughputRow
-    </tbody>
-  </table>
+  <details class="statsDetails" open>
+    <summary><h3>GC pause time / memory / throughput percentiles (over the full run)</h3></summary>
+    <table class="cmp stats">
+      <thead><tr><th></th>$pauseHeaderCells</tr><tr><th>Metric</th>$subHeaderCells</tr></thead>
+      <tbody>
+        $pauseMsRow
+        $wsRow
+        $throughputRow
+      </tbody>
+    </table>
+  </details>
 
   <div class="chartsGrid">
     <div class="chartCard">
@@ -404,6 +406,12 @@ $html = @"
   .chartsGrid { display:grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; margin-top: 0.8rem; }
   .chartCard { background:#fbfbfd; border:1px solid #eee; border-radius:8px; padding:0.6rem 0.7rem; }
   .sparseNote { font-size: 0.78rem; color: #a05a00; background:#fff8e6; border:1px solid #f0d98c; border-radius:5px; padding:0.35rem 0.55rem; margin:0.3rem 0 0.4rem 0; }
+  .statsDetails summary { cursor: pointer; list-style: none; }
+  .statsDetails summary::-webkit-details-marker { display: none; }
+  .statsDetails summary h3 { display: inline-block; margin: 1.5rem 0 0 0; }
+  .statsDetails summary h3::before { content: "▶ "; font-size: 0.75em; color: #888; }
+  .statsDetails[open] summary h3::before { content: "▼ "; }
+  .statsDetails table { margin-top: 0.6rem; }
   @media (max-width: 900px) { .chartsGrid { grid-template-columns: 1fr; } }
 </style>
 </head>
