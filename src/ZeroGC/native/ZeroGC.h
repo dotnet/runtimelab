@@ -212,15 +212,31 @@ public:
 private:
     ZeroGCHeap() = default;
 
-    // Refills a thread's allocation context with a fresh chunk cut from the
-    // arena, then satisfies the current allocation from it.
+    // Refills a thread's allocation context with a fresh chunk cut from a
+    // per-thread arena slice, then satisfies the current allocation from it.
     Object* AllocateFromArena(gc_alloc_context* acontext, size_t size, uint32_t flags);
 
+    // Atomically claims (via a single lock-free interlocked add - no
+    // critical section) a private, contiguous slice of at least `size`
+    // bytes from the shared master reservation for the calling thread's
+    // exclusive use. See the per-thread-arena design notes above
+    // AllocateFromArena's definition in ZeroGCHeap.cpp. Returns nullptr if
+    // the reservation is exhausted.
+    uint8_t* ClaimArenaSlice(size_t size);
+
+    // m_arenaNextFree is advanced via a racy InterlockedExchangeAdd64 and so
+    // can transiently overshoot m_arenaReservedEnd by a few claims' worth
+    // right at the point the arena is exhausted; clamp it for any
+    // informational/reporting read (this is never on the hot alloc path).
+    uint8_t* ArenaHighWaterMark() const { return min(m_arenaNextFree, m_arenaReservedEnd); }
+
     uint8_t* m_arenaBase = nullptr;
-    uint8_t* m_arenaCommitEnd = nullptr;   // end of committed memory
-    uint8_t* m_arenaNextFree = nullptr;    // next byte to hand out (<= m_arenaCommitEnd)
+    // Shared "claimed so far" watermark: the only field the hot allocation
+    // path touches, and only via InterlockedExchangeAdd64 (ClaimArenaSlice),
+    // never a lock. Everywhere else it is read as a plain (racy but
+    // never-torn on x64) informational high-water mark, same as before.
+    uint8_t* m_arenaNextFree = nullptr;
     uint8_t* m_arenaReservedEnd = nullptr; // end of reserved address space
-    CRITICAL_SECTION m_lock{};
     LARGE_INTEGER m_qpcFrequency{};
     LARGE_INTEGER m_startTime{};
 };

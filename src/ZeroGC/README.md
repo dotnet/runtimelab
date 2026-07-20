@@ -56,10 +56,17 @@ and to build a local, unmodified `coreclr.dll`/SDK for testing.
   ZeroGC itself never reads them, since it never needs to know which
   objects were mutated (there's no compaction or generational promotion to
   drive from that information).
-- Not thread-scalable in the way Server GC's per-core allocation contexts
-  are tuned; it's a straightforward mutex/interlocked-bump design. It's
-  sufficient for the benchmarks in this repo but hasn't been tuned for
-  heavy multi-threaded allocation.
+- **Allocation is per-thread and lock-free.** Each OS thread claims its own
+  private, contiguous slice of the arena (a single lock-free
+  `InterlockedExchangeAdd64` on a shared watermark, not a critical
+  section — see `ClaimArenaSlice`/`AllocateFromArena` in
+  `native/ZeroGCHeap.cpp`); every allocation-context refill and page commit
+  after that touches only that thread's own memory, so concurrent threads
+  never contend with each other. An earlier version of this allocator
+  funneled every thread's refill through one shared bump pointer guarded by
+  a single `CRITICAL_SECTION`, which became a real bottleneck under heavy
+  multi-threaded allocation (see `gcperfsim-mt-throughput` below) — the
+  per-thread-slice design removes that bottleneck entirely.
 
 ## Repository layout
 
@@ -259,17 +266,21 @@ Server, ZeroGC):
     heaps and parallel GC threads clear the same allocation volume multiple
     times faster than Workstation GC's single heap — see `results/report.html`
     for the measured gap.
-  - **"Never collecting" isn't automatically "fastest"**: ZeroGC's
-    allocator is a simple mutex/interlocked-bump design (see "Design notes"
-    below) that was never built for heavy multi-threaded contention. Under
-    this scenario's 16-thread concurrent allocation pressure, that
-    single-point contention becomes the bottleneck — ZeroGC ends up roughly
-    as slow as (or slower than) Workstation GC here, despite doing zero GC
-    work, because Server GC's real advantage in this scenario is per-core
-    *allocation contexts*, not just "not pausing." This is a useful,
-    honest counter-example to the rest of the suite: a production-quality
-    "never collect" GC would still need a scalable multi-context allocator
-    to be competitive under high thread counts.
+  - **"Never collecting" is fastest, but only once the allocator itself is
+    lock-free.** ZeroGC's arena allocator now hands each OS thread its own
+    private, contiguous slice via a single lock-free interlocked add (see
+    "Known limitations" above) — with that change, ZeroGC is the fastest
+    of all three GC modes in this scenario, faster than Server GC's
+    parallel heaps and far faster than Workstation GC's single heap (see
+    `results/report.html` for the measured numbers). An earlier version of
+    ZeroGC's allocator funneled every thread's allocation-context refill
+    through one shared bump pointer guarded by a single global lock; under
+    this scenario's 16-thread concurrent allocation pressure that single
+    lock was the bottleneck, and ZeroGC ended up no faster than
+    Workstation GC despite doing zero GC work — a useful reminder that a
+    production-quality "never collect" GC still needs a scalable
+    multi-context allocator to actually realize its "no pause, ever"
+    advantage under high thread counts.
   - On this machine, over a 10-minute run growing the cache to ~30.8M
     entries (~4 GB): **Workstation GC** shows 11 naturally-triggered gen2
     events averaging **~568 ms** (max **~2,349 ms**); **Server GC** shows 13

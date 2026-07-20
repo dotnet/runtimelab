@@ -35,6 +35,41 @@ static const size_t ARENA_RESERVE_SIZE = (size_t)1 << 36; // 64 GiB - plenty for
 static const size_t ARENA_COMMIT_CHUNK = 16 * 1024 * 1024; // 16 MiB at a time
 static const size_t CONTEXT_ALLOC_QUANTUM = 128 * 1024;    // handed to each thread's alloc_context
 
+// Per-thread arena design
+// ------------------------
+// Every OS thread that allocates gets its own private, contiguous slice
+// (THREAD_ARENA_CHUNK_SIZE bytes) carved out of the single master
+// reservation. Carving a new slice is a single lock-free
+// InterlockedExchangeAdd64 on the shared m_arenaNextFree watermark (see
+// ClaimArenaSlice) - there is no critical section anywhere on this path.
+// Once a thread owns a slice, every CONTEXT_ALLOC_QUANTUM refill and every
+// page commit within that slice touches ONLY that thread's own memory, so
+// it requires no synchronization at all: two threads can never touch the
+// same bytes, because the atomic add always hands out disjoint, increasing
+// ranges regardless of which thread asked for one. A thread only pays the
+// (cheap, rare) atomic-add cost roughly once every 64 MiB of its own
+// allocation instead of once per 128 KiB context refill.
+//
+// This replaces an earlier design that funneled every thread's context
+// refill through one shared arena bump pointer guarded by a single
+// CRITICAL_SECTION - which meant all threads serialized on every refill
+// regardless of how many independent gc_alloc_contexts existed. Server
+// GC avoids that by giving each per-core heap its own independent segment;
+// this per-thread-slice scheme gets the same effect without needing
+// multiple GC heaps.
+static const size_t THREAD_ARENA_CHUNK_SIZE = 64 * 1024 * 1024; // 64 MiB claimed per thread at a time
+
+// Per-thread arena state: only ever touched by the OS thread it belongs to,
+// so it needs no locking of its own.
+struct ThreadArenaState
+{
+    uint8_t* ChunkBase = nullptr;
+    uint8_t* ChunkEnd = nullptr;   // end of this thread's currently-owned slice
+    uint8_t* NextFree = nullptr;  // bump pointer within the owned slice
+    uint8_t* CommitEnd = nullptr; // how far into the slice pages are committed
+};
+static thread_local ThreadArenaState t_threadArena;
+
 // The frozen segment table is only used for a handful of segments (CoreLib's
 // frozen string / frozen object heap), so a small fixed table is enough.
 struct FrozenSegment
@@ -62,7 +97,6 @@ ZeroGCHeap* ZeroGCHeap::CreateAndInitialize()
 HRESULT ZeroGCHeap::Initialize()
 {
     ZGC_TRACE("ZeroGCHeap::Initialize - enter");
-    InitializeCriticalSection(&m_lock);
     InitializeCriticalSection(&g_frozenSegmentsLock);
     QueryPerformanceFrequency(&m_qpcFrequency);
     QueryPerformanceCounter(&m_startTime);
@@ -73,7 +107,6 @@ HRESULT ZeroGCHeap::Initialize()
 
     m_arenaReservedEnd = m_arenaBase + ARENA_RESERVE_SIZE;
     m_arenaNextFree = m_arenaBase;
-    m_arenaCommitEnd = m_arenaBase;
     ZGC_TRACE("ZeroGCHeap::Initialize - arena reserved");
 
     // Tell the EE about our (single, ever-growing) heap bounds so that the
@@ -153,6 +186,25 @@ HRESULT ZeroGCHeap::Initialize()
     return S_OK;
 }
 
+// Atomically claims a contiguous slice of at least `size` bytes from the
+// shared master reservation for the calling thread's exclusive use. This is
+// the ONLY synchronization in the whole per-thread allocation path: a single
+// InterlockedExchangeAdd64, not a critical section. Because it is the only
+// place that ever advances m_arenaNextFree, every claimed range is
+// guaranteed disjoint from every other thread's, in increasing address
+// order - exactly like the old single global bump pointer, just without
+// blocking other threads while doing it.
+uint8_t* ZeroGCHeap::ClaimArenaSlice(size_t size)
+{
+    uint8_t* oldNext = (uint8_t*)InterlockedExchangeAdd64((volatile LONG64*)&m_arenaNextFree, (LONG64)size);
+    if (oldNext + size > m_arenaReservedEnd)
+    {
+        // Out of reserved address space - a real GC would fail the allocation.
+        return nullptr;
+    }
+    return oldNext;
+}
+
 Object* ZeroGCHeap::AllocateFromArena(gc_alloc_context* acontext, size_t size, uint32_t flags)
 {
     ZGC_TRACE("AllocateFromArena - enter");
@@ -169,8 +221,6 @@ Object* ZeroGCHeap::AllocateFromArena(gc_alloc_context* acontext, size_t size, u
     // worth of padding up front for every new chunk to guarantee that.
     const size_t headerPad = sizeof(void*); // == sizeof(ObjHeader), see gcenv.object.h
 
-    EnterCriticalSection(&m_lock);
-
     // Large objects (and pinned/POH objects) get their own dedicated chunk so
     // that we don't waste the tail of a context's quantum on them.
     bool isLarge = (flags & GC_ALLOC_LARGE_OBJECT_HEAP) != 0 || (flags & GC_ALLOC_PINNED_OBJECT_HEAP) != 0
@@ -178,32 +228,48 @@ Object* ZeroGCHeap::AllocateFromArena(gc_alloc_context* acontext, size_t size, u
     size_t chunkSize = isLarge ? alignedSize : max(alignedSize, CONTEXT_ALLOC_QUANTUM);
     size_t reserveSize = chunkSize + headerPad;
 
-    if ((size_t)(m_arenaReservedEnd - m_arenaNextFree) < reserveSize)
+    // This thread's private slice (see the per-thread arena design notes
+    // above THREAD_ARENA_CHUNK_SIZE). No lock: t_threadArena is thread_local,
+    // so only the calling thread ever reads or writes it.
+    ThreadArenaState& ta = t_threadArena;
+
+    bool needsNewSlice = (ta.ChunkBase == nullptr) || ((size_t)(ta.ChunkEnd - ta.NextFree) < reserveSize);
+    if (needsNewSlice)
     {
-        // Out of reserved address space - a real GC would fail the allocation.
-        LeaveCriticalSection(&m_lock);
-        return nullptr;
+        // Oversized (larger than a whole slice) large/pinned objects get a
+        // dedicated, exactly-sized slice of their own instead of the usual
+        // fixed THREAD_ARENA_CHUNK_SIZE.
+        size_t claimSize = max(reserveSize, THREAD_ARENA_CHUNK_SIZE);
+        uint8_t* claimBase = ClaimArenaSlice(claimSize);
+        if (claimBase == nullptr)
+            return nullptr;
+
+        ta.ChunkBase = claimBase;
+        ta.ChunkEnd = claimBase + claimSize;
+        ta.NextFree = claimBase;
+        ta.CommitEnd = claimBase;
     }
 
-    if ((size_t)(m_arenaCommitEnd - m_arenaNextFree) < reserveSize)
+    if ((size_t)(ta.CommitEnd - ta.NextFree) < reserveSize)
     {
-        size_t needed = reserveSize - (m_arenaCommitEnd - m_arenaNextFree);
+        size_t needed = reserveSize - (ta.CommitEnd - ta.NextFree);
         size_t commitSize = max(needed, ARENA_COMMIT_CHUNK);
         commitSize = (commitSize + 0xFFFF) & ~(size_t)0xFFFF; // round to 64K
-        if (m_arenaCommitEnd + commitSize > m_arenaReservedEnd)
-            commitSize = m_arenaReservedEnd - m_arenaCommitEnd;
+        if (ta.CommitEnd + commitSize > ta.ChunkEnd)
+            commitSize = ta.ChunkEnd - ta.CommitEnd;
 
-        if (VirtualAlloc(m_arenaCommitEnd, commitSize, MEM_COMMIT, PAGE_READWRITE) == nullptr)
-        {
-            LeaveCriticalSection(&m_lock);
+        // Safe without a lock: ta.CommitEnd..+commitSize lies entirely
+        // within this thread's own claimed slice, which no other thread
+        // ever touches, and VirtualAlloc itself is safe to call
+        // concurrently from multiple threads on disjoint memory ranges.
+        if (VirtualAlloc(ta.CommitEnd, commitSize, MEM_COMMIT, PAGE_READWRITE) == nullptr)
             return nullptr;
-        }
-        m_arenaCommitEnd += commitSize;
+        ta.CommitEnd += commitSize;
     }
 
-    uint8_t* rawStart = m_arenaNextFree;
+    uint8_t* rawStart = ta.NextFree;
     uint8_t* chunkStart = rawStart + headerPad;
-    m_arenaNextFree = rawStart + reserveSize;
+    ta.NextFree = rawStart + reserveSize;
 
     if (!isLarge)
     {
@@ -223,8 +289,6 @@ Object* ZeroGCHeap::AllocateFromArena(gc_alloc_context* acontext, size_t size, u
 
     InterlockedExchangeAdd64(&g_zeroGCCounters.TotalAllocatedBytes, (int64_t)alignedSize);
     InterlockedIncrement64(&g_zeroGCCounters.AllocContextRefills);
-
-    LeaveCriticalSection(&m_lock);
 
     Object* obj = (Object*)chunkStart;
     ZGC_TRACE("AllocateFromArena - exit OK");
@@ -277,7 +341,7 @@ void ZeroGCHeap::GetMemoryInfo(uint64_t* highMemLoadThresholdBytes,
     memStatus.dwLength = sizeof(memStatus);
     GlobalMemoryStatusEx(&memStatus);
 
-    size_t committed = (size_t)(m_arenaNextFree - m_arenaBase);
+    size_t committed = (size_t)(ArenaHighWaterMark() - m_arenaBase);
 
     if (highMemLoadThresholdBytes) *highMemLoadThresholdBytes = (uint64_t)((memStatus.ullTotalPhys * 90) / 100);
     if (totalAvailableMemoryBytes) *totalAvailableMemoryBytes = memStatus.ullTotalPhys;
@@ -335,7 +399,7 @@ int ZeroGCHeap::EndNoGCRegion()
 
 size_t ZeroGCHeap::GetTotalBytesInUse()
 {
-    return (size_t)(m_arenaNextFree - m_arenaBase);
+    return (size_t)(ArenaHighWaterMark() - m_arenaBase);
 }
 
 uint64_t ZeroGCHeap::GetTotalAllocatedBytes()
@@ -369,7 +433,7 @@ bool ZeroGCHeap::IsPromoted(Object* object) { ZGC_TRACE("ZeroGCHeap::IsPromoted"
 bool ZeroGCHeap::IsHeapPointer(void* object, bool small_heap_only)
 {
     uint8_t* p = (uint8_t*)object;
-    return p >= m_arenaBase && p < m_arenaNextFree;
+    return p >= m_arenaBase && p < ArenaHighWaterMark();
 }
 
 unsigned ZeroGCHeap::GetCondemnedGeneration() { ZGC_TRACE("ZeroGCHeap::GetCondemnedGeneration"); return 0; }
@@ -428,7 +492,7 @@ void ZeroGCHeap::DiagScanDependentHandles(handle_scan_fn fn, int gen_number, Sca
 void ZeroGCHeap::DiagDescrGenerations(gen_walk_fn fn, void* context)
 {
     if (fn != nullptr)
-        fn(context, 0, m_arenaBase, m_arenaNextFree, m_arenaReservedEnd);
+        fn(context, 0, m_arenaBase, ArenaHighWaterMark(), m_arenaReservedEnd);
 }
 void ZeroGCHeap::DiagTraceGCSegments() { ZGC_TRACE("ZeroGCHeap::DiagTraceGCSegments"); }
 void ZeroGCHeap::DiagGetGCSettings(EtwGCSettingsInfo* settings)
@@ -494,7 +558,7 @@ void ZeroGCHeap::ControlPrivateEvents(GCEventKeyword keyword, GCEventLevel level
 unsigned int ZeroGCHeap::GetGenerationWithRange(Object* object, uint8_t** ppStart, uint8_t** ppAllocated, uint8_t** ppReserved)
 {
     if (ppStart) *ppStart = m_arenaBase;
-    if (ppAllocated) *ppAllocated = m_arenaNextFree;
+    if (ppAllocated) *ppAllocated = ArenaHighWaterMark();
     if (ppReserved) *ppReserved = m_arenaReservedEnd;
     return 0;
 }
