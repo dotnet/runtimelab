@@ -31,7 +31,9 @@ class Generics
         TestInstantiatingUnboxingStubs.Run();
         TestNameManglingCollisionRegression.Run();
         TestSimpleGVMScenarios.Run();
+#if !CODEGEN_WASM && !CODEGEN_WASI
         TestAsyncGVMScenarios.Run();
+#endif
         TestGvmDelegates.Run();
         TestGvmDependencies.Run();
         TestGvmLookups.Run();

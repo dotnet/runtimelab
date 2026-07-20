@@ -278,7 +278,6 @@
     <PlatformManifestFileEntry Include="libSystem.Native.Browser.js.map" IsNative="true" />
     <PlatformManifestFileEntry Include="libSystem.Runtime.InteropServices.JavaScript.Native.js" IsNative="true" />
     <PlatformManifestFileEntry Include="libSystem.Runtime.InteropServices.JavaScript.Native.js.map" IsNative="true" />
-    <PlatformManifestFileEntry Include="pal_random.lib.js" IsNative="true" />
     <!-- wasi specific -->
     <PlatformManifestFileEntry Include="main.c" IsNative="true" />
     <PlatformManifestFileEntry Include="driver.h" IsNative="true" />

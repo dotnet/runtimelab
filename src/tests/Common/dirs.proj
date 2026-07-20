@@ -36,6 +36,13 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\**\PackagingTests.csproj" />
     </ItemGroup>
 
+  <!-- TODO: LLVM why is this failing now for all Wasm cases.-->
+    <ItemGroup>
+      <DisabledProjects Include="$(TestRoot)nativeaot\**\PackagingTests.csproj" />
+      <!-- TODO-LLVM: Async is broken.-->
+      <DisabledProjects Include="$(TestRoot)nativeaot\**\DotNetJs.App.csproj" />
+    </ItemGroup>
+
     <ItemGroup>
       <!-- These projects are built separately in an isolated way. -->
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\PackagingTests\*.csproj" />

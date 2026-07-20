@@ -140,6 +140,7 @@
       <NativeAsset Include="$(NativeBinDir)*.dex" />
       <NativeAsset Include="$(NativeBinDir)*.jar" />
       <NativeAsset Include="$(NativeBinDir)*.dat" />
+      <NativeAsset Include="$(NativeBinDir)*.js" Condition="'$(TargetOS)' == 'browser'" />
       <FileWrites Include="@(NativeAsset)" />
     </ItemGroup>
 

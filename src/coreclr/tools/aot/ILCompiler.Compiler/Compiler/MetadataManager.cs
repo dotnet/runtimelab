@@ -153,7 +153,7 @@ namespace ILCompiler
             return result;
         }
 
-        public virtual void AddToReadyToRunHeader(ReadyToRunHeaderNode header, NodeFactory nodeFactory, ExternalReferencesTableNode commonFixupsTableNode)
+        public virtual void AddToReadyToRunHeader(ReadyToRunHeaderNode header, NodeFactory nodeFactory, ExternalReferencesTableNode commonFixupsTableNode, bool isWasm)
         {
             var metadataNode = new MetadataNode();
             header.Add(BlobIdToReadyToRunSection(ReflectionMapBlob.EmbeddedMetadata), metadataNode);
@@ -228,8 +228,11 @@ namespace ILCompiler
             var stackTraceDocumentsNode = new StackTraceDocumentsNode();
             header.Add(BlobIdToReadyToRunSection(ReflectionMapBlob.BlobIdStackTraceDocuments), stackTraceDocumentsNode);
 
-            var stackTraceLineNumbersNode = new StackTraceLineNumbersNode(commonFixupsTableNode, stackTraceDocumentsNode);
-            header.Add(BlobIdToReadyToRunSection(ReflectionMapBlob.BlobIdStackTraceLineNumbers), stackTraceLineNumbersNode);
+            if (!isWasm)
+            {
+                var stackTraceLineNumbersNode = new StackTraceLineNumbersNode(commonFixupsTableNode, stackTraceDocumentsNode);
+                header.Add(BlobIdToReadyToRunSection(ReflectionMapBlob.BlobIdStackTraceLineNumbers), stackTraceLineNumbersNode);
+            }
 
             // The external references tables should go last
             header.Add(BlobIdToReadyToRunSection(ReflectionMapBlob.NativeReferences), nativeReferencesTableNode);

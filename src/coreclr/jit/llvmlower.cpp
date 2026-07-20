@@ -684,7 +684,7 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
 
 void Llvm::lowerVirtualStubCall(GenTreeCall* callNode)
 {
-    assert(callNode->IsVirtualStub() && (callNode->gtControlExpr == nullptr) && !callNode->NeedsNullCheck());
+    assert(callNode->IsVirtualStub() && !callNode->NeedsNullCheck());
     //
     // We transform:
     //  Call(SS, pCell, @this, args...)

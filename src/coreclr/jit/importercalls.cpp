@@ -6088,7 +6088,8 @@ GenTree* Compiler::impPrimitiveNamedIntrinsic(NamedIntrinsic        intrinsic,
                 result = new (this, GT_INTRINSIC) GenTreeIntrinsic(retType, op1, NI_PRIMITIVE_LeadingZeroCount,
                                                                    nullptr R2RARG(CORINFO_CONST_LOOKUP{IAT_VALUE}));
             }
-#elif defined(TARGET_WASM)
+// TODO-LLVM: Support the same intrinsics as upstream.
+#elif defined(TARGET_WASM) && !defined(TARGET_LLVM)
             impPopStack();
             result = new (this, GT_INTRINSIC) GenTreeIntrinsic(retType, op1, NI_PRIMITIVE_LeadingZeroCount,
                                                                nullptr R2RARG(CORINFO_CONST_LOOKUP{IAT_VALUE}));
@@ -6272,7 +6273,8 @@ GenTree* Compiler::impPrimitiveNamedIntrinsic(NamedIntrinsic        intrinsic,
                 result = new (this, GT_INTRINSIC) GenTreeIntrinsic(retType, op1, NI_PRIMITIVE_PopCount,
                                                                    nullptr R2RARG(CORINFO_CONST_LOOKUP{IAT_VALUE}));
             }
-#elif defined(TARGET_WASM)
+// TODO-LLVM: Support the same intrinsics as upstream.
+#elif defined(TARGET_WASM) && !defined(TARGET_LLVM)
             impPopStack();
             result = new (this, GT_INTRINSIC)
                 GenTreeIntrinsic(retType, op1, NI_PRIMITIVE_PopCount, nullptr R2RARG(CORINFO_CONST_LOOKUP{IAT_VALUE}));
@@ -6434,7 +6436,8 @@ GenTree* Compiler::impPrimitiveNamedIntrinsic(NamedIntrinsic        intrinsic,
                 result = new (this, GT_INTRINSIC) GenTreeIntrinsic(retType, op1, NI_PRIMITIVE_TrailingZeroCount,
                                                                    nullptr R2RARG(CORINFO_CONST_LOOKUP{IAT_VALUE}));
             }
-#elif defined(TARGET_WASM)
+// TODO-LLVM: Support the same intrinsics as upstream.
+#elif defined(TARGET_WASM) && !defined(TARGET_LLVM)
             impPopStack();
             result = new (this, GT_INTRINSIC) GenTreeIntrinsic(retType, op1, NI_PRIMITIVE_TrailingZeroCount,
                                                                nullptr R2RARG(CORINFO_CONST_LOOKUP{IAT_VALUE}));
@@ -8649,8 +8652,8 @@ bool Compiler::IsTargetIntrinsic(NamedIntrinsic intrinsicName)
             return false;
     }
 
-#elif defined(TARGET_WASM)
-
+// TODO-LLVM: Support the same intrinsics as upstream.
+#elif defined(TARGET_WASM) && !defined(TARGET_LLVM)
     // TODO-WASM-CQ: we can likely support more intrinsics here
     switch (intrinsicName)
     {

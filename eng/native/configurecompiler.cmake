@@ -886,7 +886,8 @@ if (MSVC)
   set_property(GLOBAL PROPERTY MSVC_WARNING_LEVEL 4)
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/W$<TARGET_PROPERTY:MSVC_WARNING_LEVEL>>)
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/WX>) # treat warnings as errors
-  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/sdl>) # enable additional security checks (such as /GS)
+  # TODO-LLVM: Causes problems at runtime for LLVM (https://stackoverflow.com/questions/34892732/error-when-call-createphi-in-llvm)
+  # add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/sdl>) # enable additional security checks (such as /GS)
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/Oi>) # enable intrinsics
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/Oy->) # disable suppressing of the creation of frame pointers on the call stack for quicker function calls
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/Gm->) # disable minimal rebuild

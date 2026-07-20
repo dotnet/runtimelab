@@ -863,10 +863,12 @@ void Compiler::fgSetPreferredInitCctor()
 //
 GenTreeCall* Compiler::fgGetSharedCCtor(CORINFO_CLASS_HANDLE cls)
 {
+#if !defined(TARGET_LLVM)
 #if defined(TARGET_WASM)
     // Wasm does not support dynamically created helpers
     return fgGetStaticsCCtorHelper(cls, CORINFO_HELP_INITCLASS);
 #endif
+#endif // !TARGET_LLVM
 
 #ifdef FEATURE_READYTORUN
     if (IsAot())

@@ -166,6 +166,7 @@ void Compiler::lvaInitTypeRef()
         info.compArgsCount++;
     }
 
+#if !defined(TARGET_LLVM) // LLVM adds the shadow stack in llvm lowering.
 #if defined(TARGET_WASM)
     if (!opts.IsReversePInvoke())
     {
@@ -179,6 +180,7 @@ void Compiler::lvaInitTypeRef()
         }
     }
 #endif
+#endif // !TARGET_LLVM
 
     lvaCount = info.compLocalsCount = info.compArgsCount + info.compMethodInfo->locals.numArgs;
 
@@ -359,7 +361,7 @@ void Compiler::lvaInitArgs(bool hasRetBuffArg)
     //----------------------------------------------------------------------
 
     unsigned varNum = 0;
-
+#if !defined(TARGET_LLVM)
 #if defined(TARGET_WASM)
     if (!opts.IsReversePInvoke())
     {
@@ -367,6 +369,7 @@ void Compiler::lvaInitArgs(bool hasRetBuffArg)
         lvaInitWasmStackPtrArg(&varNum);
     }
 #endif
+#endif // !TARGET_LLVM
 
     // Is there a "this" pointer ?
     lvaInitThisPtr(&varNum);
@@ -427,6 +430,7 @@ void Compiler::lvaInitArgs(bool hasRetBuffArg)
     lvaInitVarArgsHandle(&varNum);
 #endif
 
+#if !defined(TARGET_LLVM)
 #if defined(TARGET_WASM)
     if (!opts.IsReversePInvoke())
     {
@@ -434,6 +438,7 @@ void Compiler::lvaInitArgs(bool hasRetBuffArg)
         lvaInitWasmPortableEntryPtr(&varNum);
     }
 #endif
+#endif // !TARGET_LLVM
 
     //----------------------------------------------------------------------
 
@@ -470,7 +475,7 @@ void Compiler::lvaInitThisPtr(unsigned* curVarNum)
 
     lvaArg0Var = info.compThisArg = *curVarNum;
 
-#if defined(TARGET_WASM)
+#if defined(TARGET_WASM) && !defined(TARGET_LLVM)
     noway_assert(info.compThisArg == 1);
 #else
     noway_assert(info.compThisArg == 0);

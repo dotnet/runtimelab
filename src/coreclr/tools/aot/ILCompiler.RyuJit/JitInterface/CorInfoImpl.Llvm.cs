@@ -158,7 +158,7 @@ namespace Internal.JitInterface
             RyuJitCompilation compilation = _this._compilation;
 
             Utf8String alternativeName = compilation.NodeFactory.GetSymbolAlternateName(methodNode, out _);
-            return !alternativeName.IsNull ? (byte*)_this.GetPin(alternativeName) : null;
+            return !alternativeName.IsNull ? (byte*)_this.GetPin(alternativeName.Value) : null;
         }
 
         [UnmanagedCallersOnly]

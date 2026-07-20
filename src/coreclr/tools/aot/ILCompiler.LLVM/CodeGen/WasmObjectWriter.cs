@@ -89,7 +89,8 @@ namespace ILCompiler.ObjectWriter
                 int symbolIndex = AddSymbol(definedSymbol, new Utf8String((byte[])null), isDefinition: true);
                 definedSymbolIndices.Add(symbolIndex);
 
-                if (_compilation.NodeFactory.GetSymbolAlternateName(definedSymbol, out _) is Utf8String alternateName)
+                Utf8String alternateName = _compilation.NodeFactory.GetSymbolAlternateName(definedSymbol, out _);
+                if (!alternateName.IsNull)
                 {
                     symbolIndex = AddSymbol(definedSymbol, alternateName, isDefinition: true);
                     definedSymbolIndices.Add(symbolIndex);
@@ -97,6 +98,11 @@ namespace ILCompiler.ObjectWriter
             }
 
             int sectionSymbolIndex = sectionSymbol is null ? InvalidIndexInt32 : _symbolNodeToSymbolIndexMap[sectionSymbol];
+            if (sectionSymbolIndex != InvalidIndexInt32)
+            {
+                ref SymbolInfo symbolInfo = ref _symbols.AsSpan()[sectionSymbolIndex];
+                symbolInfo.Size = data.Data.Length;
+            }
             LinkingSectionName name = new(section, sectionSymbolIndex);
             wasmSection.AddLinkingSection(name, data.Data, checked((uint)data.Alignment), relocations, definedSymbolIndices.ToArray());
         }
@@ -330,7 +336,7 @@ namespace ILCompiler.ObjectWriter
             return size;
         }
 
-        private uint WriteDataSection(Stream stream)
+        private unsafe uint WriteDataSection(Stream stream)
         {
             Span<LinkingSection> linkingSections = _dataWasmSection.LinkingSections;
             uint dataSegmentCount = (uint)linkingSections.Length;
@@ -364,6 +370,20 @@ namespace ILCompiler.ObjectWriter
                     uint offset = 0;
                     foreach (ref LinkingSectionChunk chunk in linkingSection.Chunks)
                     {
+                        foreach (Relocation relocation in chunk.Relocations)
+                        {
+                            if (relocation.RelocType == RelocType.IMAGE_REL_SYMBOL_SIZE)
+                            {
+                                int index = _symbolNodeToSymbolIndexMap[relocation.Target];
+                                int symbolSize = _symbols[index].Size;
+
+                                fixed (void* location = &chunk.Content[relocation.Offset])
+                                {
+                                    Relocation.WriteValue(relocation.RelocType, location, symbolSize);
+                                }
+                            }
+                        }
+
                         // Align this chunk.
                         offset += WriteZeroes(stream, AlignUpAddend(offset, chunk.Alignment));
 
@@ -520,6 +540,21 @@ namespace ILCompiler.ObjectWriter
         private unsafe void WriteRelocationSectionForSection(Stream stream, WasmSection section)
         {
             uint relocCount = section.RelocationCount;
+
+            foreach (ref LinkingSection linkingSection in section.LinkingSections)
+            {
+                foreach (ref LinkingSectionChunk chunk in linkingSection.Chunks)
+                {
+                    foreach (ref Relocation relocation in chunk.Relocations.AsSpan())
+                    {
+                        if (relocation.RelocType == RelocType.IMAGE_REL_SYMBOL_SIZE)
+                        {
+                            relocCount--;
+                        }
+                    }
+                }
+            }
+
             if (relocCount == 0)
             {
                 return;
@@ -543,6 +578,12 @@ namespace ILCompiler.ObjectWriter
                     {
                         foreach (ref Relocation relocation in chunk.Relocations.AsSpan())
                         {
+                            // IMAGE_REL_SYMBOL_SIZE is not a real reloc, but is the size of the data, and does not need writing to the object file.
+                            if (relocation.RelocType == RelocType.IMAGE_REL_SYMBOL_SIZE)
+                            {
+                                continue;
+                            }
+
                             int symbolIndex = _symbolNodeToSymbolIndexMap[relocation.Target];
                             WasmRelocationKind kind = GetWasmRelocationKind(in relocation);
 
@@ -786,6 +827,7 @@ namespace ILCompiler.ObjectWriter
             public uint Index; // Wasm entity index or data segment index.
             public uint FunctionTypeIndex; // Only used for code symbols.
             public uint LinkingSectionRelativeOffset; // Only used for data symbols.
+            public int Size;
 
             // The modules section is referenced through the special __start/__stop symbols.
             // symbols, which don't cause the linker to consider it alive by default.

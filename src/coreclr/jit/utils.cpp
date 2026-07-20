@@ -1771,6 +1771,7 @@ void HelperCallProperties::init()
             case CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME:
             case CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME:
                 mutatesHeap = true;
+                exceptions = ExceptionSetFlags::None;
                 break;
 
             case CORINFO_HELP_VIRTUAL_FUNC_PTR:
