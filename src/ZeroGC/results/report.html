@@ -24,6 +24,8 @@
   .legend .sw { display:inline-block; width:12px;height:12px;border-radius:3px;margin-right:0.4rem;vertical-align:middle; }
   .callout { background:#fff8e6; border:1px solid #f0d98c; border-radius:6px; padding:1rem 1.2rem; margin-bottom:1.5rem; }
   code { background:#f0f0f0; padding:0.1rem 0.35rem; border-radius:4px; }
+  .cmdline { margin: -0.3rem 0 0.8rem 0; }
+  .cmdline code { font-family: Consolas, "Courier New", monospace; font-size: 0.82rem; padding: 0.25rem 0.5rem; display: inline-block; word-break: break-all; }
   footer { color:#888; font-size:0.85rem; margin-top:2rem; }
   .chartsGrid { display:grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; margin-top: 0.8rem; }
   .chartCard { background:#fbfbfd; border:1px solid #eee; border-radius:8px; padding:0.6rem 0.7rem; }
@@ -39,7 +41,7 @@
 </head>
 <body>
   <h1>ZeroGC vs. Workstation GC vs. Server GC</h1>
-  <p class="subtitle">Generated 2026-07-20 18:25:28 on this machine. Eleven workloads (2 hand-written sample apps, 5 GCPerfSim scenarios, 2 zero-alloc scenarios, dotLLM inference, and a growing-cache scenario), each run once per GC configuration.</p>
+  <p class="subtitle">Generated 2026-07-20 18:44:45 on this machine. Eleven workloads (2 hand-written sample apps, 5 GCPerfSim scenarios, 2 zero-alloc scenarios, dotLLM inference, and a growing-cache scenario), each run once per GC configuration.</p>
 
   <div class="legend">
     <span><span class="sw" style="background:#2b7de9"></span>Workstation GC (default, non-concurrent-by-default background GC)</span>
@@ -64,6 +66,7 @@
 
   <section>
   <h2>Console: mixed alloc-heavy CLI workload</h2>
+  
   <table class="cmp">
     <thead><tr><th>Metric</th><th>Workstation GC</th><td></td><th>Server GC</th><td></td><th>ZeroGC</th><td></td></tr></thead>
     <tbody>
@@ -184,6 +187,7 @@
   <div class="legend small"><span><span class='sw' style='background:#2b7de9'></span>Workstation GC</span><span><span class='sw' style='background:#8e44ad'></span>Server GC</span><span><span class='sw' style='background:#e94f2b'></span>ZeroGC</span></div>
 </section><section>
   <h2>ASP.NET Core (Kestrel) minimal API</h2>
+  
   <table class="cmp">
     <thead><tr><th>Metric</th><th>Workstation GC</th><td></td><th>Server GC</th><td></td><th>ZeroGC</th><td></td></tr></thead>
     <tbody>
@@ -304,6 +308,7 @@
   <div class="legend small"><span><span class='sw' style='background:#2b7de9'></span>Workstation GC</span><span><span class='sw' style='background:#8e44ad'></span>Server GC</span><span><span class='sw' style='background:#e94f2b'></span>ZeroGC</span></div>
 </section><section>
   <h2>GCPerfSim: web-server request simulation</h2>
+  <p class='cmdline'><code>GCPerfSim.exe -tc 4 -tlgb 0.5 -sohsr 200-3000 -sohsi 15 -at simple -c 300000 -tagb 7.6</code></p>
   <table class="cmp">
     <thead><tr><th>Metric</th><th>Workstation GC</th><td></td><th>Server GC</th><td></td><th>ZeroGC</th><td></td></tr></thead>
     <tbody>
@@ -424,6 +429,7 @@
   <div class="legend small"><span><span class='sw' style='background:#2b7de9'></span>Workstation GC</span><span><span class='sw' style='background:#8e44ad'></span>Server GC</span><span><span class='sw' style='background:#e94f2b'></span>ZeroGC</span></div>
 </section><section>
   <h2>GCPerfSim: cache / large-object-heavy workload</h2>
+  <p class='cmdline'><code>GCPerfSim.exe -tc 2 -tlgb 0.3 -lohar 100 -sohsr 500-4000 -sohsi 8 -lohsr 100000-300000 -lohsi 4 -at simple -c 300000 -tagb 5.3</code></p>
   <table class="cmp">
     <thead><tr><th>Metric</th><th>Workstation GC</th><td></td><th>Server GC</th><td></td><th>ZeroGC</th><td></td></tr></thead>
     <tbody>
@@ -544,6 +550,7 @@
   <div class="legend small"><span><span class='sw' style='background:#2b7de9'></span>Workstation GC</span><span><span class='sw' style='background:#8e44ad'></span>Server GC</span><span><span class='sw' style='background:#e94f2b'></span>ZeroGC</span></div>
 </section><section>
   <h2>GCPerfSim: high-throughput transient object churn</h2>
+  <p class='cmdline'><code>GCPerfSim.exe -tc 8 -tlgb 0.1 -lohar 0 -sohsr 200-600 -sohsi 200 -at simple -c 300000 -tagb 3.4</code></p>
   <table class="cmp">
     <thead><tr><th>Metric</th><th>Workstation GC</th><td></td><th>Server GC</th><td></td><th>ZeroGC</th><td></td></tr></thead>
     <tbody>
@@ -664,6 +671,7 @@
   <div class="legend small"><span><span class='sw' style='background:#2b7de9'></span>Workstation GC</span><span><span class='sw' style='background:#8e44ad'></span>Server GC</span><span><span class='sw' style='background:#e94f2b'></span>ZeroGC</span></div>
 </section><section>
   <h2>Console: near-zero-allocation numeric compute (matrix multiply)</h2>
+  
   <table class="cmp">
     <thead><tr><th>Metric</th><th>Workstation GC</th><td></td><th>Server GC</th><td></td><th>ZeroGC</th><td></td></tr></thead>
     <tbody>
@@ -784,6 +792,7 @@
   <div class="legend small"><span><span class='sw' style='background:#2b7de9'></span>Workstation GC</span><span><span class='sw' style='background:#8e44ad'></span>Server GC</span><span><span class='sw' style='background:#e94f2b'></span>ZeroGC</span></div>
 </section><section>
   <h2>dotLLM: zero-alloc-inference HTTP server (github.com/kkokosa/dotLLM)</h2>
+  
   <table class="cmp">
     <thead><tr><th>Metric</th><th>Workstation GC</th><td></td><th>Server GC</th><td></td><th>ZeroGC</th><td></td></tr></thead>
     <tbody>
@@ -904,6 +913,7 @@
   <div class="legend small"><span><span class='sw' style='background:#2b7de9'></span>Workstation GC</span><span><span class='sw' style='background:#8e44ad'></span>Server GC</span><span><span class='sw' style='background:#e94f2b'></span>ZeroGC</span></div>
 </section><section>
   <h2>Console: growing in-memory cache with real request workload (naturally escalating gen2 GCs)</h2>
+  
   <table class="cmp">
     <thead><tr><th>Metric</th><th>Workstation GC</th><td></td><th>Server GC</th><td></td><th>ZeroGC</th><td></td></tr></thead>
     <tbody>
@@ -1028,6 +1038,7 @@
   <div class="legend small"><span><span class='sw' style='background:#2b7de9'></span>Workstation GC</span><span><span class='sw' style='background:#8e44ad'></span>Server GC</span><span><span class='sw' style='background:#e94f2b'></span>ZeroGC</span></div>
 </section><section>
   <h2>dotLLM: 1.5B model (~1GB, Q4_K_M), few-hundred-token context, zero-alloc-inference HTTP server</h2>
+  
   <table class="cmp">
     <thead><tr><th>Metric</th><th>Workstation GC</th><td></td><th>Server GC</th><td></td><th>ZeroGC</th><td></td></tr></thead>
     <tbody>
@@ -1148,6 +1159,7 @@
   <div class="legend small"><span><span class='sw' style='background:#2b7de9'></span>Workstation GC</span><span><span class='sw' style='background:#8e44ad'></span>Server GC</span><span><span class='sw' style='background:#e94f2b'></span>ZeroGC</span></div>
 </section><section>
   <h2>GCPerfSim: 16-thread concurrent allocation throughput burst (GC-bound, no compute delay)</h2>
+  <p class='cmdline'><code>GCPerfSim.exe -tc 16 -tlgb 0.3 -sohsr 100-2000 -sohsi 50 -lohar 0 -at simple -c 0 -tagb 45</code></p>
   <table class="cmp">
     <thead><tr><th>Metric</th><th>Workstation GC</th><td></td><th>Server GC</th><td></td><th>ZeroGC</th><td></td></tr></thead>
     <tbody>
@@ -1266,6 +1278,7 @@
   <div class="legend small"><span><span class='sw' style='background:#2b7de9'></span>Workstation GC</span><span><span class='sw' style='background:#8e44ad'></span>Server GC</span><span><span class='sw' style='background:#e94f2b'></span>ZeroGC</span></div>
 </section><section>
   <h2>GCPerfSim: 16-thread concurrent allocation throughput burst (GC-bound, moderate compute delay)</h2>
+  <p class='cmdline'><code>GCPerfSim.exe -tc 16 -tlgb 0.3 -sohsr 100-2000 -sohsi 50 -lohar 0 -at simple -c 1000 -tagb 45</code></p>
   <table class="cmp">
     <thead><tr><th>Metric</th><th>Workstation GC</th><td></td><th>Server GC</th><td></td><th>ZeroGC</th><td></td></tr></thead>
     <tbody>

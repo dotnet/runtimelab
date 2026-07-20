@@ -23,6 +23,18 @@ param(
 $ErrorActionPreference = "Stop"
 $runs = Get-Content $ResultsJson -Raw | ConvertFrom-Json
 
+# Static GCPerfSim CLI args per scenario, copied verbatim from the
+# $allScenarios definitions in run-benchmarks.ps1 (the -tagb value itself
+# is appended per-run below from Summary.TagbUsed, since it's scaled by
+# -DurationSeconds and can differ run to run even for the same scenario).
+$gcPerfSimArgs = @{
+    "gcperfsim-webserver"               = "-tc 4 -tlgb 0.5 -sohsr 200-3000 -sohsi 15 -at simple -c 300000"
+    "gcperfsim-cache"                   = "-tc 2 -tlgb 0.3 -lohar 100 -sohsr 500-4000 -sohsi 8 -lohsr 100000-300000 -lohsi 4 -at simple -c 300000"
+    "gcperfsim-churn"                   = "-tc 8 -tlgb 0.1 -lohar 0 -sohsr 200-600 -sohsi 200 -at simple -c 300000"
+    "gcperfsim-mt-throughput"           = "-tc 16 -tlgb 0.3 -sohsr 100-2000 -sohsi 50 -lohar 0 -at simple -c 0"
+    "gcperfsim-mt-throughput-moderate"  = "-tc 16 -tlgb 0.3 -sohsr 100-2000 -sohsi 50 -lohar 0 -at simple -c 1000"
+}
+
 $gcModeOrder = @("workstation", "server", "zerogc")
 $gcModeColor = @{ workstation = "#2b7de9"; server = "#8e44ad"; zerogc = "#e94f2b" }
 $gcModeLabel = @{ workstation = "Workstation GC"; server = "Server GC"; zerogc = "ZeroGC" }
@@ -245,6 +257,16 @@ foreach ($scenarioId in $scenarioOrder) {
     $isGrowingCache = $scenarioId -eq "growing-cache"
     $throughputLabel = if ($isGcPerfSim) { "Allocation throughput (MB/s)" } else { "Throughput (ops/sec)" }
 
+    # Show the exact GCPerfSim.exe command line used, so readers can see
+    # precisely what was measured without cross-referencing run-benchmarks.ps1.
+    $cmdLineHtml = ""
+    if ($isGcPerfSim -and $gcPerfSimArgs.ContainsKey($scenarioId)) {
+        $tagbUsed = $anyRun.Summary.TagbUsed
+        $tagbArg = if ($tagbUsed) { " -tagb $tagbUsed" } else { "" }
+        $fullCmd = "GCPerfSim.exe $($gcPerfSimArgs[$scenarioId])$tagbArg"
+        $cmdLineHtml = "<p class='cmdline'><code>$fullCmd</code></p>"
+    }
+
     $maxAlloc = ($byMode.Values | ForEach-Object { $_.Summary.TotalAllocatedBytes } | Measure-Object -Maximum).Maximum
     $maxCommitted = ($byMode.Values | ForEach-Object { $_.Summary.TotalCommittedBytes } | Where-Object { $_ } | Measure-Object -Maximum).Maximum
     $maxWs = ($byMode.Values | ForEach-Object { $_.Summary.WorkingSetBytes } | Where-Object { $_ } | Measure-Object -Maximum).Maximum
@@ -330,6 +352,7 @@ foreach ($scenarioId in $scenarioOrder) {
     $sections += @"
 <section>
   <h2>$scenarioName</h2>
+  $cmdLineHtml
   <table class="cmp">
     <thead><tr><th>Metric</th>$headerCells</tr></thead>
     <tbody>
@@ -402,6 +425,8 @@ $html = @"
   .legend .sw { display:inline-block; width:12px;height:12px;border-radius:3px;margin-right:0.4rem;vertical-align:middle; }
   .callout { background:#fff8e6; border:1px solid #f0d98c; border-radius:6px; padding:1rem 1.2rem; margin-bottom:1.5rem; }
   code { background:#f0f0f0; padding:0.1rem 0.35rem; border-radius:4px; }
+  .cmdline { margin: -0.3rem 0 0.8rem 0; }
+  .cmdline code { font-family: Consolas, "Courier New", monospace; font-size: 0.82rem; padding: 0.25rem 0.5rem; display: inline-block; word-break: break-all; }
   footer { color:#888; font-size:0.85rem; margin-top:2rem; }
   .chartsGrid { display:grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; margin-top: 0.8rem; }
   .chartCard { background:#fbfbfd; border:1px solid #eee; border-radius:8px; padding:0.6rem 0.7rem; }
