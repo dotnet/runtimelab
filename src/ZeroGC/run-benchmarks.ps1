@@ -27,11 +27,13 @@
 param(
     [int]$DurationSeconds = 600,
     [string]$OutDir = "$PSScriptRoot\results",
-    [string[]]$Scenarios = @("console", "webapi", "gcperfsim-webserver", "gcperfsim-cache", "gcperfsim-churn", "zeroalloc", "dotllm-serve", "growing-cache"),
+    [string[]]$Scenarios = @("console", "webapi", "gcperfsim-webserver", "gcperfsim-cache", "gcperfsim-churn", "zeroalloc", "dotllm-serve", "dotllm-serve-1_5b", "growing-cache"),
     [string[]]$GcModes = @("workstation", "server", "zerogc"),
     [int]$CounterRefreshIntervalSeconds = 1,
     [string]$DotLlmModelFile = "$env:USERPROFILE\.dotllm\models\QuantFactory\SmolLM-135M-GGUF\SmolLM-135M.Q4_K_M.gguf",
-    [int]$DotLlmPort = 8099
+    [int]$DotLlmPort = 8099,
+    [string]$DotLlmLargeModelFile = "$env:USERPROFILE\.dotllm\models\Qwen\Qwen2.5-1.5B-Instruct-GGUF\qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    [int]$DotLlmLargePort = 8100
 )
 
 $ErrorActionPreference = "Stop"
@@ -47,11 +49,12 @@ if (-not $dotnetCounters) {
 else { $dotnetCounters = $dotnetCounters.Source }
 
 # dotllm (https://github.com/kkokosa/dotLLM) is only required for the
-# "dotllm-serve" scenario - a real-world, (near-)zero-allocation LLM
-# inference server. Resolved lazily so the rest of the suite still runs on
-# machines that don't have it installed.
+# "dotllm-serve"/"dotllm-serve-1_5b" scenarios - real-world, (near-)zero-
+# allocation LLM inference servers at two different model sizes/context
+# lengths. Resolved lazily so the rest of the suite still runs on machines
+# that don't have it installed.
 $dotLlmExe = $null
-if ($Scenarios -contains "dotllm-serve") {
+if ($Scenarios -contains "dotllm-serve" -or $Scenarios -contains "dotllm-serve-1_5b") {
     $dotLlmCmd = Get-Command dotllm -ErrorAction SilentlyContinue
     if ($dotLlmCmd) { $dotLlmExe = $dotLlmCmd.Source }
     else {
@@ -59,10 +62,13 @@ if ($Scenarios -contains "dotllm-serve") {
         if (Test-Path $candidate) { $dotLlmExe = $candidate }
     }
     if (-not $dotLlmExe) {
-        throw "dotllm not found but 'dotllm-serve' scenario was requested. Install via: dotnet tool install -g DotLLM.Cli --prerelease"
+        throw "dotllm not found but a dotllm-serve* scenario was requested. Install via: dotnet tool install -g DotLLM.Cli --prerelease"
     }
-    if (-not (Test-Path $DotLlmModelFile)) {
+    if ($Scenarios -contains "dotllm-serve" -and -not (Test-Path $DotLlmModelFile)) {
         throw "dotLLM model file not found at '$DotLlmModelFile'. Pull it first: dotllm model pull QuantFactory/SmolLM-135M-GGUF --file SmolLM-135M.Q4_K_M.gguf"
+    }
+    if ($Scenarios -contains "dotllm-serve-1_5b" -and -not (Test-Path $DotLlmLargeModelFile)) {
+        throw "dotLLM 1.5B model file not found at '$DotLlmLargeModelFile'. Pull it first: dotllm model pull Qwen/Qwen2.5-1.5B-Instruct-GGUF --file qwen2.5-1.5b-instruct-q4_k_m.gguf"
     }
     # For GC-plugin loading (DOTNET_GCName=ZeroGC.dll), CoreCLR resolves the
     # plugin relative to the app's own directory - not the apphost.exe's
@@ -108,6 +114,15 @@ $allScenarios = @(
     # near-identically when there's nothing to collect.
     (New-Scenario "zeroalloc" "Console: near-zero-allocation numeric compute (matrix multiply)" "zeroalloc"),
     (New-Scenario "dotllm-serve" "dotLLM: zero-alloc-inference HTTP server (github.com/kkokosa/dotLLM)" "dotllm-serve"),
+    # A second, heavier dotLLM scenario: a real ~1GB quantized 1.5B-parameter
+    # model (Qwen2.5-1.5B-Instruct, Q4_K_M) fed a few-hundred-token prompt
+    # per request instead of a handful of words. Bigger weights (more model
+    # state resident during inference) and a much longer prefill exercise a
+    # meaningfully different allocation/compute profile than the tiny
+    # 135M/short-prompt scenario above, while still being a genuinely
+    # near-zero-managed-alloc inference workload (same NativeMemory-backed
+    # tensor path).
+    (New-Scenario "dotllm-serve-1_5b" "dotLLM: 1.5B model (~1GB, Q4_K_M), few-hundred-token context, zero-alloc-inference HTTP server" "dotllm-serve-large"),
     # A cache/session-store-style service that keeps accumulating long-lived
     # entries over its lifetime while handling ordinary "requests" that
     # allocate short-lived garbage - a very common real-world pattern (an
@@ -524,6 +539,43 @@ foreach ($scenarioId in $Scenarios) {
                 $env2 = @{} + $gcMode.Env
                 $svrRun = Invoke-MonitoredServerRun -ExePath $dotLlmExe -WorkingDirectory $root `
                     -Arguments "serve `"$DotLlmModelFile`" --port $DotLlmPort --no-browser --no-ui" `
+                    -ExtraEnv $env2 -RemoveEnvKeys $gcMode.RemoveEnv -CsvBasePath $csvBase `
+                    -ReadyUrl $baseUrl -RequestUrl $baseUrl -RequestBodyJson $reqBody -RunSeconds $DurationSeconds
+                $run = [pscustomobject]@{ Series = $svrRun.Series }
+                $summary = [ordered]@{
+                    OperationsTotal      = $svrRun.TotalOps
+                    OpsPerSecondOverall  = $(if ($DurationSeconds -gt 0) { $svrRun.TotalOps / $DurationSeconds } else { 0 })
+                    TotalAllocatedBytes  = $null
+                    Gen0Collections      = $null
+                    Gen1Collections      = $null
+                    Gen2Collections      = $null
+                    WorkingSetBytes      = $null
+                    PeakWorkingSetBytes  = $null
+                    HeapSizeBytes        = $null
+                    TotalCommittedBytes  = $null
+                    GcName               = $gcMode.DisplayName
+                }
+                $durationActual = $DurationSeconds
+            }
+            "dotllm-serve-large" {
+                # A few-hundred-token prompt (~300 tokens as tokenized by the
+                # model) about GC generations, followed by a short question -
+                # long enough prefill to meaningfully exercise the model's
+                # attention/KV-cache path over the tiny short-prompt scenario
+                # above, while still completing in well under a minute per
+                # request on CPU so a single benchmark run stays practical.
+                $longPrompt = @'
+You are a helpful assistant. Consider the following technical passage about garbage collection in modern managed runtimes, then answer the question at the end.
+
+Garbage collection (GC) is an automatic memory management technique used by many programming language runtimes, including the Common Language Runtime (CLR) that powers .NET. The core idea is to relieve developers from the burden of manually tracking and freeing memory. Instead, the runtime periodically identifies objects that are no longer reachable from any root reference - such as local variables, static fields, or CPU registers - and reclaims the memory they occupy. Generational garbage collectors, like the one used in CoreCLR, divide the managed heap into multiple generations based on object lifetime. Generation 0 contains newly allocated objects. Generation 1 acts as a buffer between short-lived and long-lived objects. Generation 2 holds long-lived objects. The Large Object Heap holds objects larger than 85,000 bytes. Because most objects die young, this generational hypothesis lets a collector focus most of its work on generation 0, dramatically reducing average pause times. However, generation 2 collections, which must trace the entire live object graph reachable from the root set, can still take a long time when the retained heap is large. This is why long-running services with big in-memory caches sometimes see occasional, but very noticeable, garbage collection pauses.
+
+Question: Summarize the tradeoff between generation 0 and generation 2 collections in one sentence.
+'@
+                $reqBody = (@{ model = "qwen2.5-1.5b-instruct-q4_k_m.gguf"; prompt = $longPrompt; max_tokens = 64 } | ConvertTo-Json -Compress)
+                $baseUrl = "http://localhost:$DotLlmLargePort/v1/completions"
+                $env2 = @{} + $gcMode.Env
+                $svrRun = Invoke-MonitoredServerRun -ExePath $dotLlmExe -WorkingDirectory $root `
+                    -Arguments "serve `"$DotLlmLargeModelFile`" --port $DotLlmLargePort --no-browser --no-ui" `
                     -ExtraEnv $env2 -RemoveEnvKeys $gcMode.RemoveEnv -CsvBasePath $csvBase `
                     -ReadyUrl $baseUrl -RequestUrl $baseUrl -RequestBodyJson $reqBody -RunSeconds $DurationSeconds
                 $run = [pscustomobject]@{ Series = $svrRun.Series }

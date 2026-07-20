@@ -78,7 +78,7 @@ src/ZeroGC/
     GCPerfSim/            Vendored dotnet/performance allocation-pattern simulator (unmodified)
     ZeroAllocApp/         Near-zero-allocation numeric compute (matrix multiply) benchmark app
     GrowingCacheApp/      Growing in-memory cache benchmark app that naturally escalates gen2 GC pauses
-  run-benchmarks.ps1       Orchestrates all 8 scenarios x 3 GC modes via dotnet-counters
+  run-benchmarks.ps1       Orchestrates all 9 scenarios x 3 GC modes via dotnet-counters
   generate-report.ps1      Renders results/results-full.json -> results/report.html
   results/
     results-full.json      Raw benchmark output (summary + percentiles + time series) from the last run
@@ -118,7 +118,7 @@ regular (Workstation/Server) GC.
 
 ## Sample apps and workloads
 
-Eight workloads are benchmarked, each once per GC configuration (Workstation,
+Nine workloads are benchmarked, each once per GC configuration (Workstation,
 Server, ZeroGC):
 
 - **ConsoleApp** — a tight allocation loop (allocates short strings/objects
@@ -197,6 +197,24 @@ Server, ZeroGC):
     request timestamps and merged in the same shape `dotnet-counters`
     produces, so it plugs into the existing stats/percentile pipeline
     unmodified.
+- **dotLLM serve, 1.5B model** (`dotllm-serve-1_5b` scenario) — the same
+  real-world dotLLM engine, but with a meaningfully heavier configuration:
+  a real ~1 GB quantized 1.5-billion-parameter model
+  ([`Qwen/Qwen2.5-1.5B-Instruct-GGUF`](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF),
+  `Q4_K_M`) instead of the ~100 MB 135M model, fed a few-hundred-token
+  prompt (a technical passage about GC generations, ~295 tokens as
+  tokenized by the model) instead of a handful of words. This exercises a
+  substantially larger resident model + a much longer prefill/attention
+  pass than the tiny short-prompt scenario, while remaining the same
+  near-zero-managed-alloc inference workload (`localhost:8100`, otherwise
+  identical harness plumbing to `dotllm-serve`).
+  - Setup: `dotllm model pull Qwen/Qwen2.5-1.5B-Instruct-GGUF --file qwen2.5-1.5b-instruct-q4_k_m.gguf`.
+  - On this machine, each request (prefill of ~295 prompt tokens + 64
+    generated tokens, CPU inference) takes on the order of tens of
+    milliseconds to ~20 seconds depending on whether dotLLM's prompt cache
+    can reuse KV-cache state from a previous identical prompt (enabled by
+    default) — see `results/report.html` for the exact measured throughput
+    and memory numbers across all 3 GC modes.
 - **GrowingCacheApp** (`samples/GrowingCacheApp/`, `growing-cache` scenario) — the
   opposite of the two zero-alloc scenarios above, but unlike an earlier
   version of this scenario, it never forces a collection: it models a
@@ -254,14 +272,15 @@ cd src\ZeroGC
 .\run-benchmarks.ps1 -DurationSeconds 600
 ```
 
-This runs all 8 workloads x 3 GC modes (Workstation, Server, ZeroGC) = 24
+This runs all 9 workloads x 3 GC modes (Workstation, Server, ZeroGC) = 27
 runs total, each for `-DurationSeconds` (default 600s/10 min for GCPerfSim
-scenarios; ConsoleApp/WebApi/ZeroAllocApp/dotllm-serve/growing-cache honor it
-as a wall-clock duration; GCPerfSim scenarios honor it by linearly scaling
-their calibrated `-tagb` allocation budget, so actual wall time is only
-approximately `-DurationSeconds`). The `dotllm-serve` scenario additionally
-requires the `dotllm` global tool and a pulled model — see above — and can
-be excluded via `-Scenarios` if unavailable.
+scenarios; ConsoleApp/WebApi/ZeroAllocApp/dotllm-serve/dotllm-serve-1_5b/
+growing-cache honor it as a wall-clock duration; GCPerfSim scenarios honor
+it by linearly scaling their calibrated `-tagb` allocation budget, so actual
+wall time is only approximately `-DurationSeconds`). The two `dotllm-serve*`
+scenarios additionally require the `dotllm` global tool and their
+respective pulled models — see above — and can be excluded via `-Scenarios`
+if unavailable.
 
 For every run, `dotnet-counters collect` attaches to the target process for
 the whole duration and captures a genuine second-by-second time series (GC
@@ -306,11 +325,11 @@ already equals the seconds of GC pause observed within that ~1s window, so
 `ms = seconds-in-that-window * 1000` directly — no extra instrumentation was
 needed to get an absolute-time view.
 
-**Highlights across all 8 workloads:**
+**Highlights across all 9 workloads:**
 
 - **Throughput/allocation-rate parity:** Workstation, Server, and ZeroGC are
   all within a few percent of each other on ops/sec (ConsoleApp/WebApi/
-  ZeroAllocApp/dotllm-serve/growing-cache) or MB/s allocation throughput
+  ZeroAllocApp/dotllm-serve/dotllm-serve-1_5b/growing-cache) or MB/s allocation throughput
   (GCPerfSim) for every scenario — none of these workloads are GC-bound
   enough at these allocation rates for GC pause time to dominate wall-clock
   time, and the GCPerfSim scenarios' `-c 300000` compute cost dominates
