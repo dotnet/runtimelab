@@ -1,3 +1,27 @@
+# ZeroGC: a standalone allocate-only CoreCLR GC experiment
+
+This branch contains **ZeroGC**, a standalone, allocate-only CoreCLR GC (via
+the `IGCHeap`/`clrgc.h` custom-GC plugin interface) that never collects or
+releases memory - only ever bump-allocates from a large reserved arena. It
+exists to answer a simple question: how much of a real application's
+performance profile is actually GC-bound, and what would it look like with
+GC overhead reduced to (as close as possible to) zero?
+
+- Source, build instructions, and design notes: [`src/ZeroGC/README.md`](src/ZeroGC/README.md)
+- Benchmark harness, sample apps (console, ASP.NET Core, GCPerfSim
+  scenarios, a zero-alloc dotLLM inference server, a naturally-growing
+  cache), and results: [`src/ZeroGC/`](src/ZeroGC/)
+- Rendered HTML benchmark report (ZeroGC vs. Workstation GC vs. Server GC,
+  eleven workloads, pause times/throughput/memory over time with
+  percentiles): [`docs/zerogc/report.html`](docs/zerogc/report.html)
+
+**ZeroGC is an experiment, not a production GC.** It has no compaction, no
+generational promotion, and a fixed upfront memory reservation - it exists
+purely to measure and illustrate GC-bound vs. non-GC-bound workload
+characteristics.
+
+---
+
 # .NET Runtime Lab
 
 This repo is for experimentation and exploring new ideas that may or may not make it into the main [dotnet/runtime](https://github.com/dotnet/runtime) repo. [Encouraging .NET Runtime Experiments](https://github.com/dotnet/runtime/issues/35609) describes reasons that motivated creating this repository.
