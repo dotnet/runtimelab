@@ -77,7 +77,7 @@ src/ZeroGC/
     WebApi/               Self-driving ASP.NET Core (Kestrel) benchmark app (8 concurrent workers)
     GCPerfSim/            Vendored dotnet/performance allocation-pattern simulator (unmodified)
     ZeroAllocApp/         Near-zero-allocation numeric compute (matrix multiply) benchmark app
-    Gen2StressApp/        Large-live-object-graph benchmark app triggering long blocking gen2 GCs
+    GrowingCacheApp/      Growing in-memory cache benchmark app that naturally escalates gen2 GC pauses
   run-benchmarks.ps1       Orchestrates all 8 scenarios x 3 GC modes via dotnet-counters
   generate-report.ps1      Renders results/results-full.json -> results/report.html
   results/
@@ -197,33 +197,40 @@ Server, ZeroGC):
     request timestamps and merged in the same shape `dotnet-counters`
     produces, so it plugs into the existing stats/percentile pipeline
     unmodified.
-- **Gen2StressApp** (`samples/Gen2StressApp/`, `gen2stress` scenario) — the
-  opposite of the two zero-alloc scenarios above: deliberately triggers
-  long, fully-**blocking** gen2 collections (hundreds of ms), which the
-  other scenarios in this suite don't exercise well since they're tuned to
-  keep run duration roughly comparable across GC modes. It builds a large,
-  never-released live object graph at startup (millions of small
-  interconnected objects in a `Dictionary`-backed cache, plus a set of LOH
-  byte-array chunks, ~500 MB total by default), disables background/
-  concurrent GC (`<ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>`
-  in the `.csproj`, so every gen2 collection is a plain stop-the-world pause
-  rather than mostly-concurrent), then in a steady-state loop keeps
-  allocating small transient garbage and, every 5 seconds, explicitly calls
-  `GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true)`
-  timed with a `Stopwatch`. Mark-phase cost scales with live object *count*
-  (not just live bytes), so a few million small live objects is what makes
-  the pause expensive, not raw heap size.
-  - On this machine: **Workstation GC** forced gen2 pauses average ~170 ms
-    (max ~420 ms); **Server GC** averages ~110 ms (max ~220 ms); **ZeroGC**'s
-    `GarbageCollect()` is a documented no-op (see `native/ZeroGCHeap.cpp`),
-    so the exact same forced-collection call returns in **microseconds**
-    regardless of how large the (never-reclaimed) live set is.
-  - The precise, Stopwatch-measured forced-pause durations are reported
-    directly in the `##RESULT##` JSON (`ForcedGen2PauseAvgMs`/`MaxMs`/
-    `MinMs`/`SamplesMs`) and shown as an extra comparison-table row and bar
-    chart specific to this scenario; they closely match the independently-
-    sampled `dotnet-counters` pause-time series used for the percentile
-    table and charts, cross-validating both measurement methods.
+- **GrowingCacheApp** (`samples/GrowingCacheApp/`, `growing-cache` scenario) — the
+  opposite of the two zero-alloc scenarios above, but unlike an earlier
+  version of this scenario, it never forces a collection: it models a
+  realistic, very common production pattern — a long-running service (a
+  session store, product-catalog cache, feature store, etc.) whose
+  in-memory cache keeps accumulating long-lived entries for its entire
+  lifetime, while concurrently handling ordinary "requests" that allocate
+  short-lived garbage. The long-lived `Dictionary`-backed cache grows
+  roughly linearly with elapsed time (not allocated up front), so gen2's
+  live-object count — and therefore mark-phase cost — grows with it. Every
+  gen2 collection observed in this scenario is triggered entirely by the
+  CLR's own allocation-budget/promotion heuristics; **the program never
+  calls `GC.Collect()`**. Gen2 activity is only *observed*, never induced,
+  via two purely-informational APIs sampled every ~50 ms: `GC.CollectionCount(2)`
+  (did a gen2 collection just happen?) and `GC.GetTotalPauseDuration()`
+  (.NET 5+'s cumulative GC pause-time counter) — the delta of the latter
+  whenever the former increments approximates that collection's duration,
+  with no side effects on the GC itself.
+  - On this machine, over a 10-minute run growing the cache to ~30.8M
+    entries (~4 GB): **Workstation GC** shows 11 naturally-triggered gen2
+    events averaging **~568 ms** (max **~2,349 ms**); **Server GC** shows 13
+    events averaging **~606 ms** (max **~2,176 ms**) — both starting in the
+    low milliseconds early in the run and climbing steadily as the cache
+    grows, entirely as a side effect of the workload's own allocation/
+    retention pattern (no forced collections anywhere). **ZeroGC** shows
+    exactly **0** gen2 events (its `GarbageCollect()` in
+    `native/ZeroGCHeap.cpp` is a documented no-op), so its pause time stays
+    at 0 ms for the entire run regardless of how large the cache gets.
+  - The observed pause samples are reported directly in the `##RESULT##`
+    JSON (`ObservedGen2Events`, `ObservedGen2PauseAvgMs`/`MaxMs`/`MinMs`/
+    `SamplesMs`, plus `FinalCacheEntryCount`) and shown as extra
+    comparison-table rows specific to this scenario, alongside the usual
+    independently-sampled `dotnet-counters` pause-time series used for the
+    percentile table and charts.
 
 Both hand-written sample apps have their own `global.json` + empty
 `Directory.Build.props`/`.targets` overrides (GCPerfSim and ZeroAllocApp
@@ -233,7 +240,7 @@ build files.
 To publish a sample manually:
 
 ```powershell
-cd src\ZeroGC\samples\ConsoleApp   # or WebApi, GCPerfSim, ZeroAllocApp, Gen2StressApp
+cd src\ZeroGC\samples\ConsoleApp   # or WebApi, GCPerfSim, ZeroAllocApp, GrowingCacheApp
 dotnet publish -c Release -r win-x64 --self-contained -o publish
 copy ..\..\native\ZeroGC.dll publish\
 ```
@@ -249,7 +256,7 @@ cd src\ZeroGC
 
 This runs all 8 workloads x 3 GC modes (Workstation, Server, ZeroGC) = 24
 runs total, each for `-DurationSeconds` (default 600s/10 min for GCPerfSim
-scenarios; ConsoleApp/WebApi/ZeroAllocApp/dotllm-serve/gen2stress honor it
+scenarios; ConsoleApp/WebApi/ZeroAllocApp/dotllm-serve/growing-cache honor it
 as a wall-clock duration; GCPerfSim scenarios honor it by linearly scaling
 their calibrated `-tagb` allocation budget, so actual wall time is only
 approximately `-DurationSeconds`). The `dotllm-serve` scenario additionally
@@ -303,7 +310,7 @@ needed to get an absolute-time view.
 
 - **Throughput/allocation-rate parity:** Workstation, Server, and ZeroGC are
   all within a few percent of each other on ops/sec (ConsoleApp/WebApi/
-  ZeroAllocApp/dotllm-serve/gen2stress) or MB/s allocation throughput
+  ZeroAllocApp/dotllm-serve/growing-cache) or MB/s allocation throughput
   (GCPerfSim) for every scenario — none of these workloads are GC-bound
   enough at these allocation rates for GC pause time to dominate wall-clock
   time, and the GCPerfSim scenarios' `-c 300000` compute cost dominates
@@ -313,14 +320,21 @@ needed to get an absolute-time view.
   (a few ms per second sampled) in the naturally-occurring scenarios, even
   in the most GC-active one (gcperfsim-cache), consistent with modern
   background/concurrent GC design.
-- **...but blocking gen2 GCs can and do take hundreds of ms:** the
-  `gen2stress` scenario shows what the other scenarios' background/
-  concurrent GC hides — a plain, fully-blocking gen2 collection over a
-  multi-million-object live graph. Workstation GC's forced collections
-  average **~170 ms** (max ~420 ms); Server GC averages **~110 ms** (max
-  ~220 ms); ZeroGC's identical forced-collection call returns in
-  **microseconds** every time, since `GarbageCollect()` is a no-op. This is
-  the sharpest, most direct pause-time contrast in the whole report.
+- **...but naturally-triggered gen2 GCs can and do take hundreds of ms —
+  and get worse over time:** the `growing-cache` scenario shows what the
+  other scenarios' background/concurrent GC hides. It never forces a
+  collection; it simply lets an ever-growing in-memory cache accumulate
+  long-lived entries (reaching ~30.8M entries / ~4 GB by the end of the
+  10-minute run) while handling ordinary request-like allocation churn,
+  and observes (via `GC.CollectionCount(2)`/`GC.GetTotalPauseDuration()`)
+  the gen2 collections the CLR's own heuristics decide to run — 11 of them
+  under Workstation GC, 13 under Server GC. On this machine, **Workstation
+  GC**'s naturally-triggered gen2 pauses average **~568 ms** (max
+  **~2,349 ms**) and **Server GC** averages **~606 ms** (max **~2,176 ms**),
+  starting in the low milliseconds early in the run and climbing steadily
+  as the cache grows. **ZeroGC** shows exactly **0** gen2 events and 0 ms
+  pause time for the entire run, since its `GarbageCollect()` is a no-op —
+  the cache just keeps growing unchecked instead.
 - **Memory footprint diverges sharply and predictably:** ZeroGC's working
   set, committed bytes, and GC heap size all grow monotonically and track
   total bytes allocated (e.g. in gcperfsim-cache, ZeroGC's working set grows
@@ -333,7 +347,7 @@ needed to get an absolute-time view.
   GC modes their throughput, working set, and collection counts are all
   within noise of each other — when there's (almost) nothing to collect, it
   genuinely doesn't matter whether the GC collects at all. This is the
-  intended counterpoint to the GC-heavy scenarios (including gen2stress).
+  intended counterpoint to the GC-heavy scenarios (including growing-cache).
 - **"Total allocated" needs a caveat:** ZeroGC reports a noticeably higher
   "Total allocated" figure than Workstation/Server for the same workload.
   This is expected, not a bug — see the report's inline callout: the real

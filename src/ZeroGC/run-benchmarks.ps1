@@ -27,7 +27,7 @@
 param(
     [int]$DurationSeconds = 600,
     [string]$OutDir = "$PSScriptRoot\results",
-    [string[]]$Scenarios = @("console", "webapi", "gcperfsim-webserver", "gcperfsim-cache", "gcperfsim-churn", "zeroalloc", "dotllm-serve", "gen2stress"),
+    [string[]]$Scenarios = @("console", "webapi", "gcperfsim-webserver", "gcperfsim-cache", "gcperfsim-churn", "zeroalloc", "dotllm-serve", "growing-cache"),
     [string[]]$GcModes = @("workstation", "server", "zerogc"),
     [int]$CounterRefreshIntervalSeconds = 1,
     [string]$DotLlmModelFile = "$env:USERPROFILE\.dotllm\models\QuantFactory\SmolLM-135M-GGUF\SmolLM-135M.Q4_K_M.gguf",
@@ -108,11 +108,16 @@ $allScenarios = @(
     # near-identically when there's nothing to collect.
     (New-Scenario "zeroalloc" "Console: near-zero-allocation numeric compute (matrix multiply)" "zeroalloc"),
     (New-Scenario "dotllm-serve" "dotLLM: zero-alloc-inference HTTP server (github.com/kkokosa/dotLLM)" "dotllm-serve"),
-    # A large, long-lived object graph + disabled concurrent GC so gen2
-    # collections are fully blocking, deliberately triggering multi-hundred-
-    # millisecond pauses under Workstation/Server GC (contrasted against
-    # ZeroGC's ~0ms no-op "collection").
-    (New-Scenario "gen2stress" "Console: long blocking gen2 GC stress (large live object graph)" "gen2stress" "500 5")
+    # A cache/session-store-style service that keeps accumulating long-lived
+    # entries over its lifetime while handling ordinary "requests" that
+    # allocate short-lived garbage - a very common real-world pattern (an
+    # ever-growing in-memory cache/session store). Every gen2 collection
+    # observed here is 100% naturally triggered by the CLR's own
+    # allocation-budget/promotion heuristics; this program never calls
+    # GC.Collect(). As the cache grows, gen2's live-object count grows with
+    # it, so pauses under Workstation/Server GC naturally get longer and
+    # longer over the run (ZeroGC, which never collects, stays at 0ms).
+    (New-Scenario "growing-cache" "Console: growing in-memory cache with real request workload (naturally escalating gen2 GCs)" "growingcache" "4000 512")
 )
 
 $gcModeDefs = @(
@@ -537,9 +542,9 @@ foreach ($scenarioId in $Scenarios) {
                 }
                 $durationActual = $DurationSeconds
             }
-            "gen2stress" {
-                $publishDir = Join-Path $root "samples\Gen2StressApp\publish"
-                $run = Invoke-MonitoredRun -ExePath (Join-Path $publishDir "Gen2StressApp.exe") -WorkingDirectory $publishDir `
+            "growingcache" {
+                $publishDir = Join-Path $root "samples\GrowingCacheApp\publish"
+                $run = Invoke-MonitoredRun -ExePath (Join-Path $publishDir "GrowingCacheApp.exe") -WorkingDirectory $publishDir `
                     -Arguments "$DurationSeconds $label $($scenario.Args)" -ExtraEnv $gcMode.Env -RemoveEnvKeys $gcMode.RemoveEnv -CsvBasePath $csvBase -AttachDelayMs 3000
                 $resultJson = Get-ResultLineJson $run.StdOut
                 if (-not $resultJson) { Write-Host $run.StdOut; Write-Host $run.StdErr; throw "No ##RESULT## for $label" }
@@ -555,12 +560,12 @@ foreach ($scenarioId in $Scenarios) {
                     HeapSizeBytes        = $resultJson.HeapSizeBytes
                     TotalCommittedBytes  = $resultJson.TotalCommittedBytes
                     GcName               = $resultJson.GcName
-                    ForcedGen2Collections = $resultJson.ForcedGen2Collections
-                    ForcedGen2PauseAvgMs  = $resultJson.ForcedGen2PauseAvgMs
-                    ForcedGen2PauseMaxMs  = $resultJson.ForcedGen2PauseMaxMs
-                    ForcedGen2PauseMinMs  = $resultJson.ForcedGen2PauseMinMs
-                    ForcedGen2PauseSamplesMs = $resultJson.ForcedGen2PauseSamplesMs
-                    RetainedObjectCount   = $resultJson.RetainedObjectCount
+                    FinalCacheEntryCount   = $resultJson.FinalCacheEntryCount
+                    ObservedGen2Events     = $resultJson.ObservedGen2Events
+                    ObservedGen2PauseAvgMs = $resultJson.ObservedGen2PauseAvgMs
+                    ObservedGen2PauseMaxMs = $resultJson.ObservedGen2PauseMaxMs
+                    ObservedGen2PauseMinMs = $resultJson.ObservedGen2PauseMinMs
+                    ObservedGen2PauseSamplesMs = $resultJson.ObservedGen2PauseSamplesMs
                 }
                 $durationActual = $resultJson.DurationSeconds
             }
