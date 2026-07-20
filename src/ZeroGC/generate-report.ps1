@@ -409,7 +409,7 @@ $html = @"
 </head>
 <body>
   <h1>ZeroGC vs. Workstation GC vs. Server GC</h1>
-  <p class="subtitle">Generated $genDate on this machine. Ten workloads (2 hand-written sample apps, 4 GCPerfSim scenarios, 2 zero-alloc scenarios, dotLLM inference, and a growing-cache scenario), each run once per GC configuration.</p>
+  <p class="subtitle">Generated $genDate on this machine. Eleven workloads (2 hand-written sample apps, 5 GCPerfSim scenarios, 2 zero-alloc scenarios, dotLLM inference, and a growing-cache scenario), each run once per GC configuration.</p>
 
   <div class="legend">
     <span><span class="sw" style="background:$($gcModeColor.workstation)"></span>Workstation GC (default, non-concurrent-by-default background GC)</span>

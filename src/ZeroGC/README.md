@@ -125,7 +125,7 @@ regular (Workstation/Server) GC.
 
 ## Sample apps and workloads
 
-Ten workloads are benchmarked, each once per GC configuration (Workstation,
+Eleven workloads are benchmarked, each once per GC configuration (Workstation,
 Server, ZeroGC):
 
 - **ConsoleApp** — a tight allocation loop (allocates short strings/objects
@@ -281,6 +281,34 @@ Server, ZeroGC):
     production-quality "never collect" GC still needs a scalable
     multi-context allocator to actually realize its "no pause, ever"
     advantage under high thread counts.
+- **gcperfsim-mt-throughput-moderate** (GCPerfSim, same as
+  `gcperfsim-mt-throughput` above but `-c 1000` instead of `-c 0`) — a less
+  artificial variant answering a follow-up question: does the GC-mode gap
+  seen at `-c 0` (zero compute between allocations — a fairly extreme,
+  synthetic condition) survive once *some* real compute is mixed in?
+  Measured directly against this ZeroGC build at a few `-c` values (`-tagb
+  45`, all else identical): `-c 0` gives Workstation ~3.5 GB/s, Server
+  ~10.6 GB/s, ZeroGC ~23.3 GB/s (a ~6.6x spread); `-c 1000` narrows that to
+  Workstation ~3.0 GB/s, Server ~4.7 GB/s, ZeroGC ~5.2 GB/s (~1.7x); by
+  `-c 5000` the three modes converge to within ~13% of each other (Server
+  and ZeroGC both edge out Workstation only slightly), and by `-c 20000`
+  the gap is down to ~6% — pure measurement noise — because compute now
+  dominates wall time almost completely. `-c 1000` was chosen as the
+  scenario's fixed parameter because it's the largest tested value that
+  still shows a clear, non-noise GC-mode difference: the allocator/GC
+  really is doing meaningfully different amounts of work per GC mode here,
+  it just isn't the *only* thing happening, unlike the `-c 0` extreme. See
+  `results/report.html` for the exact measured numbers from the harness run
+  (which can differ modestly, run to run, from the exploratory numbers
+  above). Takeaway for interpreting `gcperfsim-mt-throughput`'s MB/s
+  numbers more broadly: they are a **ceiling/headroom measurement, not a
+  business-code throughput predictor** — real request-handling code is
+  dominated by far more than raw allocation cost (I/O, serialization,
+  business logic, etc.), so the size of the GC-mode gap you'll actually see
+  depends entirely on how allocation-bound your specific workload is; the
+  nine other scenarios in this suite (all realistic, non-synthetic
+  workloads) show ~1-2% variance across GC modes precisely because they
+  aren't allocation-bound in this way.
   - On this machine, over a 10-minute run growing the cache to ~30.8M
     entries (~4 GB): **Workstation GC** shows 11 naturally-triggered gen2
     events averaging **~568 ms** (max **~2,349 ms**); **Server GC** shows 13

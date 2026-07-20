@@ -27,7 +27,7 @@
 param(
     [int]$DurationSeconds = 600,
     [string]$OutDir = "$PSScriptRoot\results",
-    [string[]]$Scenarios = @("console", "webapi", "gcperfsim-webserver", "gcperfsim-cache", "gcperfsim-churn", "zeroalloc", "dotllm-serve", "dotllm-serve-1_5b", "growing-cache", "gcperfsim-mt-throughput"),
+    [string[]]$Scenarios = @("console", "webapi", "gcperfsim-webserver", "gcperfsim-cache", "gcperfsim-churn", "zeroalloc", "dotllm-serve", "dotllm-serve-1_5b", "growing-cache", "gcperfsim-mt-throughput", "gcperfsim-mt-throughput-moderate"),
     [string[]]$GcModes = @("workstation", "server", "zerogc"),
     [int]$CounterRefreshIntervalSeconds = 1,
     [string]$DotLlmModelFile = "$env:USERPROFILE\.dotllm\models\QuantFactory\SmolLM-135M-GGUF\SmolLM-135M.Q4_K_M.gguf",
@@ -147,13 +147,27 @@ $allScenarios = @(
     # scenarios) rather than a full ~600s run, so it stays memory-safe for
     # ZeroGC (which retains 100% of everything ever allocated) while still
     # producing hundreds of gen0 and dozens of gen1/gen2 collections to
-    # measure. It also reveals a second, independent finding: ZeroGC's
-    # simple mutex/interlocked-bump allocator (see README) is NOT tuned for
-    # heavy multi-threaded contention, so despite doing zero GC work it runs
-    # roughly as slow as Workstation GC here - "never collecting" doesn't
-    # automatically mean "fastest" once allocator scalability matters.
+    # measure. With ZeroGC's lock-free per-thread arena allocator (see
+    # README), it is now the fastest of the three GC modes here - a
+    # zero-synchronization, zero-collection allocator wins decisively once
+    # allocation/collection cost dominates wall time.
     (New-Scenario "gcperfsim-mt-throughput" "GCPerfSim: 16-thread concurrent allocation throughput burst (GC-bound, no compute delay)" "gcperfsim" `
         "-tc 16 -tlgb 0.3 -sohsr 100-2000 -sohsi 50 -lohar 0 -at simple -c 0" 45.0)
+    # A more moderate, less artificial variant of the burst above: the same
+    # 16-thread allocation pattern, but with -c 1000 (a modest compute delay
+    # between allocations) instead of -c 0. Empirically (measured directly
+    # against this ZeroGC build), the GC-mode gap narrows but does not
+    # vanish as compute is added: -c 0 gives a ~6.6x spread between GC
+    # modes, -c 1000 narrows that to ~1.7x (Workstation ~3.0GB/s, Server
+    # ~4.7GB/s, ZeroGC ~5.2GB/s), and by -c 5000 the spread is down to noise
+    # level (~13%) as compute fully dominates wall time. This scenario picks
+    # -c 1000 as a "still clearly GC-bound but not a zero-compute extreme"
+    # middle ground, illustrating that the GC-mode differences seen in
+    # gcperfsim-mt-throughput are real but require allocation-dominated
+    # workloads to surface - most realistic request-handling code (see the
+    # other scenarios) dilutes them into noise.
+    (New-Scenario "gcperfsim-mt-throughput-moderate" "GCPerfSim: 16-thread concurrent allocation throughput burst (GC-bound, moderate compute delay)" "gcperfsim" `
+        "-tc 16 -tlgb 0.3 -sohsr 100-2000 -sohsi 50 -lohar 0 -at simple -c 1000" 45.0)
 )
 
 $gcModeDefs = @(
@@ -511,13 +525,14 @@ foreach ($scenarioId in $Scenarios) {
                 $publishDir = Join-Path $root "samples\GCPerfSim\publish"
                 $tagb = [Math]::Round($scenario.BaseTagbFor600s * ($DurationSeconds / 600.0), 3)
                 $fullArgs = "$($scenario.Args) -tagb $tagb"
-                # gcperfsim-mt-throughput is a short (single-digit-to-tens-of-
-                # seconds) GC-bound burst rather than a ~600s run like the
-                # other GCPerfSim scenarios, so the default 1500ms attach
-                # delay can eat too much of the run for dotnet-counters to
-                # capture any samples (especially under Server GC, the
-                # fastest mode here) - use a much smaller attach delay.
-                $attachDelayMs = if ($scenario.Id -eq "gcperfsim-mt-throughput") { 300 } else { 1500 }
+                # gcperfsim-mt-throughput (and its -moderate variant) are
+                # short (single-digit-to-tens-of-seconds) GC-bound bursts
+                # rather than ~600s runs like the other GCPerfSim scenarios,
+                # so the default 1500ms attach delay can eat too much of the
+                # run for dotnet-counters to capture any samples (especially
+                # under Server GC / ZeroGC, the fastest modes here) - use a
+                # much smaller attach delay.
+                $attachDelayMs = if ($scenario.Id -in @("gcperfsim-mt-throughput", "gcperfsim-mt-throughput-moderate")) { 300 } else { 1500 }
                 $run = Invoke-MonitoredRun -ExePath (Join-Path $publishDir "GCPerfSim.exe") -WorkingDirectory $publishDir `
                     -Arguments $fullArgs -ExtraEnv $gcMode.Env -RemoveEnvKeys $gcMode.RemoveEnv -CsvBasePath $csvBase -AttachDelayMs $attachDelayMs
                 $stats = Get-GcPerfSimStats $run.StdOut
