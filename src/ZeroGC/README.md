@@ -118,7 +118,7 @@ regular (Workstation/Server) GC.
 
 ## Sample apps and workloads
 
-Nine workloads are benchmarked, each once per GC configuration (Workstation,
+Ten workloads are benchmarked, each once per GC configuration (Workstation,
 Server, ZeroGC):
 
 - **ConsoleApp** — a tight allocation loop (allocates short strings/objects
@@ -233,6 +233,43 @@ Server, ZeroGC):
   (.NET 5+'s cumulative GC pause-time counter) — the delta of the latter
   whenever the former increments approximates that collection's duration,
   with no side effects on the GC itself.
+- **gcperfsim-mt-throughput** (GCPerfSim, `-tc 16 -tlgb 0.3 -sohsr 100-2000
+  -sohsi 50 -lohar 0 -at simple -c 0`) — the one scenario in this suite
+  deliberately designed to be GC-*bound* rather than compute-bound, to
+  answer the natural question the other nine leave open: if Workstation and
+  Server GC show no measurable throughput difference anywhere else, is that
+  because Server GC has no advantage, or because none of these workloads
+  stress the GC enough to reveal one? All three `gcperfsim-*` scenarios
+  above pass `-c 300000` (heavy compute between allocations), which makes
+  wall-clock time dominated by compute rather than allocation/collection —
+  this is *why* they show no Workstation-vs-Server gap. This scenario uses
+  `-c 0` (no compute delay at all) and 16 concurrently-allocating threads
+  (matched to this machine's 16 logical cores), so allocation/collection
+  cost dominates wall time instead. Because it runs at multi-GB/s
+  allocation rates, it is intentionally a short burst (bounded by `-tagb`,
+  same mechanism as the other GCPerfSim scenarios) rather than a full
+  ~600 s run — a `-tagb` large enough to sustain multiple minutes at these
+  rates would force ZeroGC (which retains 100% of everything ever
+  allocated) to hold hundreds of GB, well past what this machine's RAM can
+  safely absorb. Two findings fall out of this scenario that don't appear
+  anywhere else in the suite:
+  - **Server GC's multi-heap design shows a real, large throughput/pause
+    advantage under genuine GC pressure**: with enough concurrent
+    allocating threads and no compute to hide behind, Server GC's per-core
+    heaps and parallel GC threads clear the same allocation volume multiple
+    times faster than Workstation GC's single heap — see `results/report.html`
+    for the measured gap.
+  - **"Never collecting" isn't automatically "fastest"**: ZeroGC's
+    allocator is a simple mutex/interlocked-bump design (see "Design notes"
+    below) that was never built for heavy multi-threaded contention. Under
+    this scenario's 16-thread concurrent allocation pressure, that
+    single-point contention becomes the bottleneck — ZeroGC ends up roughly
+    as slow as (or slower than) Workstation GC here, despite doing zero GC
+    work, because Server GC's real advantage in this scenario is per-core
+    *allocation contexts*, not just "not pausing." This is a useful,
+    honest counter-example to the rest of the suite: a production-quality
+    "never collect" GC would still need a scalable multi-context allocator
+    to be competitive under high thread counts.
   - On this machine, over a 10-minute run growing the cache to ~30.8M
     entries (~4 GB): **Workstation GC** shows 11 naturally-triggered gen2
     events averaging **~568 ms** (max **~2,349 ms**); **Server GC** shows 13

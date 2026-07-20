@@ -27,7 +27,7 @@
 param(
     [int]$DurationSeconds = 600,
     [string]$OutDir = "$PSScriptRoot\results",
-    [string[]]$Scenarios = @("console", "webapi", "gcperfsim-webserver", "gcperfsim-cache", "gcperfsim-churn", "zeroalloc", "dotllm-serve", "dotllm-serve-1_5b", "growing-cache"),
+    [string[]]$Scenarios = @("console", "webapi", "gcperfsim-webserver", "gcperfsim-cache", "gcperfsim-churn", "zeroalloc", "dotllm-serve", "dotllm-serve-1_5b", "growing-cache", "gcperfsim-mt-throughput"),
     [string[]]$GcModes = @("workstation", "server", "zerogc"),
     [int]$CounterRefreshIntervalSeconds = 1,
     [string]$DotLlmModelFile = "$env:USERPROFILE\.dotllm\models\QuantFactory\SmolLM-135M-GGUF\SmolLM-135M.Q4_K_M.gguf",
@@ -132,7 +132,28 @@ $allScenarios = @(
     # GC.Collect(). As the cache grows, gen2's live-object count grows with
     # it, so pauses under Workstation/Server GC naturally get longer and
     # longer over the run (ZeroGC, which never collects, stays at 0ms).
-    (New-Scenario "growing-cache" "Console: growing in-memory cache with real request workload (naturally escalating gen2 GCs)" "growingcache" "4000 512")
+    (New-Scenario "growing-cache" "Console: growing in-memory cache with real request workload (naturally escalating gen2 GCs)" "growingcache" "4000 512"),
+    # A deliberately GC-bound "raw concurrent allocation throughput" burst:
+    # 16 threads (matched to this machine's 16 logical cores) allocating as
+    # fast as possible with NO compute delay between allocations (`-c 0`),
+    # unlike the other GCPerfSim scenarios above which all use `-c 300000`
+    # and are therefore compute-bound (allocation is a small fraction of
+    # wall time, which is why Workstation and Server GC show no measurable
+    # throughput gap in those scenarios). With `-c 0`, allocation/collection
+    # cost dominates wall time, exposing Server GC's per-core heaps/parallel
+    # GC threads: it clears ~30GB roughly 3-4x faster than Workstation GC's
+    # single heap. This scenario intentionally runs as a short, sub-30-second
+    # burst (scaled by BaseTagbFor600s, same as the other GCPerfSim
+    # scenarios) rather than a full ~600s run, so it stays memory-safe for
+    # ZeroGC (which retains 100% of everything ever allocated) while still
+    # producing hundreds of gen0 and dozens of gen1/gen2 collections to
+    # measure. It also reveals a second, independent finding: ZeroGC's
+    # simple mutex/interlocked-bump allocator (see README) is NOT tuned for
+    # heavy multi-threaded contention, so despite doing zero GC work it runs
+    # roughly as slow as Workstation GC here - "never collecting" doesn't
+    # automatically mean "fastest" once allocator scalability matters.
+    (New-Scenario "gcperfsim-mt-throughput" "GCPerfSim: 16-thread concurrent allocation throughput burst (GC-bound, no compute delay)" "gcperfsim" `
+        "-tc 16 -tlgb 0.3 -sohsr 100-2000 -sohsi 50 -lohar 0 -at simple -c 0" 45.0)
 )
 
 $gcModeDefs = @(
@@ -490,8 +511,15 @@ foreach ($scenarioId in $Scenarios) {
                 $publishDir = Join-Path $root "samples\GCPerfSim\publish"
                 $tagb = [Math]::Round($scenario.BaseTagbFor600s * ($DurationSeconds / 600.0), 3)
                 $fullArgs = "$($scenario.Args) -tagb $tagb"
+                # gcperfsim-mt-throughput is a short (single-digit-to-tens-of-
+                # seconds) GC-bound burst rather than a ~600s run like the
+                # other GCPerfSim scenarios, so the default 1500ms attach
+                # delay can eat too much of the run for dotnet-counters to
+                # capture any samples (especially under Server GC, the
+                # fastest mode here) - use a much smaller attach delay.
+                $attachDelayMs = if ($scenario.Id -eq "gcperfsim-mt-throughput") { 300 } else { 1500 }
                 $run = Invoke-MonitoredRun -ExePath (Join-Path $publishDir "GCPerfSim.exe") -WorkingDirectory $publishDir `
-                    -Arguments $fullArgs -ExtraEnv $gcMode.Env -RemoveEnvKeys $gcMode.RemoveEnv -CsvBasePath $csvBase
+                    -Arguments $fullArgs -ExtraEnv $gcMode.Env -RemoveEnvKeys $gcMode.RemoveEnv -CsvBasePath $csvBase -AttachDelayMs $attachDelayMs
                 $stats = Get-GcPerfSimStats $run.StdOut
                 $totalAlloc = $stats.SohAllocatedBytes + $stats.LohAllocatedBytes + $stats.PohAllocatedBytes
                 $summary = [ordered]@{

@@ -32,7 +32,7 @@
 </head>
 <body>
   <h1>ZeroGC vs. Workstation GC vs. Server GC</h1>
-  <p class="subtitle">Generated 2026-07-20 12:41:21 on this machine. Five workloads (2 hand-written sample apps + 3 GCPerfSim scenarios), each run once per GC configuration.</p>
+  <p class="subtitle">Generated 2026-07-20 13:13:56 on this machine. Five workloads (2 hand-written sample apps + 3 GCPerfSim scenarios), each run once per GC configuration.</p>
 
   <div class="legend">
     <span><span class="sw" style="background:#2b7de9"></span>Workstation GC (default, non-concurrent-by-default background GC)</span>
@@ -1090,6 +1090,121 @@
 <polyline points='54.0,29.2 59.5,29.1 64.9,29.0 70.4,28.9 75.9,28.8 81.3,28.8 86.8,28.7 92.3,28.7 97.7,28.6 103.2,28.5 108.7,28.5 114.1,28.5 119.6,28.4 125.1,28.3 130.5,28.3 136.0,28.3 141.5,28.2 146.9,28.2 152.4,28.1 157.9,28.1 163.3,28.0 168.8,28.0 174.3,28.0 179.7,27.9 185.2,27.9 190.7,27.8 196.1,27.8 201.6,27.7 207.1,27.7 212.5,27.5 218.0,27.5 223.5,27.4 228.9,27.4 234.4,27.4 239.9,27.3 245.3,27.3 250.8,27.3 256.3,27.2 261.7,27.2 267.2,27.1 272.7,27.1 278.1,27.1 283.6,27.0 289.1,27.0 294.5,27.0 300.0,26.9 305.5,26.9 310.9,26.9 316.4,26.8 321.9,26.8 327.3,26.7 332.8,26.7 338.3,26.7 343.7,26.6 349.2,26.6 354.7,26.5 360.1,26.5 365.6,26.4 371.1,26.4 376.5,26.4 382.0,26.2 387.5,26.1 392.9,26.1 398.4,26.0 403.9,26.0 409.3,25.9 414.8,25.9 420.3,25.8 425.7,25.8 431.2,25.8 436.7,25.7 442.1,25.7 447.6,25.7 453.1,25.6 458.5,25.6 464.0,25.6 469.5,25.5 474.9,25.5 480.4,25.5 485.9,25.4 491.3,25.4 496.8,25.4 502.3,25.3 507.7,25.3 513.2,25.2 518.7,25.2 524.1,25.1 529.6,25.1 535.1,25.1 540.5,25.0 546.0,25.0 551.5,25.0 556.9,24.9 562.4,24.9 567.9,24.8 573.3,24.8 578.8,24.8 584.3,24.7 589.7,24.7 595.2,24.6 600.7,24.6 606.1,24.6 611.6,24.5 617.1,24.5 622.5,24.4 628.0,24.4 633.5,24.4 638.9,24.3 644.4,24.3 649.9,24.2 655.3,24.2 660.8,24.1 666.3,24.1 671.7,24.1 677.2,24.0 682.7,24.0 688.1,23.9 693.6,23.9 699.1,23.9 704.5,23.8 710.0,23.8' fill='none' stroke='#e94f2b' stroke-width='2' opacity='0.9' />
 
   <text x='640' y='216' font-size='10' fill='#666'>time (s), 0-600</text>
+</svg>
+    </div>
+  </div>
+  <div class="legend small"><span><span class='sw' style='background:#2b7de9'></span>Workstation GC</span><span><span class='sw' style='background:#8e44ad'></span>Server GC</span><span><span class='sw' style='background:#e94f2b'></span>ZeroGC</span></div>
+</section><section>
+  <h2>GCPerfSim: 16-thread concurrent allocation throughput burst (GC-bound, no compute delay)</h2>
+  <table class="cmp">
+    <thead><tr><th>Metric</th><th>Workstation GC</th><td></td><th>Server GC</th><td></td><th>ZeroGC</th><td></td></tr></thead>
+    <tbody>
+<tr><td>Duration (s)</td><td>12.1</td><td></td><td>3.8</td><td></td><td>13.4</td><td></td></tr>
+<tr><td>Allocation throughput (MB/s)</td><td>3,799.39<div class='barTrack'><div class='barFill' style='width:31%;background:#2b7de9'></div></div></td><td></td><td>12,078.12<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>3,441.19<div class='barTrack'><div class='barFill' style='width:28%;background:#e94f2b'></div></div></td><td></td></tr>
+<tr><td>Total allocated</td><td>45.00 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>45.00 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>45.00 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
+<tr><td>Gen0 collections</td><td>3,217<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>1,058<div class='barTrack'><div class='barFill' style='width:33%;background:#8e44ad'></div></div></td><td></td><td>0<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
+<tr><td>Gen1 collections</td><td>2,317</td><td></td><td>257</td><td></td><td>0</td><td></td></tr>
+<tr><td>Gen2 collections</td><td>12</td><td></td><td>8</td><td></td><td>0</td><td></td></tr>
+<tr><td>GC heap size</td><td>713.49 MB</td><td></td><td>637.64 MB</td><td></td><td>46.81 GB</td><td></td></tr>
+<tr><td>Total committed bytes</td><td>1.01 GB<div class='barTrack'><div class='barFill' style='width:2%;background:#2b7de9'></div></div></td><td></td><td>1.01 GB<div class='barTrack'><div class='barFill' style='width:2%;background:#8e44ad'></div></div></td><td></td><td>45.35 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
+<tr><td>Peak working set</td><td>1.06 GB<div class='barTrack'><div class='barFill' style='width:2%;background:#2b7de9'></div></div></td><td></td><td>1.06 GB<div class='barTrack'><div class='barFill' style='width:2%;background:#8e44ad'></div></div></td><td></td><td>45.00 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
+
+    </tbody>
+  </table>
+
+  <h3>GC pause time / memory / throughput percentiles (over the full run)</h3>
+  <table class="cmp stats">
+    <thead><tr><th></th><th colspan='4'>Workstation GC</th><th colspan='4'>Server GC</th><th colspan='4'>ZeroGC</th></tr><tr><th>Metric</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th><th>avg</th><th>p50</th><th>p90</th><th>p99</th></tr></thead>
+    <tbody>
+      <tr><td>GC pause time (ms per ~1s sample)</td><td>519.13 ms</td><td>406.52 ms</td><td>681.90 ms</td><td>726.50 ms</td><td>568.49 ms</td><td>518.80 ms</td><td>618.18 ms</td><td>618.18 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td><td>0.00 ms</td></tr>
+      <tr><td>Working set (MB)</td><td>909</td><td>1,032</td><td>1,061</td><td>1,081</td><td>981</td><td>1,051</td><td>1,081</td><td>1,081</td><td>27,814</td><td>26,951</td><td>43,299</td><td>46,083</td></tr>
+      <tr><td>Throughput (MB/s)</td><td>3,804.8</td><td>3,799.1</td><td>4,593.0</td><td>5,051.8</td><td>12,220.3</td><td>11,790.5</td><td>12,650.1</td><td>12,650.1</td><td>3,550.6</td><td>3,612.3</td><td>4,065.0</td><td>4,091.7</td></tr>
+    </tbody>
+  </table>
+
+  <div class="chartsGrid">
+    <div class="chartCard">
+      <h4>GC pause time (ms) over time</h4>
+      <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
+  <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ms</text>
+<line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>196.2 ms</text>
+<line x1='54' y1='103' x2='710' y2='103' stroke='#eee' stroke-width='1'/><text x='2' y='106' font-size='9' fill='#888'>392.3 ms</text>
+<line x1='54' y1='56.5' x2='710' y2='56.5' stroke='#eee' stroke-width='1'/><text x='2' y='59.5' font-size='9' fill='#888'>588.5 ms</text>
+<line x1='54' y1='10' x2='710' y2='10' stroke='#eee' stroke-width='1'/><text x='2' y='13' font-size='9' fill='#888'>784.6 ms</text>
+
+  <line x1='54' y1='10' x2='54' y2='196' stroke='#ccc' stroke-width='1'/>
+  <line x1='54' y1='196' x2='710' y2='196' stroke='#ccc' stroke-width='1'/>
+  <polyline points='113.6,102.0 173.3,101.8 232.9,105.3 292.5,99.6 352.2,102.1 411.8,54.2 471.5,23.8 531.1,34.4 590.7,45.8 650.4,60.4' fill='none' stroke='#2b7de9' stroke-width='2' opacity='0.9' />
+<polyline points='113.6,73.0 173.3,49.5' fill='none' stroke='#8e44ad' stroke-width='2' opacity='0.9' />
+<polyline points='113.6,196.0 173.3,196.0 232.9,196.0 292.5,196.0 352.2,196.0 411.8,196.0 471.5,196.0 531.1,196.0 590.7,196.0 650.4,196.0 710.0,196.0' fill='none' stroke='#e94f2b' stroke-width='2' opacity='0.9' />
+
+  <text x='640' y='216' font-size='10' fill='#666'>time (s), 0-11</text>
+</svg>
+    </div>
+    <div class="chartCard">
+      <h4>Throughput (MB/s) over time</h4>
+      <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
+  <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB/s</text>
+<line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>3,415.5 MB/s</text>
+<line x1='54' y1='103' x2='710' y2='103' stroke='#eee' stroke-width='1'/><text x='2' y='106' font-size='9' fill='#888'>6,831.0 MB/s</text>
+<line x1='54' y1='56.5' x2='710' y2='56.5' stroke='#eee' stroke-width='1'/><text x='2' y='59.5' font-size='9' fill='#888'>10,246.6 MB/s</text>
+<line x1='54' y1='10' x2='710' y2='10' stroke='#eee' stroke-width='1'/><text x='2' y='13' font-size='9' fill='#888'>13,662.1 MB/s</text>
+
+  <line x1='54' y1='10' x2='54' y2='196' stroke='#ccc' stroke-width='1'/>
+  <line x1='54' y1='196' x2='710' y2='196' stroke='#ccc' stroke-width='1'/>
+  <polyline points='113.6,127.2 173.3,133.5 232.9,138.2 292.5,134.5 352.2,135.9 411.8,154.5 471.5,163.5 531.1,158.8 590.7,151.5 650.4,144.3' fill='none' stroke='#2b7de9' stroke-width='2' opacity='0.9' />
+<polyline points='113.6,23.8 173.3,35.5' fill='none' stroke='#8e44ad' stroke-width='2' opacity='0.9' />
+<polyline points='113.6,140.7 173.3,142.8 232.9,141.7 292.5,140.3 352.2,143.2 411.8,146.8 471.5,151.0 531.1,150.0 590.7,150.5 650.4,159.2 710.0,158.1' fill='none' stroke='#e94f2b' stroke-width='2' opacity='0.9' />
+
+  <text x='640' y='216' font-size='10' fill='#666'>time (s), 0-11</text>
+</svg>
+    </div>
+    <div class="chartCard">
+      <h4>GC pause time (ms) percentiles (avg / p50 / p90 / p99 / max, full run)</h4>
+      <svg viewBox='0 0 720 260' width='100%' height='260' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
+  <line x1='54' y1='230' x2='710' y2='230' stroke='#eee' stroke-width='1'/><text x='2' y='233' font-size='9' fill='#888'>0.00 ms</text>
+<line x1='54' y1='175' x2='710' y2='175' stroke='#eee' stroke-width='1'/><text x='2' y='178' font-size='9' fill='#888'>208.87 ms</text>
+<line x1='54' y1='120' x2='710' y2='120' stroke='#eee' stroke-width='1'/><text x='2' y='123' font-size='9' fill='#888'>417.74 ms</text>
+<line x1='54' y1='65' x2='710' y2='65' stroke='#eee' stroke-width='1'/><text x='2' y='68' font-size='9' fill='#888'>626.61 ms</text>
+<line x1='54' y1='10' x2='710' y2='10' stroke='#eee' stroke-width='1'/><text x='2' y='13' font-size='9' fill='#888'>835.48 ms</text>
+
+  <line x1='54' y1='10' x2='54' y2='230' stroke='#ccc' stroke-width='1'/>
+  <line x1='54' y1='230' x2='710' y2='230' stroke='#ccc' stroke-width='1'/>
+  <rect x='58' y='93.3' width='38' height='136.7' fill='#2b7de9' opacity='0.9'><title>Workstation GC Avg: 519.130 ms</title></rect>
+<rect x='100' y='80.3' width='38' height='149.7' fill='#8e44ad' opacity='0.9'><title>Server GC Avg: 568.488 ms</title></rect>
+<rect x='142' y='230' width='38' height='0' fill='#e94f2b' opacity='0.9'><title>ZeroGC Avg: 0.000 ms</title></rect>
+<rect x='189.2' y='123' width='38' height='107' fill='#2b7de9' opacity='0.9'><title>Workstation GC P50: 406.521 ms</title></rect>
+<rect x='231.2' y='93.4' width='38' height='136.6' fill='#8e44ad' opacity='0.9'><title>Server GC P50: 518.800 ms</title></rect>
+<rect x='273.2' y='230' width='38' height='0' fill='#e94f2b' opacity='0.9'><title>ZeroGC P50: 0.000 ms</title></rect>
+<rect x='320.4' y='50.4' width='38' height='179.6' fill='#2b7de9' opacity='0.9'><title>Workstation GC P90: 681.898 ms</title></rect>
+<rect x='362.4' y='67.2' width='38' height='162.8' fill='#8e44ad' opacity='0.9'><title>Server GC P90: 618.175 ms</title></rect>
+<rect x='404.4' y='230' width='38' height='0' fill='#e94f2b' opacity='0.9'><title>ZeroGC P90: 0.000 ms</title></rect>
+<rect x='451.6' y='38.7' width='38' height='191.3' fill='#2b7de9' opacity='0.9'><title>Workstation GC P99: 726.502 ms</title></rect>
+<rect x='493.6' y='67.2' width='38' height='162.8' fill='#8e44ad' opacity='0.9'><title>Server GC P99: 618.175 ms</title></rect>
+<rect x='535.6' y='230' width='38' height='0' fill='#e94f2b' opacity='0.9'><title>ZeroGC P99: 0.000 ms</title></rect>
+<rect x='582.8' y='38.7' width='38' height='191.3' fill='#2b7de9' opacity='0.9'><title>Workstation GC Max: 726.502 ms</title></rect>
+<rect x='624.8' y='67.2' width='38' height='162.8' fill='#8e44ad' opacity='0.9'><title>Server GC Max: 618.175 ms</title></rect>
+<rect x='666.8' y='230' width='38' height='0' fill='#e94f2b' opacity='0.9'><title>ZeroGC Max: 0.000 ms</title></rect>
+
+  <text x='119.6' y='252' font-size='10' fill='#666' text-anchor='middle'>Avg</text><text x='250.8' y='252' font-size='10' fill='#666' text-anchor='middle'>P50</text><text x='382' y='252' font-size='10' fill='#666' text-anchor='middle'>P90</text><text x='513.2' y='252' font-size='10' fill='#666' text-anchor='middle'>P99</text><text x='644.4' y='252' font-size='10' fill='#666' text-anchor='middle'>Max</text>
+</svg>
+    </div>
+    <div class="chartCard">
+      <h4>Working set (MB) over time</h4>
+      <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
+  <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB</text>
+<line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>12,442.4 MB</text>
+<line x1='54' y1='103' x2='710' y2='103' stroke='#eee' stroke-width='1'/><text x='2' y='106' font-size='9' fill='#888'>24,884.9 MB</text>
+<line x1='54' y1='56.5' x2='710' y2='56.5' stroke='#eee' stroke-width='1'/><text x='2' y='59.5' font-size='9' fill='#888'>37,327.3 MB</text>
+<line x1='54' y1='10' x2='710' y2='10' stroke='#eee' stroke-width='1'/><text x='2' y='13' font-size='9' fill='#888'>49,769.7 MB</text>
+
+  <line x1='54' y1='10' x2='54' y2='196' stroke='#ccc' stroke-width='1'/>
+  <line x1='54' y1='196' x2='710' y2='196' stroke='#ccc' stroke-width='1'/>
+  <polyline points='54.0,194.0 113.6,193.6 173.3,193.2 232.9,192.8 292.5,192.4 352.2,192.0 411.8,192.0 471.5,192.1 531.1,192.1 590.7,192.1 650.4,192.1' fill='none' stroke='#2b7de9' stroke-width='2' opacity='0.9' />
+<polyline points='54.0,193.0 113.6,192.1 173.3,192.0' fill='none' stroke='#8e44ad' stroke-width='2' opacity='0.9' />
+<polyline points='54.0,169.7 113.6,154.6 173.3,140.0 232.9,125.1 292.5,109.8 352.2,95.3 411.8,81.8 471.5,69.4 531.1,56.8 590.7,44.3 650.4,34.2 710.0,23.8' fill='none' stroke='#e94f2b' stroke-width='2' opacity='0.9' />
+
+  <text x='640' y='216' font-size='10' fill='#666'>time (s), 0-11</text>
 </svg>
     </div>
   </div>
