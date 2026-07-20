@@ -109,6 +109,29 @@ function New-LineChartSvg {
 # Renders an inline, self-contained SVG grouped bar chart comparing
 # Avg/P50/P90/P99/Max GC pause time (in % or ms) across GC modes.
 # $StatsByMode is a hashtable: gcModeId -> stats object (Avg/P50/P90/P99/Max/...).
+# Some scenarios (e.g. gcperfsim-mt-throughput, which is intentionally a
+# sub-2-second burst for the fastest GC mode) finish so quickly that
+# dotnet-counters - limited to a minimum 1-second --refresh-interval -
+# never gets two consecutive ticks to compute a rate-based reading (working
+# set is a point-in-time gauge and can still show 1 sample; pause time /
+# alloc rate / ops-per-sec are all rate counters that need a delta between
+# two ticks and so can end up with 0 points). When that happens the line
+# for that GC mode is simply missing from the chart below - this note
+# calls that out explicitly instead of leaving it unexplained.
+function Get-SparseSeriesNote($SeriesByMode, [int]$MinPoints = 2) {
+    $sparse = @()
+    foreach ($modeId in $gcModeOrder) {
+        if ($SeriesByMode.ContainsKey($modeId)) {
+            $count = @($SeriesByMode[$modeId]).Count
+            if ($count -lt $MinPoints) {
+                $sparse += "$($gcModeLabel[$modeId]) ($count sample$(if ($count -ne 1) { 's' } else { '' }))"
+            }
+        }
+    }
+    if ($sparse.Count -eq 0) { return "" }
+    return "<p class='sparseNote'>No line shown for: $($sparse -join ', ') - its run finished in well under ~2 seconds, faster than dotnet-counters' minimum 1-second refresh interval can capture a rate-based reading. See the percentile/summary tables above for its measured value instead.</p>"
+}
+
 function New-PauseStatsBarChartSvg {
     param(
         [hashtable]$StatsByMode,
@@ -296,6 +319,9 @@ foreach ($scenarioId in $scenarioOrder) {
     $wsChart = New-LineChartSvg -SeriesByMode $wsSeries -YSuffix " MB"
     $throughputChart = New-LineChartSvg -SeriesByMode $throughputSeries -YSuffix " $throughputUnit"
     $pauseMsBarChart = New-PauseStatsBarChartSvg -StatsByMode $pauseMsStatsByMode -YSuffix " ms" -Decimals 2
+    $pauseMsSparseNote = Get-SparseSeriesNote $pauseMsSeries
+    $wsSparseNote = Get-SparseSeriesNote $wsSeries
+    $throughputSparseNote = Get-SparseSeriesNote $throughputSeries
 
     $legendHtml = ($gcModeOrder | ForEach-Object {
         "<span><span class='sw' style='background:$($gcModeColor[$_])'></span>$($gcModeLabel[$_])</span>"
@@ -324,10 +350,12 @@ $rowsHtml
   <div class="chartsGrid">
     <div class="chartCard">
       <h4>GC pause time (ms) over time</h4>
+      $pauseMsSparseNote
       $pauseMsChart
     </div>
     <div class="chartCard">
       <h4>Throughput ($throughputUnit) over time</h4>
+      $throughputSparseNote
       $throughputChart
     </div>
     <div class="chartCard">
@@ -336,6 +364,7 @@ $rowsHtml
     </div>
     <div class="chartCard">
       <h4>Working set (MB) over time</h4>
+      $wsSparseNote
       $wsChart
     </div>
   </div>
@@ -374,12 +403,13 @@ $html = @"
   footer { color:#888; font-size:0.85rem; margin-top:2rem; }
   .chartsGrid { display:grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; margin-top: 0.8rem; }
   .chartCard { background:#fbfbfd; border:1px solid #eee; border-radius:8px; padding:0.6rem 0.7rem; }
+  .sparseNote { font-size: 0.78rem; color: #a05a00; background:#fff8e6; border:1px solid #f0d98c; border-radius:5px; padding:0.35rem 0.55rem; margin:0.3rem 0 0.4rem 0; }
   @media (max-width: 900px) { .chartsGrid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
   <h1>ZeroGC vs. Workstation GC vs. Server GC</h1>
-  <p class="subtitle">Generated $genDate on this machine. Five workloads (2 hand-written sample apps + 3 GCPerfSim scenarios), each run once per GC configuration.</p>
+  <p class="subtitle">Generated $genDate on this machine. Ten workloads (2 hand-written sample apps, 4 GCPerfSim scenarios, 2 zero-alloc scenarios, dotLLM inference, and a growing-cache scenario), each run once per GC configuration.</p>
 
   <div class="legend">
     <span><span class="sw" style="background:$($gcModeColor.workstation)"></span>Workstation GC (default, non-concurrent-by-default background GC)</span>

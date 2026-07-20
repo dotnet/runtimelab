@@ -27,12 +27,13 @@
   footer { color:#888; font-size:0.85rem; margin-top:2rem; }
   .chartsGrid { display:grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; margin-top: 0.8rem; }
   .chartCard { background:#fbfbfd; border:1px solid #eee; border-radius:8px; padding:0.6rem 0.7rem; }
+  .sparseNote { font-size: 0.78rem; color: #a05a00; background:#fff8e6; border:1px solid #f0d98c; border-radius:5px; padding:0.35rem 0.55rem; margin:0.3rem 0 0.4rem 0; }
   @media (max-width: 900px) { .chartsGrid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
   <h1>ZeroGC vs. Workstation GC vs. Server GC</h1>
-  <p class="subtitle">Generated 2026-07-20 13:35:23 on this machine. Five workloads (2 hand-written sample apps + 3 GCPerfSim scenarios), each run once per GC configuration.</p>
+  <p class="subtitle">Generated 2026-07-20 13:45:55 on this machine. Ten workloads (2 hand-written sample apps, 4 GCPerfSim scenarios, 2 zero-alloc scenarios, dotLLM inference, and a growing-cache scenario), each run once per GC configuration.</p>
 
   <div class="legend">
     <span><span class="sw" style="background:#2b7de9"></span>Workstation GC (default, non-concurrent-by-default background GC)</span>
@@ -86,6 +87,7 @@
   <div class="chartsGrid">
     <div class="chartCard">
       <h4>GC pause time (ms) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ms</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>0.3 ms</text>
@@ -104,6 +106,7 @@
     </div>
     <div class="chartCard">
       <h4>Throughput (ops/sec) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ops/sec</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>4,387.5 ops/sec</text>
@@ -152,6 +155,7 @@
     </div>
     <div class="chartCard">
       <h4>Working set (MB) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>382.7 MB</text>
@@ -201,6 +205,7 @@
   <div class="chartsGrid">
     <div class="chartCard">
       <h4>GC pause time (ms) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ms</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>1.1 ms</text>
@@ -219,6 +224,7 @@
     </div>
     <div class="chartCard">
       <h4>Throughput (ops/sec) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ops/sec</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>142.6 ops/sec</text>
@@ -267,6 +273,7 @@
     </div>
     <div class="chartCard">
       <h4>Working set (MB) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>743.2 MB</text>
@@ -316,6 +323,7 @@
   <div class="chartsGrid">
     <div class="chartCard">
       <h4>GC pause time (ms) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ms</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>11.9 ms</text>
@@ -334,6 +342,7 @@
     </div>
     <div class="chartCard">
       <h4>Throughput (MB/s) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB/s</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>5.7 MB/s</text>
@@ -382,6 +391,7 @@
     </div>
     <div class="chartCard">
       <h4>Working set (MB) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>2,170.5 MB</text>
@@ -431,6 +441,7 @@
   <div class="chartsGrid">
     <div class="chartCard">
       <h4>GC pause time (ms) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ms</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>4.6 ms</text>
@@ -449,6 +460,7 @@
     </div>
     <div class="chartCard">
       <h4>Throughput (MB/s) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB/s</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>4.8 MB/s</text>
@@ -497,6 +509,7 @@
     </div>
     <div class="chartCard">
       <h4>Working set (MB) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>1,512.5 MB</text>
@@ -546,6 +559,7 @@
   <div class="chartsGrid">
     <div class="chartCard">
       <h4>GC pause time (ms) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ms</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>1.0 ms</text>
@@ -564,6 +578,7 @@
     </div>
     <div class="chartCard">
       <h4>Throughput (MB/s) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB/s</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>4.2 MB/s</text>
@@ -612,6 +627,7 @@
     </div>
     <div class="chartCard">
       <h4>Working set (MB) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>1,018.8 MB</text>
@@ -661,6 +677,7 @@
   <div class="chartsGrid">
     <div class="chartCard">
       <h4>GC pause time (ms) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ms</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>0.1 ms</text>
@@ -679,6 +696,7 @@
     </div>
     <div class="chartCard">
       <h4>Throughput (ops/sec) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ops/sec</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>389.1 ops/sec</text>
@@ -727,6 +745,7 @@
     </div>
     <div class="chartCard">
       <h4>Working set (MB) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>18.7 MB</text>
@@ -776,6 +795,7 @@
   <div class="chartsGrid">
     <div class="chartCard">
       <h4>GC pause time (ms) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ms</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>1.1 ms</text>
@@ -794,6 +814,7 @@
     </div>
     <div class="chartCard">
       <h4>Throughput (ops/sec) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ops/sec</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>1.9 ops/sec</text>
@@ -842,6 +863,7 @@
     </div>
     <div class="chartCard">
       <h4>Working set (MB) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>181.1 MB</text>
@@ -895,6 +917,7 @@
   <div class="chartsGrid">
     <div class="chartCard">
       <h4>GC pause time (ms) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ms</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>133.0 ms</text>
@@ -913,6 +936,7 @@
     </div>
     <div class="chartCard">
       <h4>Throughput (ops/sec) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ops/sec</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>19.7 ops/sec</text>
@@ -961,6 +985,7 @@
     </div>
     <div class="chartCard">
       <h4>Working set (MB) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>2,121.5 MB</text>
@@ -1010,6 +1035,7 @@
   <div class="chartsGrid">
     <div class="chartCard">
       <h4>GC pause time (ms) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ms</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>0.5 ms</text>
@@ -1028,6 +1054,7 @@
     </div>
     <div class="chartCard">
       <h4>Throughput (ops/sec) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ops/sec</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>0.3 ops/sec</text>
@@ -1076,6 +1103,7 @@
     </div>
     <div class="chartCard">
       <h4>Working set (MB) over time</h4>
+      
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>670.1 MB</text>
@@ -1125,6 +1153,7 @@
   <div class="chartsGrid">
     <div class="chartCard">
       <h4>GC pause time (ms) over time</h4>
+      <p class='sparseNote'>No line shown for: ZeroGC (0 samples) - its run finished in well under ~2 seconds, faster than dotnet-counters' minimum 1-second refresh interval can capture a rate-based reading. See the percentile/summary tables above for its measured value instead.</p>
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 ms</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>196.0 ms</text>
@@ -1142,6 +1171,7 @@
     </div>
     <div class="chartCard">
       <h4>Throughput (MB/s) over time</h4>
+      <p class='sparseNote'>No line shown for: ZeroGC (1 sample) - its run finished in well under ~2 seconds, faster than dotnet-counters' minimum 1-second refresh interval can capture a rate-based reading. See the percentile/summary tables above for its measured value instead.</p>
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB/s</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>3,622.0 MB/s</text>
@@ -1189,6 +1219,7 @@
     </div>
     <div class="chartCard">
       <h4>Working set (MB) over time</h4>
+      <p class='sparseNote'>No line shown for: ZeroGC (1 sample) - its run finished in well under ~2 seconds, faster than dotnet-counters' minimum 1-second refresh interval can capture a rate-based reading. See the percentile/summary tables above for its measured value instead.</p>
       <svg viewBox='0 0 720 220' width='100%' height='220' xmlns='http://www.w3.org/2000/svg' style='background:#fbfbfd;border-radius:6px;'>
   <line x1='54' y1='196' x2='710' y2='196' stroke='#eee' stroke-width='1'/><text x='2' y='199' font-size='9' fill='#888'>0.0 MB</text>
 <line x1='54' y1='149.5' x2='710' y2='149.5' stroke='#eee' stroke-width='1'/><text x='2' y='152.5' font-size='9' fill='#888'>12,743.1 MB</text>
