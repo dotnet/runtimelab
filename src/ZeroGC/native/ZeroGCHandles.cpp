@@ -14,13 +14,19 @@
 // ---------------------------------------------------------------------------
 ZeroGCHandleStore::ZeroGCHandleStore()
 {
-    InitializeCriticalSection(&m_lock);
 }
 
 ZeroGCHandleStore::~ZeroGCHandleStore()
 {
-    DeleteCriticalSection(&m_lock);
 }
+
+// Out-of-class definition required for a static thread_local data member.
+// Intentionally shared across all ZeroGCHandleStore instances (there is
+// normally only one, the global store; any additional per-collectible-
+// assembly stores created via CreateHandleStore() are rare and sharing one
+// pool of recycled Slot structs per OS thread across them is harmless -
+// Slots carry no store-specific state).
+thread_local ZeroGCHandleStore::Slot* ZeroGCHandleStore::t_freeList = nullptr;
 
 void ZeroGCHandleStore::Uproot() { }
 
@@ -33,20 +39,17 @@ bool ZeroGCHandleStore::ContainsHandle(OBJECTHANDLE handle)
 
 OBJECTHANDLE ZeroGCHandleStore::AllocSlot(Object* value, HandleType type)
 {
-    EnterCriticalSection(&m_lock);
-
-    Slot* slot;
-    if (m_freeList != nullptr)
+    // Pop from this thread's own free list - plain pointer manipulation,
+    // no atomics, no lock: no other thread ever touches t_freeList.
+    Slot* slot = t_freeList;
+    if (slot != nullptr)
     {
-        slot = m_freeList;
-        m_freeList = slot->NextFree;
+        t_freeList = slot->NextFree;
     }
     else
     {
         slot = new (nothrow) Slot();
     }
-
-    LeaveCriticalSection(&m_lock);
 
     if (slot == nullptr)
         return nullptr;
@@ -83,10 +86,11 @@ void ZeroGCHandleStore::FreeSlot(OBJECTHANDLE handle)
     slot->Value = nullptr;
     slot->Secondary = nullptr;
 
-    EnterCriticalSection(&m_lock);
-    slot->NextFree = m_freeList;
-    m_freeList = slot;
-    LeaveCriticalSection(&m_lock);
+    // Push onto *this* (freeing) thread's own free list - may differ from
+    // the thread that originally allocated the slot, which is fine: it is
+    // still recycled, just potentially by a different thread next time.
+    slot->NextFree = t_freeList;
+    t_freeList = slot;
 
     InterlockedDecrement64(&g_zeroGCCounters.LiveHandleCount);
 }

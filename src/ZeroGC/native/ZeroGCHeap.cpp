@@ -166,8 +166,39 @@ HRESULT ZeroGCHeap::Initialize()
     wbParams.card_bundle_table = (uint32_t*)cardBundleBiased;
     wbParams.lowest_address = m_arenaBase;
     wbParams.highest_address = m_arenaReservedEnd;
-    wbParams.ephemeral_low = (uint8_t*)1;   // "everything is ephemeral" -> avoids upper-bound checks
-    wbParams.ephemeral_high = (uint8_t*)~(uintptr_t)0;
+    // Set the "ephemeral" range to an EMPTY range that sits just past the top
+    // of our whole arena reservation, rather than "everything" (the previous
+    // ephemeral_low=1/ephemeral_high=MAX setting). This looks backwards at
+    // first glance, but it is the opposite of what you want for a GC that
+    // never reads the card table:
+    //
+    //   JIT_WriteBarrier_PreGrow64 (the barrier actually installed here,
+    //   since requires_upper_bounds_check=false) does, for every single
+    //   reference-type field/element store in the entire process:
+    //       mov  [dst], src
+    //       cmp  src, ephemeral_low
+    //       jb   Exit                  ; skip card marking entirely
+    //       ... touch card table byte, and (FEATURE_MANUALLY_MANAGED_
+    //       ... CARD_BUNDLES) a second card-bundle byte ...
+    //   With ephemeral_low=1, every non-null reference is >= 1, so that
+    //   "jb Exit" almost never fires - every store pays for a card-table
+    //   read/write plus a card-bundle read/write, even though ZeroGC never
+    //   collects and never looks at either table again. That is pure,
+    //   permanent overhead on the hottest possible path for any object-
+    //   graph-heavy app (lists, dictionaries, DI containers, etc.).
+    //
+    //   By instead setting ephemeral_low = ephemeral_high = m_arenaReservedEnd
+    //   (an empty range sitting above every address we can ever hand out),
+    //   every real object pointer is guaranteed to be < ephemeral_low, so the
+    //   "jb Exit" fires immediately after the store for every write barrier
+    //   invocation - the card table and card bundle table are never touched
+    //   again after Initialize(). The non-JIT C++ slow-path helpers
+    //   (gchelpers.cpp's ErectWriteBarrier and friends) use the equivalent
+    //   check "ref >= ephemeral_low && ref < ephemeral_high", which is also
+    //   unconditionally false for an empty range - so this is consistent
+    //   across both the JIT-generated and VM-helper write barrier paths.
+    wbParams.ephemeral_low = m_arenaReservedEnd;
+    wbParams.ephemeral_high = m_arenaReservedEnd;
     wbParams.region_to_generation_table = nullptr;
     wbParams.region_shr = 0;
     wbParams.region_use_bitwise_write_barrier = false;

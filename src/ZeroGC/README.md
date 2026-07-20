@@ -85,6 +85,8 @@ src/ZeroGC/
     GCPerfSim/            Vendored dotnet/performance allocation-pattern simulator (unmodified)
     ZeroAllocApp/         Near-zero-allocation numeric compute (matrix multiply) benchmark app
     GrowingCacheApp/      Growing in-memory cache benchmark app that naturally escalates gen2 GC pauses
+    WriteBarrierBench/    Isolated write-barrier microbenchmark (see "Performance deep-dive")
+    HandleStressBench/    Isolated GCHandle Alloc/Free microbenchmark (see "Performance deep-dive")
   run-benchmarks.ps1       Orchestrates all 9 scenarios x 3 GC modes via dotnet-counters
   generate-report.ps1      Renders results/results-full.json -> results/report.html
   results/
@@ -326,6 +328,22 @@ Server, ZeroGC):
     independently-sampled `dotnet-counters` pause-time series used for the
     percentile table and charts.
 
+Two additional microbenchmark apps (not part of the 11-scenario suite
+above, and not driven by `run-benchmarks.ps1`/`dotnet-counters`) are used
+to validate specific ZeroGC-internal fixes in isolation — see
+"Performance deep-dive" below for what they measure and why:
+
+- **WriteBarrierBench** (`samples/WriteBarrierBench/`) — isolates the
+  write barrier's own per-store cost by repeatedly overwriting reference
+  fields on a small, cache-resident, per-thread-private object ring (no
+  cross-thread contention on the objects themselves), plus a deterministic
+  correctness check.
+- **HandleStressBench** (`samples/HandleStressBench/`) — isolates
+  `GCHandle.Alloc`/`Free` throughput under concurrent load from independent
+  threads, plus a correctness check that every handle's `Target` round-
+  trips exactly and recycled slots behave correctly after being freed and
+  reallocated.
+
 Both hand-written sample apps have their own `global.json` + empty
 `Directory.Build.props`/`.targets` overrides (GCPerfSim and ZeroAllocApp
 too) so they build independently of this repo's root Arcade-SDK-based
@@ -451,6 +469,108 @@ needed to get an absolute-time view.
   arena's exact bump-pointer position (a true, exact count).
 
 ## Debugging notes / lessons learned
+
+### Performance deep-dive: write-barrier and handle-store fixes
+
+A later pass specifically hunted for remaining bottlenecks in the
+allocate-only design (beyond the per-thread-arena fix already covered
+above), by reading CoreCLR's actual generated write-barrier assembly
+(`JitHelpers_FastWriteBarriers.asm`) and the handle-table code, rather than
+guessing. Two concrete issues were found and fixed, each validated with a
+dedicated, isolated microbenchmark (`samples/WriteBarrierBench`,
+`samples/HandleStressBench`) that measures *only* the mechanism in
+question, decoupled from GC-pause/allocation noise.
+
+**1. Write barrier was configured backwards for a GC that never reads the
+card table.** `ZeroGCHeap::Initialize()` used to set `ephemeral_low=1,
+ephemeral_high=MAX` ("everything is ephemeral"). CoreCLR's
+`JIT_WriteBarrier_PreGrow64` — the barrier ZeroGC actually installs — does,
+for **every single reference-type field/array-element store in the entire
+process**:
+```asm
+mov  [rcx], rdx        ; the store itself
+cmp  rdx, <ephemeral_low>
+jb   Exit               ; skip card marking entirely
+; ...otherwise touch a card-table byte, and (on x64/arm64, since
+; FEATURE_MANUALLY_MANAGED_CARD_BUNDLES is defined) a second,
+; coarser card-bundle byte...
+```
+With `ephemeral_low=1`, virtually every non-null reference is `>= 1`, so
+that `jb Exit` almost never fires — every store pays for a card-table
+read/write plus a card-bundle read/write that ZeroGC **never reads back**
+(it never collects or scans generationally). The fix: set
+`ephemeral_low = ephemeral_high = m_arenaReservedEnd` (an *empty* range
+sitting above every address the arena can ever hand out). Every real
+object pointer is then always `< ephemeral_low`, so `jb Exit` fires
+unconditionally right after the store — the card table and card-bundle
+table are never touched again after `Initialize()`. The equivalent C++
+slow-path helpers (`gchelpers.cpp`'s `ErectWriteBarrier` and friends, used
+by e.g. `Buffer.Memmove` of reference arrays) use the same
+`ref >= ephemeral_low && ref < ephemeral_high` check, which is also always
+false for an empty range — consistent across both the JIT-generated and
+VM-helper write barrier paths. (OpenJDK's Epsilon GC — the JVM's equivalent
+no-op collector — reaches the same conclusion by shipping a completely
+empty barrier set from the start.)
+
+*A/B result (`WriteBarrierBench`, single-threaded, cache-resident working
+set so the barrier's own instruction cost dominates over cache-miss
+latency):* **~343M reference-stores/sec before → ~385M/sec after, a ~12%
+throughput improvement**, reproducible across repeated runs. With 8
+threads (each on its own private working set): **~2.35B/sec → ~2.51B/sec
+(~7%)**. Both configurations pass the bundled correctness check (a
+deterministic ring of stores whose final state is verified exactly).
+
+**2. Handle table had reintroduced the same single-global-lock bottleneck
+the arena allocator had before its own fix.** `ZeroGCHandleStore::AllocSlot`/
+`FreeSlot` serialized every `GCHandle.Alloc`/`Free` — and anything built on
+handles under the hood (`WeakReference`, interop pinning,
+`ConditionalWeakTable`, etc.) — on a single global `CRITICAL_SECTION`
+guarding the free list. An initial fix replaced it with a lock-free
+Treiber-stack free list (CAS push/pop via
+`InterlockedCompareExchangePointer`) — but that turned out to have a
+**genuine ABA correctness bug**, not just a benign "occasionally leak an
+orphaned slot" edge case as first assumed: thread T1 can read
+`(head=X, next=Y)`, stall, and have other threads pop-then-repush `X` in
+the meantime such that T1's eventual `CAS(&head, X, Y)` still succeeds —
+but by then `Y` may itself already have been legitimately popped and be in
+active use by a different thread. T1's stale CAS makes `Y` the new head
+anyway, so a later `AllocSlot` on yet another thread can pop `Y` and hand
+out the *same* slot a different thread is still actively using — real,
+silent memory corruption. This was caught empirically (not just reasoned
+about): `HandleStressBench` at 3+ concurrent threads reliably corrupted an
+unrelated `ConditionalWeakTable`-backed dependent handle used internally by
+`System.Text.Json`'s reflection metadata cache, producing a subtly wrong
+(empty) serialized result instead of a crash — a good reminder that a
+"probably fine" lock-free data structure needs an actual concurrent stress
+test, not just a paper analysis, before being trusted.
+
+The final fix sidesteps the ABA hazard entirely instead of patching it with
+a 128-bit tagged/versioned CAS: each OS thread only ever pushes to and pops
+from **its own** (`thread_local`) free list, so no two threads ever contend
+on the same list and no cross-thread pointer race is possible. A slot freed
+on a different thread than it was allocated on is simply added to the
+*freeing* thread's own list — still safe, still recycled, just not
+necessarily by the original owner. Brand-new slots (thread-local free list
+empty) still fall back to plain `new`, relying on the CRT heap's own
+synchronization instead of a lock of our own.
+
+*A/B result (`HandleStressBench`, `GCHandle.Alloc`+`Free` pairs/sec):*
+
+| Threads | Before (global lock) | After (thread-local free lists) | Speedup |
+|--------:|----------------------:|---------------------------------:|--------:|
+| 1       | ~30.2M ops/sec         | ~79.0M ops/sec                    | **2.6x** |
+| 8       | ~1.16M ops/sec         | ~13.9M ops/sec                    | **11.9x** |
+
+Both configurations pass the bundled correctness check (every handle's
+`Target` round-trips exactly, `IsAllocated`/`Free` behave as documented,
+and recycled slots are re-verified after being freed and reallocated).
+
+Both fixes are pure ZeroGC-internal changes with no effect on the runtime
+itself (`C:\github\runtime` remains untouched, as always) and no observable
+behavior change for correct managed code — they only remove work ZeroGC
+was doing for a card table and a lock it never actually needed.
+
+
 
 While bringing ZeroGC up, allocations worked but the process crashed with a
 CoreCLR fail-fast (`EEPOLICY_HANDLE_FATAL_ERROR`) on the very first object

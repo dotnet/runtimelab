@@ -279,8 +279,41 @@ public:
     static Slot* SlotFromHandle(OBJECTHANDLE handle) { return reinterpret_cast<Slot*>(handle); }
 
 private:
-    CRITICAL_SECTION m_lock{};
-    Slot* m_freeList = nullptr;
+    // Per-thread free list (plain, non-atomic pointer - no CAS, no lock).
+    // A single global CRITICAL_SECTION here would serialize every
+    // GCHandle Alloc/Free (and anything that goes through one under the
+    // hood - WeakReference, interop pinning, ConditionalWeakTable, etc.)
+    // across ALL threads process-wide - exactly the same contention shape
+    // the original arena bump allocator had before it was switched to
+    // per-thread arenas.
+    //
+    // An earlier version of this fix used a single shared lock-free
+    // Treiber stack (CAS push/pop) instead. That has a genuine ABA
+    // correctness bug, not just a benign "leak an orphaned slot" edge
+    // case as first assumed: thread T1 can read (head=X, next=Y), stall,
+    // and have some other thread pop-then-repush X in the meantime such
+    // that when T1 resumes its CAS(&head, X, Y) still succeeds - but by
+    // then Y may have *itself* already been legitimately popped and be in
+    // active use by a third thread T2. T1's stale CAS makes Y the new
+    // head anyway, so a later AllocSlot on a fourth thread T3 can pop Y
+    // and hand out the *same* Slot that T2 is still actively using -
+    // real, silent memory corruption (observed in practice: 3+ concurrent
+    // threads doing sustained Alloc/Free churn reliably corrupted an
+    // unrelated ConditionalWeakTable-backed dependent handle used by
+    // System.Text.Json's reflection metadata cache).
+    //
+    // The fix here sidesteps the ABA hazard entirely rather than papering
+    // over it with a 128-bit tagged/versioned CAS: each OS thread only
+    // ever pushes to and pops from *its own* free list, so no two threads
+    // ever contend on the same list and no cross-thread pointer race is
+    // possible. A slot freed on a different thread than it was allocated
+    // on simply gets added to the *freeing* thread's own list instead of
+    // the allocating thread's - still safe, still recycled, just not
+    // necessarily by the original owner. Brand-new slots (thread-local
+    // free list empty) are allocated via plain `new`, relying on the CRT
+    // heap's own (much finer-grained) internal synchronization instead of
+    // a coarse lock of our own.
+    static thread_local Slot* t_freeList;
 };
 
 class ZeroGCHandleManager : public IGCHandleManager
