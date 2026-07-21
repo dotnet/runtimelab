@@ -41,7 +41,7 @@
 </head>
 <body>
   <h1>ZeroGC vs. Workstation GC vs. Server GC</h1>
-  <p class="subtitle">Generated 2026-07-20 23:01:21 on this machine. Eleven workloads (2 hand-written sample apps, 5 GCPerfSim scenarios, 2 zero-alloc scenarios, dotLLM inference, and a growing-cache scenario), each run once per GC configuration.</p>
+  <p class="subtitle">Generated 2026-07-21 09:13:06 on this machine. Eleven workloads (2 hand-written sample apps, 5 GCPerfSim scenarios, 2 zero-alloc scenarios, dotLLM inference, and a growing-cache scenario), each run once per GC configuration.</p>
 
   <div class="legend">
     <span><span class="sw" style="background:#2b7de9"></span>Workstation GC (default, non-concurrent-by-default background GC)</span>
@@ -73,6 +73,7 @@
 <tr><td>Duration (s)</td><td>600.0</td><td></td><td>600.0</td><td></td><td>600.0</td><td></td></tr>
 <tr><td>Throughput (ops/sec)</td><td>15,787.51<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>15,789.76<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>15,793.72<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Total allocated</td><td>1.34 GB<div class='barTrack'><div class='barFill' style='width:67%;background:#2b7de9'></div></div></td><td></td><td>1.34 GB<div class='barTrack'><div class='barFill' style='width:67%;background:#8e44ad'></div></div></td><td></td><td>2.00 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
+<tr><td>Total GC pause time</td><td>4 ms<div class='barTrack'><div class='barFill' style='width:16%;background:#2b7de9'></div></div></td><td></td><td>26 ms<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>0 ms<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen0 collections</td><td>85<div class='barTrack'><div class='barFill' style='width:15%;background:#2b7de9'></div></div></td><td></td><td>550<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>0<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen1 collections</td><td>7</td><td></td><td>1</td><td></td><td>0</td><td></td></tr>
 <tr><td>Gen2 collections</td><td>1</td><td></td><td>0</td><td></td><td>0</td><td></td></tr>
@@ -194,6 +195,7 @@
 <tr><td>Duration (s)</td><td>600.0</td><td></td><td>600.0</td><td></td><td>600.0</td><td></td></tr>
 <tr><td>Throughput (ops/sec)</td><td>507.29<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>507.33<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>507.49<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Total allocated</td><td>2.57 GB<div class='barTrack'><div class='barFill' style='width:45%;background:#2b7de9'></div></div></td><td></td><td>2.57 GB<div class='barTrack'><div class='barFill' style='width:45%;background:#8e44ad'></div></div></td><td></td><td>5.69 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
+<tr><td>Total GC pause time</td><td>31 ms<div class='barTrack'><div class='barFill' style='width:21%;background:#2b7de9'></div></div></td><td></td><td>147 ms<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>0 ms<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen0 collections</td><td>167<div class='barTrack'><div class='barFill' style='width:25%;background:#2b7de9'></div></div></td><td></td><td>659<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>0<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen1 collections</td><td>17</td><td></td><td>1</td><td></td><td>0</td><td></td></tr>
 <tr><td>Gen2 collections</td><td>2</td><td></td><td>0</td><td></td><td>0</td><td></td></tr>
@@ -315,6 +317,7 @@
 <tr><td>Duration (s)</td><td>668.8</td><td></td><td>669.8</td><td></td><td>673.7</td><td></td></tr>
 <tr><td>Allocation throughput (MB/s)</td><td>11.64<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>11.62<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>11.55<div class='barTrack'><div class='barFill' style='width:99%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Total allocated</td><td>7.60 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>7.60 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>7.60 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
+<tr><td>Total GC pause time</td><td>179 ms<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>76 ms<div class='barTrack'><div class='barFill' style='width:42%;background:#8e44ad'></div></div></td><td></td><td>0 ms<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen0 collections</td><td>569<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>43<div class='barTrack'><div class='barFill' style='width:8%;background:#8e44ad'></div></div></td><td></td><td>0<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen1 collections</td><td>218</td><td></td><td>14</td><td></td><td>0</td><td></td></tr>
 <tr><td>Gen2 collections</td><td>10</td><td></td><td>4</td><td></td><td>0</td><td></td></tr>
@@ -436,6 +439,7 @@
 <tr><td>Duration (s)</td><td>602.4</td><td></td><td>599.2</td><td></td><td>601.1</td><td></td></tr>
 <tr><td>Allocation throughput (MB/s)</td><td>9.01<div class='barTrack'><div class='barFill' style='width:99%;background:#2b7de9'></div></div></td><td></td><td>9.06<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>9.03<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Total allocated</td><td>5.30 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>5.30 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>5.30 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
+<tr><td>Total GC pause time</td><td>187 ms<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>51 ms<div class='barTrack'><div class='barFill' style='width:27%;background:#8e44ad'></div></div></td><td></td><td>0 ms<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen0 collections</td><td>358<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>37<div class='barTrack'><div class='barFill' style='width:10%;background:#8e44ad'></div></div></td><td></td><td>0<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen1 collections</td><td>145</td><td></td><td>17</td><td></td><td>0</td><td></td></tr>
 <tr><td>Gen2 collections</td><td>12</td><td></td><td>12</td><td></td><td>0</td><td></td></tr>
@@ -557,6 +561,7 @@
 <tr><td>Duration (s)</td><td>634.3</td><td></td><td>632.3</td><td></td><td>649.7</td><td></td></tr>
 <tr><td>Allocation throughput (MB/s)</td><td>5.49<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>5.51<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>5.36<div class='barTrack'><div class='barFill' style='width:97%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Total allocated</td><td>3.40 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>3.40 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>3.40 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
+<tr><td>Total GC pause time</td><td>69 ms<div class='barTrack'><div class='barFill' style='width:65%;background:#2b7de9'></div></div></td><td></td><td>105 ms<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>0 ms<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen0 collections</td><td>243<div class='barTrack'><div class='barFill' style='width:47%;background:#2b7de9'></div></div></td><td></td><td>521<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>0<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen1 collections</td><td>208</td><td></td><td>51</td><td></td><td>0</td><td></td></tr>
 <tr><td>Gen2 collections</td><td>4</td><td></td><td>6</td><td></td><td>0</td><td></td></tr>
@@ -678,6 +683,7 @@
 <tr><td>Duration (s)</td><td>600.0</td><td></td><td>600.0</td><td></td><td>600.0</td><td></td></tr>
 <tr><td>Throughput (ops/sec)</td><td>1,167.02<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>1,170.85<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>1,155.45<div class='barTrack'><div class='barFill' style='width:99%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Total allocated</td><td>16.09 MB<div class='barTrack'><div class='barFill' style='width:3%;background:#2b7de9'></div></div></td><td></td><td>16.11 MB<div class='barTrack'><div class='barFill' style='width:3%;background:#8e44ad'></div></div></td><td></td><td>639.88 MB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
+<tr><td>Total GC pause time</td><td>0 ms<div class='barTrack'><div class='barFill' style='width:0%;background:#2b7de9'></div></div></td><td></td><td>0 ms<div class='barTrack'><div class='barFill' style='width:49%;background:#8e44ad'></div></div></td><td></td><td>0 ms<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen0 collections</td><td>1<div class='barTrack'><div class='barFill' style='width:17%;background:#2b7de9'></div></div></td><td></td><td>6<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>0<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen1 collections</td><td>0</td><td></td><td>1</td><td></td><td>0</td><td></td></tr>
 <tr><td>Gen2 collections</td><td>0</td><td></td><td>0</td><td></td><td>0</td><td></td></tr>
@@ -799,6 +805,7 @@
 <tr><td>Duration (s)</td><td>600.0</td><td></td><td>600.0</td><td></td><td>600.0</td><td></td></tr>
 <tr><td>Throughput (ops/sec)</td><td>2.44<div class='barTrack'><div class='barFill' style='width:54%;background:#2b7de9'></div></div></td><td></td><td>2.96<div class='barTrack'><div class='barFill' style='width:66%;background:#8e44ad'></div></div></td><td></td><td>4.48<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Total allocated</td><td>49.15 MB<div class='barTrack'><div class='barFill' style='width:1%;background:#2b7de9'></div></div></td><td></td><td>55.91 MB<div class='barTrack'><div class='barFill' style='width:1%;background:#8e44ad'></div></div></td><td></td><td>7.62 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
+<tr><td>Total GC pause time</td><td>6 ms<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>0 ms<div class='barTrack'><div class='barFill' style='width:0%;background:#8e44ad'></div></div></td><td></td><td>0 ms<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen0 collections</td><td>1<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>1<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>0<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen1 collections</td><td>2</td><td></td><td>0</td><td></td><td>0</td><td></td></tr>
 <tr><td>Gen2 collections</td><td>1</td><td></td><td>1</td><td></td><td>0</td><td></td></tr>
@@ -920,6 +927,7 @@
 <tr><td>Duration (s)</td><td>600.0</td><td></td><td>600.0</td><td></td><td>600.0</td><td></td></tr>
 <tr><td>Throughput (ops/sec)</td><td>62.51<div class='barTrack'><div class='barFill' style='width:99%;background:#2b7de9'></div></div></td><td></td><td>62.92<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>63.12<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Total allocated</td><td>8.31 GB<div class='barTrack'><div class='barFill' style='width:91%;background:#2b7de9'></div></div></td><td></td><td>8.31 GB<div class='barTrack'><div class='barFill' style='width:91%;background:#8e44ad'></div></div></td><td></td><td>9.13 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
+<tr><td>Total GC pause time</td><td>2,099 ms<div class='barTrack'><div class='barFill' style='width:75%;background:#2b7de9'></div></div></td><td></td><td>2,809 ms<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>0 ms<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen0 collections</td><td>352<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>103<div class='barTrack'><div class='barFill' style='width:29%;background:#8e44ad'></div></div></td><td></td><td>0<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen1 collections</td><td>351</td><td></td><td>34</td><td></td><td>0</td><td></td></tr>
 <tr><td>Gen2 collections</td><td>11</td><td></td><td>13</td><td></td><td>0</td><td></td></tr>
@@ -1045,6 +1053,7 @@
 <tr><td>Duration (s)</td><td>600.0</td><td></td><td>600.0</td><td></td><td>600.0</td><td></td></tr>
 <tr><td>Throughput (ops/sec)</td><td>0.17<div class='barTrack'><div class='barFill' style='width:87%;background:#2b7de9'></div></div></td><td></td><td>0.20<div class='barTrack'><div class='barFill' style='width:98%;background:#8e44ad'></div></div></td><td></td><td>0.20<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Total allocated</td><td>32.63 MB<div class='barTrack'><div class='barFill' style='width:2%;background:#2b7de9'></div></div></td><td></td><td>34.93 MB<div class='barTrack'><div class='barFill' style='width:2%;background:#8e44ad'></div></div></td><td></td><td>1.44 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
+<tr><td>Total GC pause time</td><td>2 ms<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>0 ms<div class='barTrack'><div class='barFill' style='width:0%;background:#8e44ad'></div></div></td><td></td><td>0 ms<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen0 collections</td><td>1<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>0<div class='barTrack'><div class='barFill' style='width:0%;background:#8e44ad'></div></div></td><td></td><td>0<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen1 collections</td><td>1</td><td></td><td>0</td><td></td><td>0</td><td></td></tr>
 <tr><td>Gen2 collections</td><td>0</td><td></td><td>0</td><td></td><td>0</td><td></td></tr>
@@ -1166,6 +1175,7 @@
 <tr><td>Duration (s)</td><td>13.1</td><td></td><td>4.4</td><td></td><td>2.0</td><td></td></tr>
 <tr><td>Allocation throughput (MB/s)</td><td>3,512.17<div class='barTrack'><div class='barFill' style='width:15%;background:#2b7de9'></div></div></td><td></td><td>10,558.20<div class='barTrack'><div class='barFill' style='width:45%;background:#8e44ad'></div></div></td><td></td><td>23,277.89<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Total allocated</td><td>45.00 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>45.00 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>45.00 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
+<tr><td>Total GC pause time</td><td>5,657 ms<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>1,139 ms<div class='barTrack'><div class='barFill' style='width:20%;background:#8e44ad'></div></div></td><td></td><td>n/a<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen0 collections</td><td>3,216<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>1,025<div class='barTrack'><div class='barFill' style='width:32%;background:#8e44ad'></div></div></td><td></td><td>0<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen1 collections</td><td>2,412</td><td></td><td>259</td><td></td><td>0</td><td></td></tr>
 <tr><td>Gen2 collections</td><td>12</td><td></td><td>9</td><td></td><td>0</td><td></td></tr>
@@ -1285,6 +1295,7 @@
 <tr><td>Duration (s)</td><td>14.8</td><td></td><td>9.8</td><td></td><td>9.8</td><td></td></tr>
 <tr><td>Allocation throughput (MB/s)</td><td>3,116.93<div class='barTrack'><div class='barFill' style='width:66%;background:#2b7de9'></div></div></td><td></td><td>4,712.30<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>4,709.17<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Total allocated</td><td>45.00 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>45.00 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#8e44ad'></div></div></td><td></td><td>45.00 GB<div class='barTrack'><div class='barFill' style='width:100%;background:#e94f2b'></div></div></td><td></td></tr>
+<tr><td>Total GC pause time</td><td>5,182 ms<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>1,477 ms<div class='barTrack'><div class='barFill' style='width:28%;background:#8e44ad'></div></div></td><td></td><td>0 ms<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen0 collections</td><td>3,216<div class='barTrack'><div class='barFill' style='width:100%;background:#2b7de9'></div></div></td><td></td><td>695<div class='barTrack'><div class='barFill' style='width:22%;background:#8e44ad'></div></div></td><td></td><td>0<div class='barTrack'><div class='barFill' style='width:0%;background:#e94f2b'></div></div></td><td></td></tr>
 <tr><td>Gen1 collections</td><td>2,399</td><td></td><td>178</td><td></td><td>0</td><td></td></tr>
 <tr><td>Gen2 collections</td><td>12</td><td></td><td>9</td><td></td><td>0</td><td></td></tr>
@@ -1424,6 +1435,16 @@
     difference in actual allocation behavior; the working-set/committed-bytes/heap-size rows (which
     come from OS/GC-heap accounting, not this approximate counter) are the more apples-to-apples
     memory comparison.
+  </div>
+
+  <div class="callout">
+    <strong>How "Total GC pause time" is computed:</strong> it is the sum of every sampled point in
+    that scenario's "GC pause time (ms) over time" chart below (one independent
+    <code>dotnet-counters</code> sample roughly every ~1s for the whole run), i.e. the actual
+    measured pause time accumulated across the entire run - not <code>avg &times; count</code>,
+    which would conflate the number of *sampled intervals* with the number of *individual GC
+    pauses* and generally under- or over-state the true total. ZeroGC always reports 0 ms here for
+    the same reason it reports 0 ms everywhere else in this report: it never collects.
   </div>
 
   <footer>

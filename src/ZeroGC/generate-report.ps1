@@ -239,6 +239,18 @@ function Get-PauseMsSeries($run) {
     if (-not $run.TimeSeries.PauseTimePct) { return @() }
     return @($run.TimeSeries.PauseTimePct | ForEach-Object { @{ T = $_.T; V = [Math]::Round($_.V * 10.0, 3) } })
 }
+# Total GC pause time over the full run, derived by summing the "GC pause
+# time (ms) over time" series (one independently-sampled point roughly
+# every ~1s for the whole run - see Get-PauseMsSeries above). This is a
+# real measured total, not an avg*count estimate (which would be wrong:
+# the avg/percentile table only summarizes the sampled points themselves,
+# it has no notion of "count of GC pauses"). Requires no re-run - it's
+# computed purely from data already present in results-full.json.
+function Get-TotalPauseMs($run) {
+    $series = Get-PauseMsSeries $run
+    if (-not $series -or $series.Count -eq 0) { return $null }
+    return ($series | Measure-Object -Property V -Sum).Sum
+}
 
 $genDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 $scenarioOrder = @()
@@ -272,6 +284,7 @@ foreach ($scenarioId in $scenarioOrder) {
     $maxWs = ($byMode.Values | ForEach-Object { $_.Summary.WorkingSetBytes } | Where-Object { $_ } | Measure-Object -Maximum).Maximum
     $maxThroughput = ($byMode.Values | ForEach-Object { $_.Summary.OpsPerSecondOverall } | Measure-Object -Maximum).Maximum
     $maxGen0 = [Math]::Max((($byMode.Values | ForEach-Object { $_.Summary.Gen0Collections } | Measure-Object -Maximum).Maximum), 1)
+    $maxTotalPause = [Math]::Max((($byMode.Values | ForEach-Object { Get-TotalPauseMs $_ } | Where-Object { $_ } | Measure-Object -Maximum).Maximum), 1)
 
     $headerCells = ($gcModeOrder | ForEach-Object {
         $m = $byMode[$_]
@@ -284,6 +297,8 @@ foreach ($scenarioId in $scenarioOrder) {
         @{ Label = "Duration (s)"; Get = { param($m) Fmt-Dec $m.DurationSeconds 1 }; Bar = $false }
         @{ Label = $throughputLabel; Get = { param($m) Fmt-Dec $m.Summary.OpsPerSecondOverall 2 }; Bar = $true; Max = $maxThroughput; Val = { param($m) $m.Summary.OpsPerSecondOverall } }
         @{ Label = "Total allocated"; Get = { param($m) Fmt-Bytes $m.Summary.TotalAllocatedBytes }; Bar = $true; Max = $maxAlloc; Val = { param($m) $m.Summary.TotalAllocatedBytes } }
+        @{ Label = "Total GC pause time"; Get = { param($m) $t = Get-TotalPauseMs $m; if ($null -eq $t) { "n/a" } else { "$(Fmt-Dec $t 0) ms" } }
+            Bar = $true; Max = $maxTotalPause; Val = { param($m) $t = Get-TotalPauseMs $m; if ($null -eq $t) { 0 } else { $t } } }
         @{ Label = "Gen0 collections"; Get = { param($m) Fmt-Num $m.Summary.Gen0Collections }; Bar = $true; Max = $maxGen0; Val = { param($m) $m.Summary.Gen0Collections } }
         @{ Label = "Gen1 collections"; Get = { param($m) Fmt-Num $m.Summary.Gen1Collections }; Bar = $false }
         @{ Label = "Gen2 collections"; Get = { param($m) Fmt-Num $m.Summary.Gen2Collections }; Bar = $false }
@@ -492,6 +507,16 @@ $html = @"
     difference in actual allocation behavior; the working-set/committed-bytes/heap-size rows (which
     come from OS/GC-heap accounting, not this approximate counter) are the more apples-to-apples
     memory comparison.
+  </div>
+
+  <div class="callout">
+    <strong>How "Total GC pause time" is computed:</strong> it is the sum of every sampled point in
+    that scenario's "GC pause time (ms) over time" chart below (one independent
+    <code>dotnet-counters</code> sample roughly every ~1s for the whole run), i.e. the actual
+    measured pause time accumulated across the entire run - not <code>avg &times; count</code>,
+    which would conflate the number of *sampled intervals* with the number of *individual GC
+    pauses* and generally under- or over-state the true total. ZeroGC always reports 0 ms here for
+    the same reason it reports 0 ms everywhere else in this report: it never collects.
   </div>
 
   <footer>
