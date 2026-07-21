@@ -66,8 +66,11 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $vcVarsPath = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
           cd runtimelab/src/ZeroGC/native
-          ./build.ps1 -RuntimeRepo "${{ github.workspace }}/runtime" -Configuration Release
+          ./build.ps1 -RuntimeRepo "${{ github.workspace }}/runtime" -Configuration Release -VcVarsPath $vcVarsPath
           New-Item -ItemType Directory -Force -Path "${{ github.workspace }}/out" | Out-Null
           Copy-Item obj/Release/ZeroGC.dll "${{ github.workspace }}/out/ZeroGC.dll"
 
