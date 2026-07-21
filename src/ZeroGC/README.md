@@ -20,6 +20,12 @@ by this project — `C:\github\runtime` was used only as a read-only reference
 for the unmodified GC interface headers (`gcinterface.h`, `gcenv.*.h`, etc.)
 and to build a local, unmodified `coreclr.dll`/SDK for testing.
 
+> **Just want to try it, without building anything?** See
+> [`docs/zerogc/using-prebuilt-binaries.md`](../../docs/zerogc/using-prebuilt-binaries.md)
+> for downloading a prebuilt `ZeroGC.dll`/`libZeroGC.so` from this fork's
+> [GitHub Releases](https://github.com/kkokosa/runtimelab/releases) and
+> dropping it next to your app.
+
 ## What works
 
 - Implements the full `IGCHeap` + `IGCHandleManager`/`IGCHandleStore` ABI
@@ -96,6 +102,36 @@ src/ZeroGC/
     report.html             Self-contained HTML comparison report (the deliverable artifact)
     raw/                    Per-run dotnet-counters CSV captures (supplementary/debug data)
 ```
+
+## Supported runtime versions & versioning policy
+
+ZeroGC's own scanning/allocation code hardcodes assumptions about object
+layout (MethodTable header flags, card-table encoding, sync-block layout,
+etc.) that CoreCLR's standalone-GC ABI check does **not** fully validate:
+that check only rejects a GC whose major ABI version is older than the
+runtime expects (see `GC_INTERFACE_MAJOR_VERSION` in `gcinterface.h` and
+the check in `src/coreclr/vm/gcheaputilities.cpp`) - it says nothing about
+whether those object-layout assumptions still hold, and they **have**
+silently drifted before (`g_oldMethodTableFlags` in
+`src/ZeroGC/native/dllmain.cpp` is a real, already-encountered example; the
+`ConfigurationValueFunc` callback's parameter types are another, found
+while adding net10.0 GA support - see git history for both).
+
+Because of this, **ZeroGC is built and released once per targeted runtime
+major version**, rather than relying on the ABI version check alone:
+
+| Target runtime | `dotnet/runtime` tag built against | Status |
+|---|---|---|
+| .NET 10.0 (GA) | `v10.0.0` | Supported |
+| .NET 11.0 (preview) | `v11.0.0-preview.6.26359.118` (updated periodically as preview builds progress) | Supported |
+
+A binary built for one target runtime version must only be used with an
+app running that same major version - see
+[`docs/zerogc/using-prebuilt-binaries.md`](../../docs/zerogc/using-prebuilt-binaries.md#why-per-version-and-why-it-matters)
+for the full explanation and consequences of ignoring this. If you need a
+version not listed above, build it yourself (see "Building" below) against
+the matching `dotnet/runtime` tag/branch - the build scripts are fully
+parameterized by `-RuntimeRepo`/`--runtime-repo` for exactly this purpose.
 
 ## Building ZeroGC.dll / libZeroGC.so
 
