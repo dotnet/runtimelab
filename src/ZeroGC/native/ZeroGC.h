@@ -27,7 +27,16 @@
 
 #include <stdint.h>
 #include <stddef.h>
+
+#if defined(HOST_WINDOWS)
 #include <windows.h>
+#else
+// Provides the handful of Win32 names (CRITICAL_SECTION, VirtualAlloc,
+// QueryPerformanceCounter/LARGE_INTEGER, raw Interlocked*, min/max,
+// E_INVALIDARG) that ZeroGC's own code uses directly and that aren't
+// already defined portably by the gcenv.* headers included below.
+#include "ZeroGCPal.h"
+#endif
 
 #include "gcenv.structs.h"
 #include "gcenv.base.h"

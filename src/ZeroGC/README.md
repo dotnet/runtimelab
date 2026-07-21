@@ -78,7 +78,9 @@ src/ZeroGC/
     ZeroGCHeap.cpp        IGCHeap implementation (allocator, write barriers, counters)
     ZeroGCHandles.cpp     IGCHandleManager / IGCHandleStore implementation
     build.ps1             Builds ZeroGC.dll (Release, x64) using VS Build Tools
-    tools/symresolve.cpp  Debug-only dbghelp-based crash symbol resolver (see below)
+    build-linux.sh        Builds libZeroGC.so (Release, x64) using clang++
+    ZeroGCPal.h           Win32-compatibility shim used only on non-Windows hosts
+    tools/symresolve.cpp  Debug-only dbghelp-based crash symbol resolver (Windows-only, see below)
   samples/
     ConsoleApp/           Allocation-heavy console benchmark app
     WebApi/               Self-driving ASP.NET Core (Kestrel) benchmark app (8 concurrent workers)
@@ -95,7 +97,9 @@ src/ZeroGC/
     raw/                    Per-run dotnet-counters CSV captures (supplementary/debug data)
 ```
 
-## Building ZeroGC.dll
+## Building ZeroGC.dll / libZeroGC.so
+
+### Windows (ZeroGC.dll)
 
 Requires the VC++ build tools (the same toolset used to build CoreCLR) and a
 local .NET SDK. From a Developer Command Prompt / PowerShell with `cl.exe`
@@ -113,17 +117,46 @@ write barrier's card-bundle table handling silently mismatches the EE side
 and the process fails fast on the very first write barrier (see "Debugging
 notes" below for the full story).
 
+### Linux (libZeroGC.so)
+
+Requires `clang++` (or `g++`) with C++17 support and a local .NET SDK. Same
+`dotnet/runtime` checkout, used only as a read-only header dependency:
+
+```bash
+cd src/ZeroGC/native
+./build-linux.sh --runtime-repo /path/to/runtime
+```
+
+This produces `native/obj-linux/Release/libZeroGC.so` (x64). The Windows
+Win32 APIs ZeroGC's own code calls directly (`VirtualAlloc`/`VirtualFree`,
+`CRITICAL_SECTION`, `QueryPerformanceCounter`, the raw `Interlocked*`
+functions, `GlobalMemoryStatusEx`) are provided on Linux by a small
+portability shim, `native/ZeroGCPal.h`, built on `mmap`/`mprotect`,
+`pthread_mutex_t`, `clock_gettime`, and GCC/Clang atomic builtins — the
+vendored `gc/env/gcenv.*` headers already define the portable pieces
+(`HRESULT`, `BOOL`, `S_OK`, etc.) since the real GC ships on Linux/macOS too.
+`ZeroGCHeap.cpp`/`ZeroGCHandles.cpp` are unmodified: the shim reproduces the
+same Win32 function names so no call sites needed to change. This has been
+validated (correctness, not yet performance-benchmarked) under WSL2 Ubuntu
+by running `ConsoleApp`, `HandleStressBench`, and `WriteBarrierBench`
+published as `linux-x64` self-contained.
+
 ## Running an app with ZeroGC
 
-Copy `ZeroGC.dll` next to the app's published output, then:
+Copy `ZeroGC.dll` (Windows) or `libZeroGC.so` (Linux) next to the app's
+published output, then:
 
 ```powershell
 $env:DOTNET_GCName = "ZeroGC.dll"
 dotnet YourApp.dll
 ```
 
-Unset (`Remove-Item Env:DOTNET_GCName`) or set to nothing to fall back to the
-regular (Workstation/Server) GC.
+```bash
+DOTNET_GCName=libZeroGC.so dotnet YourApp.dll
+```
+
+Unset (`Remove-Item Env:DOTNET_GCName` / `unset DOTNET_GCName`) or set to
+nothing to fall back to the regular (Workstation/Server) GC.
 
 ## Sample apps and workloads
 

@@ -14,13 +14,19 @@
 //
 #include "ZeroGC.h"
 
+#if defined(HOST_WINDOWS)
+#define ZEROGC_EXPORT extern "C" __declspec(dllexport)
+#else
+#define ZEROGC_EXPORT extern "C" __attribute__((visibility("default")))
+#endif
+
 IGCToCLR* g_theGCToCLR = nullptr;
 VersionInfo g_runtimeSupportedVersion = {};
 bool g_oldMethodTableFlags = false;
 
 static ZeroGCHandleManager* g_zeroGCHandleManager = nullptr;
 
-extern "C" __declspec(dllexport) void GC_VersionInfo(VersionInfo* info)
+ZEROGC_EXPORT void GC_VersionInfo(VersionInfo* info)
 {
     // On entry, `info` carries the interface version the runtime supports;
     // remember it so we know which optional IGCToCLR members are safe to call.
@@ -33,7 +39,7 @@ extern "C" __declspec(dllexport) void GC_VersionInfo(VersionInfo* info)
     info->Name = "ZeroGC";
 }
 
-extern "C" __declspec(dllexport) HRESULT GC_Initialize(
+ZEROGC_EXPORT HRESULT GC_Initialize(
     IGCToCLR* clrToGC,
     IGCHeap** gcHeap,
     IGCHandleManager** gcHandleManager,
@@ -59,6 +65,7 @@ extern "C" __declspec(dllexport) HRESULT GC_Initialize(
     return S_OK;
 }
 
+#if defined(HOST_WINDOWS)
 BOOL WINAPI DllMain(HINSTANCE hInstDll, DWORD reason, LPVOID reserved)
 {
     if (reason == DLL_PROCESS_ATTACH)
@@ -67,3 +74,4 @@ BOOL WINAPI DllMain(HINSTANCE hInstDll, DWORD reason, LPVOID reserved)
     }
     return TRUE;
 }
+#endif

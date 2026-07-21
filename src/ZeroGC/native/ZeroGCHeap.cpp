@@ -6,7 +6,7 @@
 #include "ZeroGC.h"
 #include <cstdio>
 
-#ifdef ZEROGC_TRACE
+#if defined(ZEROGC_TRACE) && defined(HOST_WINDOWS)
 static void ZeroGCTrace(const char* msg)
 {
     HANDLE h = CreateFileA("C:\\temp\\zerogc_trace.log", FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
