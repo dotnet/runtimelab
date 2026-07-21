@@ -27,6 +27,10 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <cassert>
+#include <new>
+
+using std::nothrow;
 
 #if defined(HOST_WINDOWS)
 #include <windows.h>
@@ -52,6 +56,23 @@
 extern IGCToCLR* g_theGCToCLR;
 extern VersionInfo g_runtimeSupportedVersion;
 extern bool g_oldMethodTableFlags;
+
+// ---------------------------------------------------------------------------
+// ConfigurationValueFunc's "name"/"publicKey" parameter type changed between
+// runtime versions without any GC_INTERFACE_MAJOR_VERSION bump: it's
+// `const char*` in some checkouts and plain `void*` in others (see
+// gcinterface.h's `using ConfigurationValueFunc = ...`). This template
+// deduces whichever parameter type the runtime being built against actually
+// declares, so a single ZeroGCHeap.cpp call site works unmodified against
+// either - a live example of exactly the kind of GC-EE ABI drift ZeroGC's
+// build must tolerate across supported runtime versions (see README.md).
+// ---------------------------------------------------------------------------
+template<typename Ret, typename Context, typename Name, typename PublicKey, typename Type, typename Data>
+static inline void InvokeConfigurationValueFunc(Ret(*func)(Context, Name, PublicKey, Type, Data),
+    Context context, const char* name, const char* publicKey, Type type, Data data)
+{
+    func(context, (Name)(const void*)name, (PublicKey)(const void*)publicKey, type, data);
+}
 
 // ---------------------------------------------------------------------------
 // Global counters, exposed so that the managed GC.* APIs (GC.CollectionCount,

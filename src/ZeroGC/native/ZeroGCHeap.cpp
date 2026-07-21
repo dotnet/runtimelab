@@ -600,7 +600,7 @@ void ZeroGCHeap::EnumerateConfigurationValues(void* context, ConfigurationValueF
 {
     if (configurationValueFunc == nullptr)
         return;
-    configurationValueFunc(context, "ZeroGC", "System.GC.Name", GCConfigurationType::StringUtf8, (int64_t)(intptr_t)"ZeroGC");
+    InvokeConfigurationValueFunc(configurationValueFunc, context, "ZeroGC", "System.GC.Name", GCConfigurationType::StringUtf8, (int64_t)(intptr_t)"ZeroGC");
 }
 
 void ZeroGCHeap::UpdateFrozenSegment(segment_handle seg, uint8_t* allocated, uint8_t* committed)
