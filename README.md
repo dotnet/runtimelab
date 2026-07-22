@@ -9,7 +9,7 @@ GC overhead reduced to (as close as possible to) zero?
 
 - **Just want to try it against your own app, without building anything?**
   Download a prebuilt binary from
-  [Releases](https://github.com/kkokosa/runtimelab/releases) and follow
+  [Releases](https://github.com/dotnet/runtimelab/releases) and follow
   [`docs/zerogc/using-prebuilt-binaries.md`](docs/zerogc/using-prebuilt-binaries.md).
 - Source, build instructions, and design notes: [`src/ZeroGC/README.md`](src/ZeroGC/README.md)
 - Benchmark harness, sample apps (console, ASP.NET Core, GCPerfSim
