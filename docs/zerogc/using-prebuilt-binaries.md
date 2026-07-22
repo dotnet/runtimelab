@@ -1,52 +1,33 @@
-# Using a prebuilt ZeroGC binary
+# Using a ZeroGC binary
 
-This page is for people who just want to try ZeroGC against their own app -
-no C++ toolchain, no local `dotnet/runtime` checkout, no building anything.
+This page is for people who want to try ZeroGC against their own app.
 
 See [`../../src/ZeroGC/README.md`](../../src/ZeroGC/README.md) for what
 ZeroGC is, how it's implemented, and its measured performance
-characteristics. This page only covers *consuming* a prebuilt binary.
+characteristics. This page only covers *consuming* a built binary.
 
-## 1. Download the right zip
+## 1. Build the right binary
 
-Prebuilt binaries are published as GitHub Release assets, built by
-[`.github/workflows/zerogc-release.yml`](../../.github/workflows/zerogc-release.yml)
-whenever a `zerogc-v*` tag is pushed. **Note:** this workflow currently only
-runs on the author's fork, since `dotnet/runtimelab` does not run custom
-GitHub Actions workflows for building/publishing (official builds go
-through Azure Pipelines to the `dotnet-experimental` NuGet feed instead) -
-so releases are published at
-[kkokosa/runtimelab releases](https://github.com/kkokosa/runtimelab/releases),
-not `dotnet/runtimelab/releases`. Look for releases tagged `zerogc-v*`.
+**No prebuilt binaries are published for this experiment.** Any binary
+officially distributed from `dotnet/runtimelab` needs to be built and
+hosted on Microsoft's own infrastructure rather than a personal
+account/fork - ZeroGC doesn't have that build plumbing (Arcade/official
+Azure Pipelines integration producing a signed NuGet package) set up yet.
 
-Each release has **4 zip assets** - pick the one matching your platform
-*and* your app's target runtime version:
-
-| Zip | Platform | Target runtime |
-|---|---|---|
-| `ZeroGC-win-x64-net10.0.zip`   | Windows x64 | .NET 10.0 (GA) |
-| `ZeroGC-win-x64-net11.0.zip`   | Windows x64 | .NET 11.0 (preview) |
-| `ZeroGC-linux-x64-net10.0.zip` | Linux x64   | .NET 10.0 (GA) |
-| `ZeroGC-linux-x64-net11.0.zip` | Linux x64   | .NET 11.0 (preview) |
-
-**Match the target-runtime column to the runtime your app actually runs
-on** (check your app's `<TargetFramework>` / the `dotnet --version` of the
-runtime it's deployed with) - see [Why per-version, and why it matters](#why-per-version-and-why-it-matters)
-below for why this is a hard requirement, not just a recommendation.
-
-Each zip contains:
-
-- `ZeroGC.dll` (Windows) or `libZeroGC.so` (Linux) - the binary itself.
-- `manifest.json` - records the exact `dotnet/runtime` git tag it was built
-  against, the ZeroGC commit SHA, the platform/target-runtime pair, and the
-  build date, so you can always trace a binary back to exactly what
-  produced it.
+Build `ZeroGC.dll` (Windows) or `libZeroGC.so` (Linux) yourself following
+the "Building ZeroGC.dll / libZeroGC.so" section of
+[`../../src/ZeroGC/README.md`](../../src/ZeroGC/README.md#building-zerogcdll--libzerogcso),
+picking the `dotnet/runtime` tag/branch that matches your app's target
+runtime version (net10.0 GA vs. net11.0 preview - see
+[Why per-version, and why it matters](#why-per-version-and-why-it-matters)
+below for why this choice is a hard requirement, not just a
+recommendation).
 
 ## 2. Place the binary next to your app
 
-Unzip and copy just the native binary (you can ignore `manifest.json` at
-runtime; keep it around for your own records) into your app's published
-output folder, next to `YourApp.dll`:
+Copy the native binary you just built (see `native/build.ps1`'s or
+`native/build-linux.sh`'s output path) into your app's published output
+folder, next to `YourApp.dll`:
 
 ```
 YourApp/
@@ -106,12 +87,5 @@ That means **a `ZeroGC.dll`/`libZeroGC.so` built for net10.0 must only be
 run with a net10.0 app - never with net11.0 or any other major version**,
 even though the runtime's own loader won't stop you from trying. Using the
 wrong version is very likely to crash or, worse, silently corrupt object
-layout without an immediate crash. Always match the zip's target-runtime
-column to your app's actual target runtime.
-
-## Building it yourself instead
-
-If you'd rather build from source (e.g. to target a runtime version this
-repo doesn't yet publish binaries for), see the "Building ZeroGC.dll /
-libZeroGC.so" section of
-[`../../src/ZeroGC/README.md`](../../src/ZeroGC/README.md#building-zerogcdll--libzerogcso).
+layout without an immediate crash. Always build against the `dotnet/runtime`
+tag/branch matching your app's actual target runtime.

@@ -7,11 +7,13 @@ exists to answer a simple question: how much of a real application's
 performance profile is actually GC-bound, and what would it look like with
 GC overhead reduced to (as close as possible to) zero?
 
-- **Just want to try it against your own app, without building anything?**
-  Download a prebuilt binary from
-  [Releases](https://github.com/kkokosa/runtimelab/releases) and follow
-  [`docs/zerogc/using-prebuilt-binaries.md`](docs/zerogc/using-prebuilt-binaries.md).
-- Source, build instructions, and design notes: [`src/ZeroGC/README.md`](src/ZeroGC/README.md)
+- **Want to try it against your own app?** No prebuilt binaries are
+  published (any officially distributed binary needs to be built and
+  hosted on Microsoft's own infrastructure, which this experiment doesn't
+  have set up yet). Build it from source using
+  [`src/ZeroGC/README.md`](src/ZeroGC/README.md), then see
+  [`docs/zerogc/using-prebuilt-binaries.md`](docs/zerogc/using-prebuilt-binaries.md)
+  for how to drop the binary into your app and turn it on.
 - Benchmark harness, sample apps (console, ASP.NET Core, GCPerfSim
   scenarios, a zero-alloc dotLLM inference server, a naturally-growing
   cache), and results: [`src/ZeroGC/`](src/ZeroGC/)

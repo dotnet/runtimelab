@@ -20,11 +20,11 @@ by this project — `C:\github\runtime` was used only as a read-only reference
 for the unmodified GC interface headers (`gcinterface.h`, `gcenv.*.h`, etc.)
 and to build a local, unmodified `coreclr.dll`/SDK for testing.
 
-> **Just want to try it, without building anything?** See
-> [`docs/zerogc/using-prebuilt-binaries.md`](../../docs/zerogc/using-prebuilt-binaries.md)
-> for downloading a prebuilt `ZeroGC.dll`/`libZeroGC.so` from
-> [GitHub Releases](https://github.com/kkokosa/runtimelab/releases) and
-> dropping it next to your app.
+> **No prebuilt binaries are published.** Officially distributed binaries
+> need to be built and hosted on Microsoft's own infrastructure rather than
+> a personal account/fork - this experiment doesn't have that build
+> plumbing (Arcade/official Azure Pipelines integration) set up yet. Build
+> ZeroGC yourself from source using the instructions below.
 
 ## What works
 
