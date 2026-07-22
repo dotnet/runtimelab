@@ -11,9 +11,9 @@ characteristics. This page only covers *consuming* a prebuilt binary.
 
 Prebuilt binaries are published as GitHub Release assets, built by
 [`.github/workflows/zerogc-release.yml`](../../.github/workflows/zerogc-release.yml)
-whenever a `zerogc-v*` tag is pushed on this fork
-([kkokosa/runtimelab](https://github.com/kkokosa/runtimelab/releases) -
-look for releases tagged `zerogc-v*`).
+whenever a `zerogc-v*` tag is pushed:
+[dotnet/runtimelab releases](https://github.com/dotnet/runtimelab/releases) -
+look for releases tagged `zerogc-v*`.
 
 Each release has **4 zip assets** - pick the one matching your platform
 *and* your app's target runtime version:
