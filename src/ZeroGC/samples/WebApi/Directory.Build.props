@@ -1,0 +1,5 @@
+<Project>
+  <!-- Intentionally empty: prevents inheriting the repo root Directory.Build.props,
+       which pulls in the Arcade SDK used for building the runtimelab repo itself.
+       This sample is a plain, independently buildable .NET console app. -->
+</Project>

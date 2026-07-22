@@ -1,0 +1,151 @@
+name: ZeroGC release
+
+# Builds and publishes prebuilt ZeroGC binaries (Windows win-x64 / Linux
+# linux-x64) for each supported target runtime version (net10.0 GA,
+# net11.0 preview), and attaches them as zip assets to a GitHub Release.
+#
+# Triggered by pushing a tag matching "zerogc-v*" (e.g. "zerogc-v1.0.0").
+# This workflow is intended to run on a fork of dotnet/runtimelab that owns
+# the feature/ZeroGC branch (see src/ZeroGC/README.md) - it does not build
+# or publish anything from the upstream dotnet/runtimelab repository.
+#
+# IMPORTANT: this workflow only builds ZeroGC (src/ZeroGC/native). It never
+# builds or modifies dotnet/runtime itself - each job checks out a pinned
+# dotnet/runtime tag purely as a read-only header/reference dependency,
+# exactly like the local build.ps1 / build-linux.sh scripts do.
+on:
+  push:
+    tags:
+      - 'zerogc-v*'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win-x64
+            runtime-version: net10.0
+            runtime-tag: v10.0.0
+          - os: windows-latest
+            platform: win-x64
+            runtime-version: net11.0
+            runtime-tag: v11.0.0-preview.6.26359.118
+          - os: ubuntu-latest
+            platform: linux-x64
+            runtime-version: net10.0
+            runtime-tag: v10.0.0
+          - os: ubuntu-latest
+            platform: linux-x64
+            runtime-version: net11.0
+            runtime-tag: v11.0.0-preview.6.26359.118
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout runtimelab (this repo)
+        uses: actions/checkout@v4
+        with:
+          path: runtimelab
+
+      # Read-only reference dependency only: never built or modified.
+      # A shallow, single-tag clone keeps this fast (full history isn't
+      # needed - only the pinned tag's header/source tree).
+      - name: Checkout dotnet/runtime (${{ matrix.runtime-tag }}, headers only)
+        uses: actions/checkout@v4
+        with:
+          repository: dotnet/runtime
+          ref: ${{ matrix.runtime-tag }}
+          path: runtime
+          fetch-depth: 1
+
+      - name: Build ZeroGC (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $vcVarsPath = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
+          cd runtimelab/src/ZeroGC/native
+          ./build.ps1 -RuntimeRepo "${{ github.workspace }}/runtime" -Configuration Release -VcVarsPath $vcVarsPath
+          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}/out" | Out-Null
+          Copy-Item obj/Release/ZeroGC.dll "${{ github.workspace }}/out/ZeroGC.dll"
+
+      - name: Install build tools (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang
+
+      - name: Build ZeroGC (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cd runtimelab/src/ZeroGC/native
+          chmod +x build-linux.sh
+          ./build-linux.sh --runtime-repo "${{ github.workspace }}/runtime" --configuration Release
+          mkdir -p "${{ github.workspace }}/out"
+          cp obj-linux/Release/libZeroGC.so "${{ github.workspace }}/out/libZeroGC.so"
+
+      - name: Write manifest
+        shell: pwsh
+        run: |
+          $manifest = @{
+            component        = "ZeroGC"
+            platform         = "${{ matrix.platform }}"
+            targetRuntime    = "${{ matrix.runtime-version }}"
+            dotnetRuntimeTag = "${{ matrix.runtime-tag }}"
+            zeroGCCommit     = "${{ github.sha }}"
+            buildDate        = (Get-Date -AsUTC -Format "o")
+          }
+          $manifest | ConvertTo-Json | Out-File -FilePath "${{ github.workspace }}/out/manifest.json" -Encoding utf8
+
+      - name: Zip artifact
+        shell: pwsh
+        run: |
+          $zipName = "ZeroGC-${{ matrix.platform }}-${{ matrix.runtime-version }}.zip"
+          Compress-Archive -Path "${{ github.workspace }}/out/*" -DestinationPath "${{ github.workspace }}/$zipName"
+          echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: ${{ github.workspace }}/${{ env.ZIP_NAME }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/zerogc-v')
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifact zips
+        run: |
+          mkdir -p release-assets
+          find artifacts -name '*.zip' -exec cp {} release-assets/ \;
+          ls -la release-assets
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*.zip
+          name: ZeroGC ${{ github.ref_name }}
+          body: |
+            Prebuilt ZeroGC binaries for this release tag.
+
+            Each zip contains a single native binary (`ZeroGC.dll` or
+            `libZeroGC.so`) plus a `manifest.json` recording the exact
+            dotnet/runtime tag it was built against. **A binary built for
+            one target runtime version (e.g. net10.0) must only be used
+            with an app running that same major runtime version** - see
+            `src/ZeroGC/README.md` / `docs/zerogc/using-prebuilt-binaries.md`
+            for why (the GC-EE ABI check only rejects major-version
+            mismatches, not the object-layout assumptions ZeroGC itself
+            depends on).
+          draft: false
+          prerelease: true
