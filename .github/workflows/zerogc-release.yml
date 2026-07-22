@@ -5,9 +5,11 @@ name: ZeroGC release
 # net11.0 preview), and attaches them as zip assets to a GitHub Release.
 #
 # Triggered by pushing a tag matching "zerogc-v*" (e.g. "zerogc-v1.0.0").
-# Runs on dotnet/runtimelab's feature/ZeroGC branch (see src/ZeroGC/README.md)
-# and publishes its GitHub Release there:
-# https://github.com/dotnet/runtimelab/releases
+# NOTE: dotnet/runtimelab does not run custom GitHub Actions workflows for
+# building/publishing (official builds go through Azure Pipelines to the
+# dotnet-experimental NuGet feed instead), so this workflow currently only
+# actually runs - and publishes releases - on the author's fork:
+# https://github.com/kkokosa/runtimelab/releases
 #
 # IMPORTANT: this workflow only builds ZeroGC (src/ZeroGC/native). It never
 # builds or modifies dotnet/runtime itself - each job checks out a pinned

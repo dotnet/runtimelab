@@ -23,7 +23,7 @@ and to build a local, unmodified `coreclr.dll`/SDK for testing.
 > **Just want to try it, without building anything?** See
 > [`docs/zerogc/using-prebuilt-binaries.md`](../../docs/zerogc/using-prebuilt-binaries.md)
 > for downloading a prebuilt `ZeroGC.dll`/`libZeroGC.so` from
-> [GitHub Releases](https://github.com/dotnet/runtimelab/releases) and
+> [GitHub Releases](https://github.com/kkokosa/runtimelab/releases) and
 > dropping it next to your app.
 
 ## What works
