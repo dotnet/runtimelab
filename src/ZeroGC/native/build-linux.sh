@@ -10,18 +10,25 @@
 #     dependency (nothing under it is built or modified by this script).
 #
 # Usage:
-#   ./build-linux.sh [--runtime-repo /path/to/runtime] [--configuration Release|Debug]
+#   ./build-linux.sh [--runtime-repo /path/to/runtime] [--configuration Release|Debug] [--output-subdir -net11]
 #
 set -euo pipefail
 
 RUNTIME_REPO="/mnt/c/github/runtime"
 CONFIGURATION="Release"
 CXX="${CXX:-clang++}"
+# Optional suffix appended to the "Configuration" obj subfolder name (e.g.
+# "-net11"), mirroring build.ps1's -OutputSubDir - lets callers building
+# against multiple, ABI-incompatible reference runtime checkouts (net10.0 GA
+# vs net11.0 preview) avoid clobbering each other's output when run back to
+# back against the same native/ source tree.
+OUTPUT_SUBDIR=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --runtime-repo) RUNTIME_REPO="$2"; shift 2 ;;
         --configuration) CONFIGURATION="$2"; shift 2 ;;
+        --output-subdir) OUTPUT_SUBDIR="$2"; shift 2 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -35,7 +42,7 @@ if [[ ! -d "$RT" ]]; then
     exit 1
 fi
 
-OBJ_DIR="$SRC_DIR/obj-linux/$CONFIGURATION"
+OBJ_DIR="$SRC_DIR/obj-linux/$CONFIGURATION$OUTPUT_SUBDIR"
 mkdir -p "$OBJ_DIR"
 
 INCLUDES=(

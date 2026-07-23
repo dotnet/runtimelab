@@ -12,7 +12,13 @@ param(
     [string]$RuntimeRepo = "C:\github\runtime",
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
-    [string]$VcVarsPath = ""
+    [string]$VcVarsPath = "",
+    # Optional suffix appended to the "Configuration" obj subfolder name
+    # (e.g. "-net11") so callers building against multiple, ABI-incompatible
+    # reference runtime checkouts (net10.0 GA vs net11.0 preview - see
+    # src/ZeroGC/pkg/*) don't clobber each other's output when run back to
+    # back. Leave empty for the default single-output behavior.
+    [string]$OutputSubDir = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -38,7 +44,7 @@ if ([string]::IsNullOrEmpty($VcVarsPath)) {
     }
 }
 
-$objDir = Join-Path $src "obj\$Configuration"
+$objDir = Join-Path $src "obj\$Configuration$OutputSubDir"
 New-Item -ItemType Directory -Force -Path $objDir | Out-Null
 
 $includes = @(

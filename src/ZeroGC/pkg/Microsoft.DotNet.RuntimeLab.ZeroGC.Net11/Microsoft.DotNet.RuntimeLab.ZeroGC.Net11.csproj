@@ -1,0 +1,109 @@
+<Project Sdk="Microsoft.Build.NoTargets">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <PackageId>Microsoft.DotNet.RuntimeLab.ZeroGC.Net11</PackageId>
+    <Description>
+      ZeroGC - an experimental, allocate-only standalone CoreCLR GC that never
+      reclaims memory - prebuilt for apps targeting .NET 11.0 (preview ABI).
+      See https://github.com/dotnet/runtimelab/tree/feature/ZeroGC for
+      details, caveats, and how to enable it via the DOTNET_GCName knob. NOT
+      for production use. This build is NOT ABI-compatible with the .Net10
+      package - see src/ZeroGC/README.md, section "Supported runtime versions &amp; versioning policy".
+    </Description>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <IncludeBuildOutput>true</IncludeBuildOutput>
+    <IsPackable>true</IsPackable>
+    <!-- Native-only package: no ref/lib managed assets. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <DisablePackageBaselineValidation>true</DisablePackageBaselineValidation>
+
+    <!-- Reference dotnet/runtime checkout used ONLY as a read-only
+         header/ABI dependency to compile ZeroGC against - never built or
+         modified. Must point at a net11.0 preview checkout (see the Net10
+         project for why net10.0/net11.0 need separate packages). Override
+         via the ZEROGC_NET11_RUNTIME_REPO environment variable in CI;
+         defaults to the conventional local dev checkout path used
+         throughout this repo's docs. -->
+    <ZeroGCReferenceRuntimeRepo Condition="'$(ZeroGCReferenceRuntimeRepo)' == ''">$(ZEROGC_NET11_RUNTIME_REPO)</ZeroGCReferenceRuntimeRepo>
+    <ZeroGCReferenceRuntimeRepo Condition="'$(ZeroGCReferenceRuntimeRepo)' == ''">C:\github\runtime</ZeroGCReferenceRuntimeRepo>
+    <ZeroGCNativeDir>$(MSBuildThisFileDirectory)..\..\native</ZeroGCNativeDir>
+    <!-- Keep this package's native build output segregated from the
+         .Net10 package's (same native/ source tree, ABI-incompatible
+         outputs) so building one doesn't clobber the other locally. -->
+    <ZeroGCNativeObjSuffix>-net11</ZeroGCNativeObjSuffix>
+  </PropertyGroup>
+
+  <!--
+    Each OS leg of the pipeline (Windows/Linux, see
+    eng/pipelines/runtimelab-official.yml) runs this pack step and produces a
+    PARTIAL package containing only that OS's native/{rid} asset - that's
+    fine for those per-leg build/test jobs, since they aren't what gets
+    signed/published. The official pipeline's actual signing job
+    ("Prepare Signed Artifacts", eng/pipelines/common/jobs/prepare-signed-artifacts.yml)
+    re-runs `build.cmd -pack` from source on a single Windows machine, after
+    downloading every leg's uploaded IntermediateArtifacts. The
+    IncludeLinuxNativeAssetFromIntermediateArtifacts target below runs only
+    in that job (detected via the downloaded Linuxx64 artifact folder being
+    present) and pulls the already-built libZeroGC.so back out of the Linux
+    leg's partial .nupkg, so the single combined pack produced by that job -
+    the one that actually gets signed and published - carries both RIDs.
+  -->
+  <Target Name="BuildZeroGCNativeWindows"
+          Condition="'$(OS)' == 'Windows_NT'"
+          BeforeTargets="Build">
+    <Error Condition="!Exists('$(ZeroGCReferenceRuntimeRepo)\src\coreclr')"
+           Text="ZeroGCReferenceRuntimeRepo ('$(ZeroGCReferenceRuntimeRepo)') does not look like a dotnet/runtime checkout (expected 'src\coreclr' under it). Set the ZEROGC_NET11_RUNTIME_REPO environment variable or pass /p:ZeroGCReferenceRuntimeRepo=&lt;path&gt;." />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ZeroGCNativeDir)\build.ps1&quot; -RuntimeRepo &quot;$(ZeroGCReferenceRuntimeRepo)&quot; -Configuration Release -OutputSubDir &quot;$(ZeroGCNativeObjSuffix)&quot;"
+          IgnoreStandardErrorWarningFormat="true" />
+    <!-- See the identical comment in the .Net10 project's csproj: these
+         items must be added dynamically inside this target's execution,
+         not as a top-level <ItemGroup>, so Pack picks up the just-built
+         binary rather than a stale evaluation-time Exists() check. -->
+    <ItemGroup>
+      <None Include="$(ZeroGCNativeDir)\obj\Release$(ZeroGCNativeObjSuffix)\ZeroGC.dll"
+            PackagePath="runtimes/win-x64/native"
+            Pack="true"
+            Condition="Exists('$(ZeroGCNativeDir)\obj\Release$(ZeroGCNativeObjSuffix)\ZeroGC.dll')" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="BuildZeroGCNativeLinux"
+          Condition="'$(OS)' != 'Windows_NT'"
+          BeforeTargets="Build">
+    <Error Condition="!Exists('$(ZeroGCReferenceRuntimeRepo)/src/coreclr')"
+           Text="ZeroGCReferenceRuntimeRepo ('$(ZeroGCReferenceRuntimeRepo)') does not look like a dotnet/runtime checkout (expected 'src/coreclr' under it). Set the ZEROGC_NET11_RUNTIME_REPO environment variable or pass /p:ZeroGCReferenceRuntimeRepo=&lt;path&gt;." />
+    <Exec Command="&quot;$(ZeroGCNativeDir)/build-linux.sh&quot; --runtime-repo &quot;$(ZeroGCReferenceRuntimeRepo)&quot; --configuration Release --output-subdir &quot;$(ZeroGCNativeObjSuffix)&quot;"
+          IgnoreStandardErrorWarningFormat="true" />
+    <ItemGroup>
+      <None Include="$(ZeroGCNativeDir)/obj-linux/Release$(ZeroGCNativeObjSuffix)/libZeroGC.so"
+            PackagePath="runtimes/linux-x64/native"
+            Pack="true"
+            Condition="Exists('$(ZeroGCNativeDir)/obj-linux/Release$(ZeroGCNativeObjSuffix)/libZeroGC.so')" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="IncludeLinuxNativeAssetFromIntermediateArtifacts"
+          Condition="'$(OS)' == 'Windows_NT' and Exists('$(BUILD_SOURCESDIRECTORY)\artifacts\PackageDownload\IntermediateArtifacts\Linuxx64\Shipping')"
+          BeforeTargets="Build">
+    <ItemGroup>
+      <_ZeroGCLinuxPartialNupkg Include="$(BUILD_SOURCESDIRECTORY)\artifacts\PackageDownload\IntermediateArtifacts\Linuxx64\Shipping\$(PackageId).*.nupkg" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_ZeroGCLinuxExtractDir>$(IntermediateOutputPath)linux-native-extract\</_ZeroGCLinuxExtractDir>
+    </PropertyGroup>
+    <Error Condition="'@(_ZeroGCLinuxPartialNupkg)' == ''"
+           Text="Expected a Linux partial package matching '$(PackageId).*.nupkg' under artifacts\PackageDownload\IntermediateArtifacts\Linuxx64\Shipping, but none was found - did the official build's Linux leg fail to produce/upload its intermediate artifact?" />
+    <RemoveDir Directories="$(_ZeroGCLinuxExtractDir)" Condition="Exists('$(_ZeroGCLinuxExtractDir)')" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Expand-Archive -LiteralPath '%(_ZeroGCLinuxPartialNupkg.FullPath)' -DestinationPath '$(_ZeroGCLinuxExtractDir)' -Force&quot;" />
+    <ItemGroup>
+      <None Include="$(_ZeroGCLinuxExtractDir)runtimes\linux-x64\native\libZeroGC.so"
+            PackagePath="runtimes/linux-x64/native"
+            Pack="true"
+            Condition="Exists('$(_ZeroGCLinuxExtractDir)runtimes\linux-x64\native\libZeroGC.so')" />
+    </ItemGroup>
+    <Error Condition="!Exists('$(_ZeroGCLinuxExtractDir)runtimes\linux-x64\native\libZeroGC.so')"
+           Text="Extracted the Linux partial package but did not find runtimes/linux-x64/native/libZeroGC.so inside it - check the Linux leg's pack output." />
+  </Target>
+
+</Project>
