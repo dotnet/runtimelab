@@ -47,6 +47,17 @@ extends:
             image: 1es-windows-2022
             os: windows
 
+      - template: /eng/pipelines/common/templates/build-job.yml
+        parameters:
+          osGroup: Linux
+          archType: x64
+          isOfficialBuild: true
+          runTests: false
+          pool:
+            name: $(DncEngInternalBuildPool)
+            image: 1es-ubuntu-2204
+            os: linux
+
     - ${{ if eq(variables.isOfficialBuild, true) }}:
       - template: /eng/pipelines/common/templates/publish.yml
         parameters:
