@@ -1,0 +1,76 @@
+<Project Sdk="Microsoft.Build.NoTargets">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageId>Microsoft.DotNet.RuntimeLab.ZeroGC.Net10</PackageId>
+    <Description>
+      ZeroGC - an experimental, allocate-only standalone CoreCLR GC that never
+      reclaims memory - prebuilt for apps targeting .NET 10.0 (GA ABI). See
+      https://github.com/dotnet/runtimelab/tree/feature/ZeroGC for details,
+      caveats, and how to enable it via the DOTNET_GCName knob. NOT for
+      production use.
+    </Description>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <IncludeBuildOutput>true</IncludeBuildOutput>
+    <IsPackable>true</IsPackable>
+    <!-- Native-only package: no ref/lib managed assets. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <DisablePackageBaselineValidation>true</DisablePackageBaselineValidation>
+
+    <!-- Reference dotnet/runtime checkout used ONLY as a read-only
+         header/ABI dependency to compile ZeroGC against - never built or
+         modified. Must point at a net10.0 GA-era checkout (ZeroGC's net10.0
+         and net11.0 builds are ABI-incompatible - see
+         src/ZeroGC/README.md, section "Supported runtime versions & versioning policy" -
+         hence the separate Net10/Net11 packages). Override via the
+         ZEROGC_NET10_RUNTIME_REPO environment variable in CI; defaults to
+         the conventional local dev checkout path used throughout this
+         repo's docs. -->
+    <ZeroGCReferenceRuntimeRepo Condition="'$(ZeroGCReferenceRuntimeRepo)' == ''">$(ZEROGC_NET10_RUNTIME_REPO)</ZeroGCReferenceRuntimeRepo>
+    <ZeroGCReferenceRuntimeRepo Condition="'$(ZeroGCReferenceRuntimeRepo)' == ''">C:\github\runtime-net10.0-ga</ZeroGCReferenceRuntimeRepo>
+    <ZeroGCNativeDir>$(MSBuildThisFileDirectory)..\..\native</ZeroGCNativeDir>
+  </PropertyGroup>
+
+  <!--
+    TODO(arcade-official-linux-job): this only builds/packs the native asset
+    for the OS the packaging project is currently running on. Producing a
+    single package with BOTH runtimes/win-x64/native and
+    runtimes/linux-x64/native assets requires either (a) running this pack
+    step on both OSes and merging the two partial .nupkgs' native content in
+    a follow-up "combine" step, or (b) restructuring as two RID-specific
+    sub-packages the way dotnet/runtime's runtime.native.* packages do. Not
+    yet wired into eng/pipelines - tracked by arcade-import-pipelines /
+    arcade-official-linux-job.
+  -->
+  <Target Name="BuildZeroGCNativeWindows"
+          Condition="'$(OS)' == 'Windows_NT'"
+          BeforeTargets="Build">
+    <Error Condition="!Exists('$(ZeroGCReferenceRuntimeRepo)\src\coreclr')"
+           Text="ZeroGCReferenceRuntimeRepo ('$(ZeroGCReferenceRuntimeRepo)') does not look like a dotnet/runtime checkout (expected 'src\coreclr' under it). Set the ZEROGC_NET10_RUNTIME_REPO environment variable or pass /p:ZeroGCReferenceRuntimeRepo=&lt;path&gt;." />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ZeroGCNativeDir)\build.ps1&quot; -RuntimeRepo &quot;$(ZeroGCReferenceRuntimeRepo)&quot; -Configuration Release" />
+    <!--
+      IMPORTANT: these Pack="true" items must be added HERE, inside this
+      target's execution, rather than in a plain top-level <ItemGroup> -
+      MSBuild evaluates top-level items (and their Condition="Exists(...)"
+      checks) once at project-evaluation time, BEFORE any target (including
+      this one) has run, so a top-level item would never see the freshly
+      built binary from the Exec call above. Adding the item dynamically
+      inside the target (which runs BeforeTargets="Build", and Pack depends
+      on Build) ensures NuGet's pack step sees it.
+    -->
+    <ItemGroup>
+      <None Include="$(ZeroGCNativeDir)\obj\Release\ZeroGC.dll"
+            PackagePath="runtimes/win-x64/native"
+            Pack="true"
+            Condition="Exists('$(ZeroGCNativeDir)\obj\Release\ZeroGC.dll')" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
+    <None Include="$(ZeroGCNativeDir)\obj-linux\Release\libZeroGC.so"
+          PackagePath="runtimes/linux-x64/native"
+          Pack="true"
+          Condition="Exists('$(ZeroGCNativeDir)\obj-linux\Release\libZeroGC.so')" />
+  </ItemGroup>
+
+</Project>

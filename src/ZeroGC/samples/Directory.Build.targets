@@ -1,0 +1,5 @@
+<Project>
+  <!-- See Directory.Build.props in this folder for rationale: sample
+       benchmark apps intentionally opt out of the repo-root Arcade
+       Directory.Build.targets (Sdk.targets import from Microsoft.DotNet.Arcade.Sdk). -->
+</Project>

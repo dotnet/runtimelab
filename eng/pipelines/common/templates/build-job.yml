@@ -1,0 +1,59 @@
+parameters:
+  variables: {}
+  osGroup: ''
+  archType: ''
+  container: ''
+  pool: {}
+  isOfficialBuild: false
+  runTests: true
+
+jobs:
+
+- template: /eng/common/templates/jobs/jobs.yml
+  parameters:
+    enableTelemetry: true
+    helixRepo: dotnet/runtimelab
+    pool: ${{ parameters.pool }}
+    enableMicrobuild: true
+    graphFileGeneration:
+      enabled: false
+      includeToolset: false
+
+    jobs:
+    - job: ${{ format('{0}_{1}', parameters.osGroup, parameters.archType) }}
+      displayName: ${{ format('{0} {1}', parameters.osGroup, parameters.archType) }}
+      strategy:
+        matrix:
+          Release:
+            _BuildConfig: Release
+          ${{ if eq(parameters.isOfficialBuild, false) }}:
+            Debug:
+              _BuildConfig: Debug
+
+      ${{ if eq(parameters.runTests, true) }}:
+        testResultsFormat: vstest
+        testRunTitle: ${{ parameters.osGroup }}_${{ parameters.archType }}_$(_BuildConfig)
+
+      variables:
+        - _buildScript: build.cmd
+        - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
+          - _buildScript: ./build.sh
+        
+        - _testBuildArg: ''
+        - ${{ if eq(parameters.runTests, true) }}:
+          - _testBuildArg: -test
+
+      steps:
+      - script: $(_buildScript)
+                -ci
+                -pack
+                -c $(_BuildConfig)
+                $(_testBuildArg)
+                /p:TargetPlatform=${{ parameters.archType }}
+        displayName: Build and Test
+
+      - ${{ if eq(parameters.isOfficialBuild, true) }}:
+        - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
+          parameters:
+            name: ${{ parameters.osGroup }}${{ parameters.archType }}
+            isOfficialBuild: ${{ parameters.isOfficialBuild }}
