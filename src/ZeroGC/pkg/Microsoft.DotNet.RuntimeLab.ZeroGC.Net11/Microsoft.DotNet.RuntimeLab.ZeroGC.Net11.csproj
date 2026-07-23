@@ -68,8 +68,18 @@
     </ItemGroup>
   </Target>
 
+  <!--
+    ZeroGC only ships win-x64/linux-x64 native assets - there is no macOS
+    support (ZeroGCPal.h uses Linux/glibc-specific APIs like
+    sys/sysinfo.h that don't exist on Darwin). The repo's generic CI
+    matrix (eng/pipelines/runtimelab.yml) also runs an "OSX x64" leg that
+    isn't RID-specific to ZeroGC's packaging, so this target must key off
+    the actual OS, not merely "not Windows" - otherwise it would
+    incorrectly attempt (and fail) a Linux-flavored native build on
+    macOS agents.
+  -->
   <Target Name="BuildZeroGCNativeLinux"
-          Condition="'$(OS)' != 'Windows_NT'"
+          Condition="$([MSBuild]::IsOSPlatform('Linux'))"
           BeforeTargets="Build">
     <Error Condition="!Exists('$(ZeroGCReferenceRuntimeRepo)/src/coreclr')"
            Text="ZeroGCReferenceRuntimeRepo ('$(ZeroGCReferenceRuntimeRepo)') does not look like a dotnet/runtime checkout (expected 'src/coreclr' under it). Set the ZEROGC_NET11_RUNTIME_REPO environment variable or pass /p:ZeroGCReferenceRuntimeRepo=&lt;path&gt;." />
