@@ -8,6 +8,11 @@ trigger:
     include:
     - feature/*
     - standalone-template
+    # TEMPORARY: included only to validate the ZeroGC Arcade official-build
+    # integration end-to-end on a real Azure Pipelines run before merging
+    # this work into feature/ZeroGC (which already matches feature/* above).
+    # Remove this line once that validation is done.
+    - zerogc-arcade-spike
   paths:
     include:
     - '*'
