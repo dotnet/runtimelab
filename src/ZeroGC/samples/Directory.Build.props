@@ -1,0 +1,12 @@
+<Project>
+  <!--
+    Intentionally does NOT import the repo-root Directory.Build.props
+    (Arcade's Sdk.props / TreatWarningsAsErrors / IsPackable=true /
+    UseCustomRuntimeVersion). These console/web benchmark samples are
+    local-only test harnesses used to compare ZeroGC against Workstation/
+    Server GC - they are not part of the Arcade-built/published ZeroGC
+    NuGet packages (see src/ZeroGC/pkg/) and should keep behaving like
+    plain `dotnet build`/`dotnet run` SDK projects regardless of what
+    conventions the packaging side of the repo adopts.
+  -->
+</Project>

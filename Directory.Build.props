@@ -1,0 +1,33 @@
+<Project>
+  <Import Project="Sdk.props" Sdk="Microsoft.DotNet.Arcade.Sdk" />
+
+  <PropertyGroup>
+    <Copyright>$(CopyrightNetFoundation)</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+    <DebugType>embedded</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <LangVersion>Latest</LangVersion>
+    <IsPackable>true</IsPackable>
+
+    <!-- ZeroGC ships prebuilt native binaries for specific, already-public
+         target runtime versions (net10.0 GA / net11.0 preview) rather than
+         building against a daily/custom dotnet/runtime build - so the
+         Arcade "custom runtime version" convention does not apply here.
+         Each packaging project pins its own TargetFramework directly. -->
+    <UseCustomRuntimeVersion>false</UseCustomRuntimeVersion>
+    <RuntimeFrameworkVersion Condition="$(UseCustomRuntimeVersion)">$(MicrosoftNETCoreAppVersion)</RuntimeFrameworkVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <IsPackable>false</IsPackable>
+    <TestCaptureOutput>false</TestCaptureOutput>
+    <TargetPlatform Condition="'$(TargetPlatform)' == ''">x64</TargetPlatform>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsTestProject)' == 'true'">
+    <PackageReference Update="Microsoft.NET.Test.Sdk" Version="$(MicrosoftNETTestSdkVersion)" PrivateAssets="true" />
+    <PackageReference Update="xunit" Version="$(XunitVersion)" />
+    <PackageReference Update="xunit.runner.visualstudio" Version="$(XUnitRunnerVisualStudioVersion)" PrivateAssets="all" />
+  </ItemGroup>
+</Project>
