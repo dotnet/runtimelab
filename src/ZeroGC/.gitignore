@@ -1,5 +1,6 @@
 # Build outputs
 native/obj/
+native/obj-linux/
 native/x64/
 native/*.pdb
 native/*.ilk

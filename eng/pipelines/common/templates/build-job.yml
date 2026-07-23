@@ -44,6 +44,41 @@ jobs:
           - _testBuildArg: -test
 
       steps:
+      - ${{ if eq(parameters.osGroup, 'Windows_NT') }}:
+        - powershell: |
+            $ErrorActionPreference = 'Stop'
+            function Get-ReferenceRuntime($tag, $dir) {
+              if (Test-Path $dir) { Write-Host "$dir already exists, skipping clone."; return }
+              git clone --filter=blob:none --depth 1 --branch $tag https://github.com/dotnet/runtime.git $dir
+              Push-Location $dir
+              git sparse-checkout set src/coreclr src/native
+              Pop-Location
+            }
+            $net10Dir = Join-Path $env:AGENT_TEMPDIRECTORY 'runtime-net10.0-ga'
+            $net11Dir = Join-Path $env:AGENT_TEMPDIRECTORY 'runtime-net11.0-preview'
+            Get-ReferenceRuntime 'v10.0.0' $net10Dir
+            Get-ReferenceRuntime 'v11.0.0-preview.6.26359.118' $net11Dir
+            Write-Host "##vso[task.setvariable variable=ZEROGC_NET10_RUNTIME_REPO]$net10Dir"
+            Write-Host "##vso[task.setvariable variable=ZEROGC_NET11_RUNTIME_REPO]$net11Dir"
+          displayName: Checkout ZeroGC reference runtime headers (net10.0 GA + net11.0 preview)
+
+      - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
+        - bash: |
+            set -euo pipefail
+            get_reference_runtime() {
+              tag="$1"; dir="$2"
+              if [ -d "$dir" ]; then echo "$dir already exists, skipping clone."; return; fi
+              git clone --filter=blob:none --depth 1 --branch "$tag" https://github.com/dotnet/runtime.git "$dir"
+              (cd "$dir" && git sparse-checkout set src/coreclr src/native)
+            }
+            net10Dir="$AGENT_TEMPDIRECTORY/runtime-net10.0-ga"
+            net11Dir="$AGENT_TEMPDIRECTORY/runtime-net11.0-preview"
+            get_reference_runtime v10.0.0 "$net10Dir"
+            get_reference_runtime v11.0.0-preview.6.26359.118 "$net11Dir"
+            echo "##vso[task.setvariable variable=ZEROGC_NET10_RUNTIME_REPO]$net10Dir"
+            echo "##vso[task.setvariable variable=ZEROGC_NET11_RUNTIME_REPO]$net11Dir"
+          displayName: Checkout ZeroGC reference runtime headers (net10.0 GA + net11.0 preview)
+
       - script: $(_buildScript)
                 -ci
                 -pack
@@ -51,6 +86,9 @@ jobs:
                 $(_testBuildArg)
                 /p:TargetPlatform=${{ parameters.archType }}
         displayName: Build and Test
+        env:
+          ZEROGC_NET10_RUNTIME_REPO: $(ZEROGC_NET10_RUNTIME_REPO)
+          ZEROGC_NET11_RUNTIME_REPO: $(ZEROGC_NET11_RUNTIME_REPO)
 
       - ${{ if eq(parameters.isOfficialBuild, true) }}:
         - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml

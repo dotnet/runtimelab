@@ -1,0 +1,18 @@
+<!-- Licensed to the .NET Foundation under one or more agreements. The .NET Foundation licenses this file to you under the MIT license. -->
+<Project>
+
+  <!--
+    Arcade's toolset Build.proj falls back to building the repo root
+    *.sln/*.slnx by default. ZeroGC has neither (its benchmark sample apps
+    under src/ZeroGC/samples/ are intentionally excluded from the Arcade
+    build via their own empty Directory.Build.props/.targets override - see
+    src/ZeroGC/samples/Directory.Build.props). Explicitly list the two
+    packaging shim projects here instead, so `build.cmd/build.sh -pack`
+    builds+packs exactly (and only) the ZeroGC native-asset NuGet packages.
+  -->
+  <ItemGroup>
+    <ProjectToBuild Include="$(RepoRoot)src\ZeroGC\pkg\Microsoft.DotNet.RuntimeLab.ZeroGC.Net10\Microsoft.DotNet.RuntimeLab.ZeroGC.Net10.csproj" />
+    <ProjectToBuild Include="$(RepoRoot)src\ZeroGC\pkg\Microsoft.DotNet.RuntimeLab.ZeroGC.Net11\Microsoft.DotNet.RuntimeLab.ZeroGC.Net11.csproj" />
+  </ItemGroup>
+
+</Project>

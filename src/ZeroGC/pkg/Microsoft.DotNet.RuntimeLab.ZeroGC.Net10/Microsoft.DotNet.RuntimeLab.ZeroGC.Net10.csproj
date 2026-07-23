@@ -32,22 +32,35 @@
   </PropertyGroup>
 
   <!--
-    TODO(arcade-official-linux-job): this only builds/packs the native asset
-    for the OS the packaging project is currently running on. Producing a
-    single package with BOTH runtimes/win-x64/native and
-    runtimes/linux-x64/native assets requires either (a) running this pack
-    step on both OSes and merging the two partial .nupkgs' native content in
-    a follow-up "combine" step, or (b) restructuring as two RID-specific
-    sub-packages the way dotnet/runtime's runtime.native.* packages do. Not
-    yet wired into eng/pipelines - tracked by arcade-import-pipelines /
-    arcade-official-linux-job.
+    Each OS leg of the pipeline (Windows/Linux, see
+    eng/pipelines/runtimelab-official.yml) runs this pack step and produces a
+    PARTIAL package containing only that OS's native/{rid} asset. A separate
+    "combine" stage merges the win-x64 and linux-x64 partial .nupkgs from the
+    two legs' intermediate artifacts into one final multi-RID package before
+    publishing - see eng/pipelines/common/combine-native-packages.yml. This
+    mirrors dotnet/runtime's own pattern of building per-RID native assets on
+    separate OS legs and merging them in a downstream stage.
   -->
   <Target Name="BuildZeroGCNativeWindows"
           Condition="'$(OS)' == 'Windows_NT'"
           BeforeTargets="Build">
     <Error Condition="!Exists('$(ZeroGCReferenceRuntimeRepo)\src\coreclr')"
            Text="ZeroGCReferenceRuntimeRepo ('$(ZeroGCReferenceRuntimeRepo)') does not look like a dotnet/runtime checkout (expected 'src\coreclr' under it). Set the ZEROGC_NET10_RUNTIME_REPO environment variable or pass /p:ZeroGCReferenceRuntimeRepo=&lt;path&gt;." />
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ZeroGCNativeDir)\build.ps1&quot; -RuntimeRepo &quot;$(ZeroGCReferenceRuntimeRepo)&quot; -Configuration Release" />
+    <!--
+      IgnoreStandardErrorWarningFormat: MSBuild's Exec task scans tool
+      output for lines matching its canonical error/warning regex and
+      promotes matches to real MSBuild warnings/errors. Because the root
+      Directory.Build.props (Arcade convention) sets
+      TreatWarningsAsErrors=true, an ordinary compiler diagnostic emitted
+      by build.ps1's underlying cl.exe/clang++ invocation (e.g. a
+      dotnet/runtime header emitting an -W... note) would otherwise be
+      silently escalated into a hard MSBuild build failure despite the
+      native build having actually succeeded. Native build failures are
+      already surfaced via this script's own exit code (Exec fails the
+      target on nonzero exit regardless of this setting).
+    -->
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ZeroGCNativeDir)\build.ps1&quot; -RuntimeRepo &quot;$(ZeroGCReferenceRuntimeRepo)&quot; -Configuration Release"
+          IgnoreStandardErrorWarningFormat="true" />
     <!--
       IMPORTANT: these Pack="true" items must be added HERE, inside this
       target's execution, rather than in a plain top-level <ItemGroup> -
@@ -66,11 +79,20 @@
     </ItemGroup>
   </Target>
 
-  <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
-    <None Include="$(ZeroGCNativeDir)\obj-linux\Release\libZeroGC.so"
-          PackagePath="runtimes/linux-x64/native"
-          Pack="true"
-          Condition="Exists('$(ZeroGCNativeDir)\obj-linux\Release\libZeroGC.so')" />
-  </ItemGroup>
+  <Target Name="BuildZeroGCNativeLinux"
+          Condition="'$(OS)' != 'Windows_NT'"
+          BeforeTargets="Build">
+    <Error Condition="!Exists('$(ZeroGCReferenceRuntimeRepo)/src/coreclr')"
+           Text="ZeroGCReferenceRuntimeRepo ('$(ZeroGCReferenceRuntimeRepo)') does not look like a dotnet/runtime checkout (expected 'src/coreclr' under it). Set the ZEROGC_NET10_RUNTIME_REPO environment variable or pass /p:ZeroGCReferenceRuntimeRepo=&lt;path&gt;." />
+    <Exec Command="&quot;$(ZeroGCNativeDir)/build-linux.sh&quot; --runtime-repo &quot;$(ZeroGCReferenceRuntimeRepo)&quot; --configuration Release"
+          IgnoreStandardErrorWarningFormat="true" />
+    <!-- Same dynamic-item timing note as the Windows target above applies here. -->
+    <ItemGroup>
+      <None Include="$(ZeroGCNativeDir)/obj-linux/Release/libZeroGC.so"
+            PackagePath="runtimes/linux-x64/native"
+            Pack="true"
+            Condition="Exists('$(ZeroGCNativeDir)/obj-linux/Release/libZeroGC.so')" />
+    </ItemGroup>
+  </Target>
 
 </Project>

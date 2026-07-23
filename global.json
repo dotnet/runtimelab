@@ -5,12 +5,7 @@
     "rollForward": "major"
   },
   "tools": {
-    "dotnet": "11.0.100-preview.5.26302.115",
-    "runtimes": {
-      "dotnet": [
-        "$(MicrosoftNETCoreAppVersion)"
-      ]
-    }
+    "dotnet": "11.0.100-preview.5.26302.115"
   },
   "msbuild-sdks": {
     "Microsoft.DotNet.Arcade.Sdk": "11.0.0-beta.26369.1",
