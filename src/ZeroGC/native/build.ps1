@@ -68,10 +68,18 @@ else {
 
 $sourceFiles = @("dllmain.cpp", "ZeroGCHeap.cpp", "ZeroGCHandles.cpp") | ForEach-Object { "`"$src\$_`"" }
 
-$clCmd = "cl.exe /nologo /c /EHsc /std:c++17 $optFlags /I `"$includes`" $($defs -join ' ') /Fo:`"$objDir\\`" $($sourceFiles -join ' ')"
+# Security mitigations required for any Microsoft-shipped native binary
+# (mirrors dotnet/runtime's eng/native/configurecompiler.cmake:
+# CLR_CONTROL_FLOW_GUARD -> /guard:cf, CLR_EH_CONTINUATION -> /guard:ehcont,
+# applied to both the compiler and the linker). Kept here explicitly since
+# this build does not go through CMake/configurecompiler.cmake itself.
+$secCompileFlags = "/guard:cf /guard:ehcont"
+$secLinkFlags = "/guard:cf /guard:ehcont /DYNAMICBASE /NXCOMPAT"
+
+$clCmd = "cl.exe /nologo /c /EHsc /std:c++17 $optFlags $secCompileFlags /I `"$includes`" $($defs -join ' ') /Fo:`"$objDir\\`" $($sourceFiles -join ' ')"
 $objFiles = @("dllmain.obj", "ZeroGCHeap.obj", "ZeroGCHandles.obj") | ForEach-Object { "`"$objDir\$_`"" }
 $outDll = Join-Path $objDir "ZeroGC.dll"
-$linkCmd = "link.exe /nologo /DLL /OUT:`"$outDll`" $($objFiles -join ' ') kernel32.lib advapi32.lib"
+$linkCmd = "link.exe /nologo /DLL $secLinkFlags /OUT:`"$outDll`" $($objFiles -join ' ') kernel32.lib advapi32.lib"
 
 Write-Host "Compiling ZeroGC ($Configuration)..." -ForegroundColor Cyan
 $output = & $env:ComSpec /c "call `"$VcVarsPath`" >nul 2>&1 && cd /d `"$src`" && $clCmd 2>&1 && $linkCmd 2>&1"

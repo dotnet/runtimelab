@@ -65,8 +65,12 @@ SOURCE_FILES=("$SRC_DIR/dllmain.cpp" "$SRC_DIR/ZeroGCHeap.cpp" "$SRC_DIR/ZeroGCH
 OUT_SO="$OBJ_DIR/libZeroGC.so"
 
 echo "Compiling ZeroGC ($CONFIGURATION) for Linux..."
+# Security mitigation required for any Microsoft-shipped native binary
+# (mirrors dotnet/runtime's eng/native/configurecompiler.cmake, which sets
+# -fstack-protector / -fstack-protector-strong for GCC/Clang builds).
+SEC_FLAGS=(-fstack-protector-strong)
 "$CXX" -shared -fPIC -fvisibility=hidden -std=c++17 -pthread \
-    "${OPT_FLAGS[@]}" "${INCLUDES[@]}" "${DEFS[@]}" \
+    "${OPT_FLAGS[@]}" "${SEC_FLAGS[@]}" "${INCLUDES[@]}" "${DEFS[@]}" \
     -o "$OUT_SO" "${SOURCE_FILES[@]}"
 
 if [[ ! -f "$OUT_SO" ]]; then
