@@ -1,0 +1,31 @@
+<Project>
+
+  <!--
+    Repo-specific signing customization, imported automatically by Arcade's
+    toolset Sign.props (see $(RepositoryEngineeringDir)Signing.props in
+    src/Microsoft.DotNet.Arcade.Sdk/toolset/Sign.props).
+
+    No customization is needed for the ItemsToSign discovery itself: Arcade's
+    default (EnableDefaultArtifacts=true, EnableDefaultRidSpecificArtifacts
+    unset) already picks up every *.nupkg under $(ArtifactsPackagesDir)**,
+    which includes both ZeroGC packaging projects'
+    Microsoft.DotNet.RuntimeLab.ZeroGC.Net10/Net11 .nupkgs automatically.
+    Its default FileExtensionSignInfo also already maps ".dll" ->
+    "Microsoft400" and ".nupkg" -> "NuGet", so the embedded win-x64
+    ZeroGC.dll and the containing package are both signed with no extra
+    wiring here.
+
+    What Arcade's default does NOT cover is Linux's libZeroGC.so: there is
+    no built-in FileExtensionSignInfo entry for ".so" (unlike ".dylib",
+    which maps to "MacDeveloperHarden" for macOS notarization). Microsoft's
+    signing infrastructure does not Authenticode-sign raw ELF shared
+    objects - only the containing .nupkg gets a NuGet signature, same as
+    dotnet/runtime's own native Linux assets. Declare this explicitly
+    (CertificateName="None") so SignTool treats it as a deliberate,
+    documented no-op rather than an unmapped-extension warning.
+  -->
+  <ItemGroup>
+    <FileExtensionSignInfo Include=".so" CertificateName="None" />
+  </ItemGroup>
+
+</Project>

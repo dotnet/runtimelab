@@ -37,9 +37,17 @@
   <!--
     Each OS leg of the pipeline (Windows/Linux, see
     eng/pipelines/runtimelab-official.yml) runs this pack step and produces a
-    PARTIAL package containing only that OS's native/{rid} asset - see the
-    identical comment in the .Net10 project's csproj for why, and
-    eng/pipelines/common/combine-native-packages.yml for the merge step.
+    PARTIAL package containing only that OS's native/{rid} asset - that's
+    fine for those per-leg build/test jobs, since they aren't what gets
+    signed/published. The official pipeline's actual signing job
+    ("Prepare Signed Artifacts", eng/pipelines/common/jobs/prepare-signed-artifacts.yml)
+    re-runs `build.cmd -pack` from source on a single Windows machine, after
+    downloading every leg's uploaded IntermediateArtifacts. The
+    IncludeLinuxNativeAssetFromIntermediateArtifacts target below runs only
+    in that job (detected via the downloaded Linuxx64 artifact folder being
+    present) and pulls the already-built libZeroGC.so back out of the Linux
+    leg's partial .nupkg, so the single combined pack produced by that job -
+    the one that actually gets signed and published - carries both RIDs.
   -->
   <Target Name="BuildZeroGCNativeWindows"
           Condition="'$(OS)' == 'Windows_NT'"
@@ -73,6 +81,29 @@
             Pack="true"
             Condition="Exists('$(ZeroGCNativeDir)/obj-linux/Release$(ZeroGCNativeObjSuffix)/libZeroGC.so')" />
     </ItemGroup>
+  </Target>
+
+  <Target Name="IncludeLinuxNativeAssetFromIntermediateArtifacts"
+          Condition="'$(OS)' == 'Windows_NT' and Exists('$(BUILD_SOURCESDIRECTORY)\artifacts\PackageDownload\IntermediateArtifacts\Linuxx64\Shipping')"
+          BeforeTargets="Build">
+    <ItemGroup>
+      <_ZeroGCLinuxPartialNupkg Include="$(BUILD_SOURCESDIRECTORY)\artifacts\PackageDownload\IntermediateArtifacts\Linuxx64\Shipping\$(PackageId).*.nupkg" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_ZeroGCLinuxExtractDir>$(IntermediateOutputPath)linux-native-extract\</_ZeroGCLinuxExtractDir>
+    </PropertyGroup>
+    <Error Condition="'@(_ZeroGCLinuxPartialNupkg)' == ''"
+           Text="Expected a Linux partial package matching '$(PackageId).*.nupkg' under artifacts\PackageDownload\IntermediateArtifacts\Linuxx64\Shipping, but none was found - did the official build's Linux leg fail to produce/upload its intermediate artifact?" />
+    <RemoveDir Directories="$(_ZeroGCLinuxExtractDir)" Condition="Exists('$(_ZeroGCLinuxExtractDir)')" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Expand-Archive -LiteralPath '%(_ZeroGCLinuxPartialNupkg.FullPath)' -DestinationPath '$(_ZeroGCLinuxExtractDir)' -Force&quot;" />
+    <ItemGroup>
+      <None Include="$(_ZeroGCLinuxExtractDir)runtimes\linux-x64\native\libZeroGC.so"
+            PackagePath="runtimes/linux-x64/native"
+            Pack="true"
+            Condition="Exists('$(_ZeroGCLinuxExtractDir)runtimes\linux-x64\native\libZeroGC.so')" />
+    </ItemGroup>
+    <Error Condition="!Exists('$(_ZeroGCLinuxExtractDir)runtimes\linux-x64\native\libZeroGC.so')"
+           Text="Extracted the Linux partial package but did not find runtimes/linux-x64/native/libZeroGC.so inside it - check the Linux leg's pack output." />
   </Target>
 
 </Project>
