@@ -42,22 +42,6 @@ stages:
     enableNugetValidation: ${{ parameters.enableNugetValidation }}
     enableSourceLinkValidation: ${{ parameters.enableSourceLinkValidation }}
     publishAssetsImmediately: true
-    SDLValidationParameters:
-      enable: false
-      artifactNames:
-      - PackageArtifacts
-      - BlobArtifacts
-      params: >-
-        -SourceToolsList @("policheck","credscan")
-        -TsaInstanceURL "$(TsaInstanceURL)"
-        -TsaProjectName "$(TsaProjectName)"
-        -TsaNotificationEmail "$(TsaNotificationEmail)"
-        -TsaCodebaseAdmin "$(TsaCodebaseAdmin)"
-        -TsaBugAreaPath "$(TsaBugAreaPath)"
-        -TsaIterationPath "$(TsaIterationPath)"
-        -TsaRepositoryName "$(TsaRepositoryName)"
-        -TsaCodebaseName "$(TsaCodebaseName)"
-        -TsaPublish $True
     symbolPublishingAdditionalParameters: '/p:PublishSpecialClrFiles=true'
     # Publish to blob storage.
     publishInstallersAndChecksums: true
