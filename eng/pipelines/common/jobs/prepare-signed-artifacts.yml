@@ -19,7 +19,7 @@ jobs:
     workspace:
       clean: all
 
-    enableMicrobuild: true
+    enableMicrobuild: false
     enablePublishing: true
 
     variables:
