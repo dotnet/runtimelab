@@ -14,7 +14,7 @@ jobs:
     enableTelemetry: true
     helixRepo: dotnet/runtimelab
     pool: ${{ parameters.pool }}
-    enableMicrobuild: true
+    enableMicrobuild: false # temporary - while we decide if RTL should sign assets.
     graphFileGeneration:
       enabled: false
       includeToolset: false
