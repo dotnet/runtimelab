@@ -43,6 +43,23 @@ jobs:
         artifactName: ${{ parameters.logArtifactName }}
     
     steps:
+    - powershell: |
+        $ErrorActionPreference = 'Stop'
+        function Get-ReferenceRuntime($tag, $dir) {
+          if (Test-Path $dir) { Write-Host "$dir already exists, skipping clone."; return }
+          git clone --filter=blob:none --depth 1 --branch $tag https://github.com/dotnet/runtime.git $dir
+          Push-Location $dir
+          git sparse-checkout set src/coreclr src/native
+          Pop-Location
+        }
+        $net10Dir = Join-Path $env:AGENT_TEMPDIRECTORY 'runtime-net10.0-ga'
+        $net11Dir = Join-Path $env:AGENT_TEMPDIRECTORY 'runtime-net11.0-preview'
+        Get-ReferenceRuntime 'v10.0.0' $net10Dir
+        Get-ReferenceRuntime 'v11.0.0-preview.6.26359.118' $net11Dir
+        Write-Host "##vso[task.setvariable variable=ZEROGC_NET10_RUNTIME_REPO]$net10Dir"
+        Write-Host "##vso[task.setvariable variable=ZEROGC_NET11_RUNTIME_REPO]$net11Dir"
+      displayName: Checkout ZeroGC reference runtime headers (net10.0 GA + net11.0 preview)
+
     - script: >-
         build.cmd -ci
         -publish
@@ -54,6 +71,9 @@ jobs:
         /p:DotNetSignType=$(_SignType)
         /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
       displayName: Prepare artifacts and upload to build
+      env:
+        ZEROGC_NET10_RUNTIME_REPO: $(ZEROGC_NET10_RUNTIME_REPO)
+        ZEROGC_NET11_RUNTIME_REPO: $(ZEROGC_NET11_RUNTIME_REPO)
     
     - task: CopyFiles@2
       displayName: Copy Files to $(Build.StagingDirectory)\BuildLogs
