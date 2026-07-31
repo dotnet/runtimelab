@@ -36,9 +36,39 @@ Then add the package (use the exact prerelease version currently published -
 dotnet add package Microsoft.DotNet.RuntimeLab.ZeroGC.Net10 --version 1.0.0-zerogc.26381.4
 ```
 
-Alternatively, build `ZeroGC.dll`/`libZeroGC.so` yourself from source - see
+### Or: build it yourself from source
+
+You don't need the NuGet feed at all - `ZeroGC.dll`/`libZeroGC.so` is a
+small, self-contained native project you can build locally in a couple of
+minutes. This is the only option if you don't have access to the
+`dotnet-experimental` feed (e.g. an air-gapped/restricted network), or if
+you need a runtime version not currently published, or want to modify
+ZeroGC itself. Full details, including toolchain requirements, are in
 "Building ZeroGC.dll / libZeroGC.so" in
-[`../../src/ZeroGC/README.md`](../../src/ZeroGC/README.md#building-zerogcdll--libzerogcso).
+[`../../src/ZeroGC/README.md`](../../src/ZeroGC/README.md#building-zerogcdll--libzerogcso);
+short version:
+
+```powershell
+# Windows - from a Developer Command Prompt / PowerShell with cl.exe on PATH
+cd src\ZeroGC\native
+.\build.ps1
+# -> produces native\ZeroGC.dll (Release, x64)
+```
+
+```bash
+# Linux - requires clang++/g++ with C++17 and a local dotnet/runtime checkout
+# (used only as a read-only header dependency, never modified)
+cd src/ZeroGC/native
+./build-linux.sh --runtime-repo /path/to/runtime
+# -> produces native/obj-linux/Release/libZeroGC.so
+```
+
+Pick the `dotnet/runtime` tag/branch matching your app's target runtime
+major version (net10.0 GA vs. net11.0 preview) - see
+[Why per-version, and why it matters](#why-per-version-and-why-it-matters)
+below for why this matters. The resulting binary is used exactly the same
+way as the NuGet-sourced one - place it next to your app (step 2 below)
+and set `DOTNET_GCName` (step 3).
 
 ## 2. Place the binary next to your app
 
