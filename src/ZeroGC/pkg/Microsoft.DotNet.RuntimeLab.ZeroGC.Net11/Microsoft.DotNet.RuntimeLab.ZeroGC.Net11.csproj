@@ -105,7 +105,10 @@
     <Error Condition="'@(_ZeroGCLinuxPartialNupkg)' == ''"
            Text="Expected a Linux partial package matching '$(PackageId).*.nupkg' under artifacts\PackageDownload\IntermediateArtifacts\Linuxx64\Shipping, but none was found - did the official build's Linux leg fail to produce/upload its intermediate artifact?" />
     <RemoveDir Directories="$(_ZeroGCLinuxExtractDir)" Condition="Exists('$(_ZeroGCLinuxExtractDir)')" />
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Expand-Archive -LiteralPath '%(_ZeroGCLinuxPartialNupkg.FullPath)' -DestinationPath '$(_ZeroGCLinuxExtractDir)' -Force&quot;" />
+    <!-- Expand-Archive refuses to extract .nupkg (it only recognizes the
+         .zip extension, even though a nupkg is a zip file), so extract via
+         System.IO.Compression.ZipFile directly instead. -->
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('%(_ZeroGCLinuxPartialNupkg.FullPath)', '$(_ZeroGCLinuxExtractDir)')&quot;" />
     <ItemGroup>
       <None Include="$(_ZeroGCLinuxExtractDir)runtimes\linux-x64\native\libZeroGC.so"
             PackagePath="runtimes/linux-x64/native"
