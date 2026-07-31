@@ -41,6 +41,18 @@ jobs:
         condition: succeededOrFailed()
         targetPath: '$(Build.StagingDirectory)\BuildLogs'
         artifactName: ${{ parameters.logArtifactName }}
+      # The subsequent "Publish Build Assets" stage (post-build.yml,
+      # publishingVersion 3 - our default) downloads a pipeline artifact
+      # literally named 'AssetManifests' to discover what this job staged
+      # for BAR/Maestro. 'build.cmd -publish' (above) writes that manifest
+      # XML to artifacts/log/<Configuration>/AssetManifest/*.xml (Arcade's
+      # AssetManifestFilePath convention) - upload that folder here so the
+      # download step in publish-build-assets.yml finds it.
+      - output: pipelineArtifact
+        displayName: 'Publish Asset Manifests'
+        condition: succeeded()
+        targetPath: '$(Build.SourcesDirectory)\artifacts\log\Release\AssetManifest'
+        artifactName: 'AssetManifests'
     
     steps:
     - powershell: |
