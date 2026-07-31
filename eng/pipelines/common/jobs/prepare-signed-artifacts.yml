@@ -21,6 +21,14 @@ jobs:
 
     enableMicrobuild: false
     enablePublishing: true
+    # publish-build-assets.yml (invoked below, in publish.yml) is called
+    # with publishingVersion: 4 (V4/"stages-based" asset publishing), which
+    # discovers assets by scanning every job's pipeline artifact for a
+    # 'manifests/**/*.xml' entry - it does NOT look for a V3-style artifact
+    # literally named 'AssetManifests'. Must match here so this job's
+    # auto-generated V4 output (below) and 'build.cmd -publish' (further
+    # below) both write/upload to the same V4 layout.
+    publishingVersion: 4
 
     variables:
       - name: '_SignType'
@@ -41,18 +49,13 @@ jobs:
         condition: succeededOrFailed()
         targetPath: '$(Build.StagingDirectory)\BuildLogs'
         artifactName: ${{ parameters.logArtifactName }}
-      # The subsequent "Publish Build Assets" stage (post-build.yml,
-      # publishingVersion 3 - our default) downloads a pipeline artifact
-      # literally named 'AssetManifests' to discover what this job staged
-      # for BAR/Maestro. 'build.cmd -publish' (above) writes that manifest
-      # XML to artifacts/log/<Configuration>/AssetManifest/*.xml (Arcade's
-      # AssetManifestFilePath convention) - upload that folder here so the
-      # download step in publish-build-assets.yml finds it.
-      - output: pipelineArtifact
-        displayName: 'Publish Asset Manifests'
-        condition: succeeded()
-        targetPath: '$(Build.SourcesDirectory)\artifacts\log\Release\AssetManifest'
-        artifactName: 'AssetManifests'
+      # NOTE: with publishingVersion: 4 set above, /eng/common/templates-official/job/job.yml
+      # automatically adds a '$(System.PhaseName)_Artifacts' pipelineArtifact
+      # output covering '$(Build.ArtifactStagingDirectory)/artifacts' - no
+      # manual output is needed here for asset manifests/packages, as long as
+      # 'build.cmd -publish' (below) is told to use PublishingVersion=4 too,
+      # so it stages the manifest under .../artifacts/manifests/*.xml instead
+      # of the legacy artifacts/log/<Configuration>/AssetManifest/*.xml path.
     
     steps:
     - powershell: |
@@ -77,6 +80,7 @@ jobs:
         -publish
         -pack
         -configuration Release
+        /p:PublishingVersion=4
         /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
         /p:OfficialBuildId=$(Build.BuildNumber)
         /p:SignType=$(_SignType)
