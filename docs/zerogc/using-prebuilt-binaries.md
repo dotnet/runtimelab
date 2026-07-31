@@ -6,36 +6,91 @@ See [`../../src/ZeroGC/README.md`](../../src/ZeroGC/README.md) for what
 ZeroGC is, how it's implemented, and its measured performance
 characteristics. This page only covers *consuming* a built binary.
 
-## 1. Build the right binary
+## 1. Get the binary
 
-**No prebuilt binaries are published for this experiment.** Any binary
-officially distributed from `dotnet/runtimelab` needs to be built and
-hosted on Microsoft's own infrastructure rather than a personal
-account/fork - ZeroGC doesn't have that build plumbing (Arcade/official
-Azure Pipelines integration producing a signed NuGet package) set up yet.
+Signed binaries are published as NuGet packages, built by Microsoft's own
+official Arcade/Azure Pipelines infrastructure and pushed to the
+`dotnet-experimental` feed - one package per targeted runtime major version
+(see [Why per-version, and why it matters](#why-per-version-and-why-it-matters)
+below for why you must pick the package matching your app's TFM):
 
-Build `ZeroGC.dll` (Windows) or `libZeroGC.so` (Linux) yourself following
-the "Building ZeroGC.dll / libZeroGC.so" section of
-[`../../src/ZeroGC/README.md`](../../src/ZeroGC/README.md#building-zerogcdll--libzerogcso),
-picking the `dotnet/runtime` tag/branch that matches your app's target
-runtime version (net10.0 GA vs. net11.0 preview - see
-[Why per-version, and why it matters](#why-per-version-and-why-it-matters)
-below for why this choice is a hard requirement, not just a
-recommendation).
+| Your app's TFM | Package |
+|---|---|
+| `net10.0` | `Microsoft.DotNet.RuntimeLab.ZeroGC.Net10` |
+| `net11.0` | `Microsoft.DotNet.RuntimeLab.ZeroGC.Net11` |
+
+Add the feed to a `nuget.config` in your project (or solution) directory:
+
+```xml
+<configuration>
+  <packageSources>
+    <add key="dotnet-experimental" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-experimental/nuget/v3/index.json" />
+  </packageSources>
+</configuration>
+```
+
+Then add the package (use the exact prerelease version currently published -
+`--version` and `--prerelease` cannot be combined in the same command):
+
+```powershell
+dotnet add package Microsoft.DotNet.RuntimeLab.ZeroGC.Net10 --version 1.0.0-zerogc.26381.4
+```
+
+Alternatively, build `ZeroGC.dll`/`libZeroGC.so` yourself from source - see
+"Building ZeroGC.dll / libZeroGC.so" in
+[`../../src/ZeroGC/README.md`](../../src/ZeroGC/README.md#building-zerogcdll--libzerogcso).
 
 ## 2. Place the binary next to your app
 
-Copy the native binary you just built (see `native/build.ps1`'s or
-`native/build-linux.sh`'s output path) into your app's published output
-folder, next to `YourApp.dll`:
+The package only carries the native `ZeroGC.dll`/`libZeroGC.so` as a
+RID-specific native asset - it is **not** automatically flattened next to
+your app's executable by a plain `dotnet build`. You have two options,
+both verified end-to-end:
+
+### Option A - copy the file manually (lightweight, no publish required)
+
+Best if you just want to try ZeroGC against an existing `dotnet build`
+output without changing your deployment model. After `dotnet build`, copy
+the single native file from the NuGet package cache into your build
+output, next to `YourApp.dll`:
+
+```powershell
+# Windows, framework-dependent dotnet build output
+Copy-Item "$env:USERPROFILE\.nuget\packages\microsoft.dotnet.runtimelab.zerogc.net10\1.0.0-zerogc.26381.4\runtimes\win-x64\native\ZeroGC.dll" `
+          "bin\Release\net10.0\ZeroGC.dll"
+```
+
+```bash
+# Linux
+cp ~/.nuget/packages/microsoft.dotnet.runtimelab.zerogc.net10/1.0.0-zerogc.26381.4/runtimes/linux-x64/native/libZeroGC.so \
+   bin/Release/net10.0/libZeroGC.so
+```
+
+For repeat use, automate this with a post-build MSBuild `<Copy>` target or
+a CI script step, rather than copying by hand every time.
+
+### Option B - `dotnet publish -r` (RID-specific publish)
+
+If you're already publishing RID-specific output (self-contained or
+framework-dependent), the package's native asset is picked up and
+flattened automatically - no manual copy needed:
+
+```powershell
+dotnet publish -c Release -r win-x64 --self-contained false
+```
 
 ```
-YourApp/
+YourApp/bin/Release/net10.0/win-x64/publish/
   YourApp.dll
   YourApp.runtimeconfig.json
-  ZeroGC.dll          <-- copied here (Windows)
-  ... (or libZeroGC.so on Linux)
+  ZeroGC.dll          <-- placed here automatically (Windows)
+  ... (or libZeroGC.so on Linux, with -r linux-x64)
 ```
+
+Both options were validated to produce identical behavior (0 gen0
+collections, monotonically growing working set) - pick whichever fits
+your existing build/deploy process; Option A avoids the overhead of a
+RID-specific publish if you only want a quick experiment.
 
 ## 3. Tell the runtime to use it
 
