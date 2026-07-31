@@ -20,11 +20,12 @@ by this project — `C:\github\runtime` was used only as a read-only reference
 for the unmodified GC interface headers (`gcinterface.h`, `gcenv.*.h`, etc.)
 and to build a local, unmodified `coreclr.dll`/SDK for testing.
 
-> **No prebuilt binaries are published.** Officially distributed binaries
-> need to be built and hosted on Microsoft's own infrastructure rather than
-> a personal account/fork - this experiment doesn't have that build
-> plumbing (Arcade/official Azure Pipelines integration) set up yet. Build
-> ZeroGC yourself from source using the instructions below.
+> **Prebuilt binaries are published as NuGet packages** on Microsoft's
+> `dotnet-experimental` feed (built and signed via the official
+> Arcade/Azure Pipelines integration) - see
+> [`docs/zerogc/using-prebuilt-binaries.md`](../../docs/zerogc/using-prebuilt-binaries.md)
+> for exact consumption instructions, or "Building ZeroGC.dll / libZeroGC.so"
+> below to build from source instead.
 
 ## What works
 
@@ -179,8 +180,13 @@ published as `linux-x64` self-contained.
 
 ## Running an app with ZeroGC
 
+See [`docs/zerogc/using-prebuilt-binaries.md`](../../docs/zerogc/using-prebuilt-binaries.md)
+for the full, verified instructions (NuGet package feed, both the
+lightweight "copy one file" option and the `dotnet publish -r` option).
+Short version:
+
 Copy `ZeroGC.dll` (Windows) or `libZeroGC.so` (Linux) next to the app's
-published output, then:
+built/published output, then:
 
 ```powershell
 $env:DOTNET_GCName = "ZeroGC.dll"
