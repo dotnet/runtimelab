@@ -53,6 +53,7 @@ stages:
       parameters:
         osGroup: Windows_NT
         archType: x64
+        runTests: false
         pool:
           vmImage: 'windows-latest'
 
@@ -60,6 +61,7 @@ stages:
       parameters:
         osGroup: OSX
         archType: x64
+        runTests: false
         pool:
           vmImage: 'macOS-latest'
 
@@ -67,5 +69,6 @@ stages:
       parameters:
         osGroup: Linux
         archType: x64
+        runTests: false
         pool:
           vmImage: 'ubuntu-latest'

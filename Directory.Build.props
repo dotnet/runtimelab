@@ -10,9 +10,9 @@
     <LangVersion>Latest</LangVersion>
     <IsPackable>true</IsPackable>
 
-    <!-- Set this property to false if you don't want to use the runtime
-          framework version defined in Versions.props -->
-    <UseCustomRuntimeVersion>true</UseCustomRuntimeVersion>
+    <!-- ZeroGC.rs is a native Rust cdylib with no managed (dotnet/runtime) test
+          project today, so it does not need a custom runtime framework version. -->
+    <UseCustomRuntimeVersion>false</UseCustomRuntimeVersion>
     <RuntimeFrameworkVersion Condition="$(UseCustomRuntimeVersion)">$(MicrosoftNETCoreAppVersion)</RuntimeFrameworkVersion>
   </PropertyGroup>
 

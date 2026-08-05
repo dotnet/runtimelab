@@ -47,6 +47,13 @@ extends:
             image: 1es-windows-2022
             os: windows
 
+    # NOTE: NuGet packaging (nupkg under artifacts/packages/$(_BuildConfig))
+    # is not wired up yet for this Rust cdylib - build-job.yml no longer
+    # passes Arcade's `-pack` msbuild flag (there's no managed project to
+    # pack). Producing a Microsoft.*-prefixed package containing the built
+    # zerogc_rs.dll/.so (per the naming convention in CreateAnExperiment.md)
+    # is tracked as follow-up work; until then this publish step has nothing
+    # to publish.
     - ${{ if eq(variables.isOfficialBuild, true) }}:
       - template: /eng/pipelines/common/templates/publish.yml
         parameters:

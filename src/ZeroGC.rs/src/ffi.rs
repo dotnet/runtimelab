@@ -1,0 +1,645 @@
+#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code)]
+
+//! Hand-written GC/EE ABI shims for ZeroGC.rs.
+//!
+//! This file is pinned to `GC_INTERFACE_MAJOR_VERSION=5` / `GC_INTERFACE_MINOR_VERSION=8`
+//! from `gcinterface.h` and `EE_INTERFACE_MAJOR_VERSION=4` from `gcinterface.ee.h`, as
+//! observed in the local reference checkouts at the time of writing. Anyone consuming this
+//! crate against a different CoreCLR checkout MUST re-diff `gcinterface.h`,
+//! `gcinterface.ee.h`, and `gcinterface.dacvars.def` for ABI drift before trusting these
+//! definitions, exactly like the original C++ ZeroGC comments warn about GC/EE ABI drift.
+
+use core::ffi::{c_char, c_void};
+use core::mem;
+use core::ptr;
+
+pub type HRESULT = i32;
+pub type BOOL = i32;
+pub type segment_handle = *mut c_void;
+
+pub const S_OK: HRESULT = 0;
+pub const E_OUTOFMEMORY: HRESULT = 0x8007_000Eu32 as i32;
+pub const E_INVALIDARG: HRESULT = 0x8007_0057u32 as i32;
+
+pub const GC_INTERFACE_MAJOR_VERSION: u32 = 5;
+pub const GC_INTERFACE_MINOR_VERSION: u32 = 8;
+pub const EE_INTERFACE_MAJOR_VERSION: u32 = 4;
+
+pub const LARGE_OBJECT_SIZE: usize = 85_000;
+pub const collection_blocking: i32 = 0x0000_0002;
+
+pub const GC_ALLOC_LARGE_OBJECT_HEAP: u32 = 32;
+pub const GC_ALLOC_PINNED_OBJECT_HEAP: u32 = 64;
+
+#[repr(C)]
+pub struct Thread {
+    _private: [u8; 0],
+}
+
+#[repr(C)]
+pub struct ScanContext {
+    _private: [u8; 0],
+}
+
+#[repr(C)]
+pub struct CrawlFrame {
+    _private: [u8; 0],
+}
+
+#[repr(C)]
+pub struct StressLogMsg {
+    _private: [u8; 0],
+}
+
+#[repr(C)]
+pub struct IGCToCLREventSink {
+    _private: [u8; 0],
+}
+
+#[repr(C)]
+pub struct OBJECTHANDLE__ {
+    _private: [u8; 0],
+}
+
+pub type OBJECTHANDLE = *mut OBJECTHANDLE__;
+
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WriteBarrierOp {
+    StompResize = 0,
+    StompEphemeral = 1,
+    Initialize = 2,
+    SwitchToWriteWatch = 3,
+    SwitchToNonWriteWatch = 4,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct WriteBarrierParameters {
+    pub operation: WriteBarrierOp,
+    pub is_runtime_suspended: bool,
+    pub requires_upper_bounds_check: bool,
+    pub card_table: *mut u32,
+    pub card_bundle_table: *mut u32,
+    pub lowest_address: *mut u8,
+    pub highest_address: *mut u8,
+    pub ephemeral_low: *mut u8,
+    pub ephemeral_high: *mut u8,
+    pub write_watch_table: *mut u8,
+    pub region_to_generation_table: *mut u8,
+    pub region_shr: u8,
+    pub region_use_bitwise_write_barrier: bool,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct FinalizerWorkItem {
+    pub next: *mut FinalizerWorkItem,
+    pub callback: Option<unsafe extern "C" fn(*mut FinalizerWorkItem)>,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct NoGCRegionCallbackFinalizerWorkItem {
+    pub base: FinalizerWorkItem,
+    pub scheduled: bool,
+    pub abandoned: bool,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct EtwGCSettingsInfo {
+    pub heap_hard_limit: usize,
+    pub loh_threshold: usize,
+    pub physical_memory_from_config: usize,
+    pub gen0_min_budget_from_config: usize,
+    pub gen0_max_budget_from_config: usize,
+    pub high_mem_percent_from_config: u32,
+    pub concurrent_gc_p: bool,
+    pub use_large_pages_p: bool,
+    pub use_frozen_segments_p: bool,
+    pub hard_limit_config_p: bool,
+    pub no_affinitize_p: bool,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct StronglyConnectedComponent {
+    pub Count: usize,
+    pub Contexts: *mut usize,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct ComponentCrossReference {
+    pub SourceGroupIndex: usize,
+    pub DestinationGroupIndex: usize,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct MarkCrossReferencesArgs {
+    pub ComponentCount: usize,
+    pub Components: *mut StronglyConnectedComponent,
+    pub CrossReferenceCount: usize,
+    pub CrossReferences: *mut ComponentCrossReference,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct gc_alloc_context {
+    pub alloc_ptr: *mut u8,
+    pub alloc_limit: *mut u8,
+    pub alloc_bytes: i64,
+    pub alloc_bytes_uoh: i64,
+    pub gc_reserved_1: *mut c_void,
+    pub gc_reserved_2: *mut c_void,
+    pub alloc_count: i32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct segment_info {
+    pub pvMem: *mut c_void,
+    pub ibFirstObject: usize,
+    pub ibAllocated: usize,
+    pub ibCommit: usize,
+    pub ibReserved: usize,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct VersionInfo {
+    pub MajorVersion: u32,
+    pub MinorVersion: u32,
+    pub BuildVersion: u32,
+    pub Name: *const c_char,
+}
+
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum wait_full_gc_status {
+    wait_full_gc_success = 0,
+    wait_full_gc_failed = 1,
+    wait_full_gc_cancelled = 2,
+    wait_full_gc_timeout = 3,
+    wait_full_gc_na = 4,
+}
+
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum start_no_gc_region_status {
+    start_no_gc_success = 0,
+    start_no_gc_no_memory = 1,
+    start_no_gc_too_large = 2,
+    start_no_gc_in_progress = 3,
+}
+
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum end_no_gc_region_status {
+    end_no_gc_success = 0,
+    end_no_gc_not_in_progress = 1,
+    end_no_gc_induced = 2,
+    end_no_gc_alloc_exceeded = 3,
+}
+
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum refresh_memory_limit_status {
+    refresh_success = 0,
+    refresh_hard_limit_too_low = 1,
+    refresh_hard_limit_invalid = 2,
+}
+
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum enable_no_gc_region_callback_status {
+    succeed = 0,
+    not_started = 1,
+    insufficient_budget = 2,
+    already_registered = 3,
+}
+
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HandleType {
+    HNDTYPE_WEAK_SHORT = 0,
+    HNDTYPE_WEAK_LONG = 1,
+    HNDTYPE_STRONG = 2,
+    HNDTYPE_PINNED = 3,
+    HNDTYPE_VARIABLE = 4,
+    HNDTYPE_REFCOUNTED = 5,
+    HNDTYPE_DEPENDENT = 6,
+    HNDTYPE_ASYNCPINNED = 7,
+    HNDTYPE_SIZEDREF = 8,
+    HNDTYPE_WEAK_NATIVE_COM = 9,
+    HNDTYPE_WEAK_INTERIOR_POINTER = 10,
+    HNDTYPE_CROSSREFERENCE = 11,
+}
+
+pub const HNDTYPE_WEAK_DEFAULT: HandleType = HandleType::HNDTYPE_WEAK_LONG;
+pub const HNDTYPE_DEFAULT: HandleType = HandleType::HNDTYPE_STRONG;
+
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GCEventProvider {
+    GCEventProvider_Default = 0,
+    GCEventProvider_Private = 1,
+}
+
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GCEventLevel {
+    GCEventLevel_None = 0,
+    GCEventLevel_Fatal = 1,
+    GCEventLevel_Error = 2,
+    GCEventLevel_Warning = 3,
+    GCEventLevel_Information = 4,
+    GCEventLevel_Verbose = 5,
+    GCEventLevel_Max = 6,
+    GCEventLevel_LogAlways = 255,
+}
+
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GCEventKeyword {
+    GCEventKeyword_None = 0x0,
+    GCEventKeyword_GC = 0x1,
+    GCEventKeyword_GCHandle = 0x2,
+    GCEventKeyword_GCHandlePrivate = 0x4000,
+    GCEventKeyword_GCHeapDump = 0x100000,
+    GCEventKeyword_GCSampledObjectAllocationHigh = 0x200000,
+    GCEventKeyword_GCHeapSurvivalAndMovement = 0x400000,
+    GCEventKeyword_ManagedHeapCollect = 0x800000,
+    GCEventKeyword_GCHeapAndTypeNames = 0x1000000,
+    GCEventKeyword_GCSampledObjectAllocationLow = 0x2000000,
+}
+
+pub const GCEventKeyword_GCPrivate: GCEventKeyword = GCEventKeyword::GCEventKeyword_GC;
+
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum walk_surv_type {
+    walk_for_gc = 1,
+    walk_for_bgc = 2,
+    walk_for_uoh = 3,
+}
+
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GCConfigurationType {
+    Int64 = 0,
+    StringUtf8 = 1,
+    Boolean = 2,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct MethodTable {
+    pub flags_or_component_size: u32,
+    pub base_size: u32,
+    pub related_type: *mut MethodTable,
+}
+
+impl MethodTable {
+    #[inline]
+    pub unsafe fn GetBaseSize(&self) -> u32 {
+        self.base_size
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Object {
+    pub method_table: *mut MethodTable,
+}
+
+impl Object {
+    #[inline]
+    pub unsafe fn GetGCSafeMethodTable(&self) -> *mut MethodTable {
+        #[cfg(target_pointer_width = "64")]
+        {
+            ((self.method_table as usize) & !7usize) as *mut MethodTable
+        }
+        #[cfg(not(target_pointer_width = "64"))]
+        {
+            ((self.method_table as usize) & !3usize) as *mut MethodTable
+        }
+    }
+}
+
+pub type promote_func = Option<unsafe extern "C" fn(*mut *mut Object, *mut ScanContext, u32)>;
+pub type enum_alloc_context_func = Option<unsafe extern "C" fn(*mut gc_alloc_context, *mut c_void)>;
+pub type walk_fn = Option<unsafe extern "C" fn(*mut Object, *mut c_void) -> bool>;
+pub type walk_fn2 = Option<unsafe extern "C" fn(*mut Object, *mut *mut u8, *mut c_void) -> bool>;
+pub type gen_walk_fn = Option<unsafe extern "C" fn(*mut c_void, i32, *mut u8, *mut u8, *mut u8)>;
+pub type record_surv_fn = Option<unsafe extern "C" fn(*mut u8, *mut u8, isize, *mut c_void, bool, bool)>;
+pub type fq_walk_fn = Option<unsafe extern "C" fn(bool, *mut c_void)>;
+pub type fq_scan_fn = Option<unsafe extern "C" fn(*mut *mut Object, *mut ScanContext, u32)>;
+pub type handle_scan_fn = Option<unsafe extern "C" fn(*mut *mut Object, *mut Object, u32, *mut ScanContext, bool)>;
+pub type async_pin_enum_fn = Option<unsafe extern "C" fn(*mut Object, *mut c_void) -> bool>;
+pub type HANDLESCANPROC = Option<unsafe extern "system" fn(*mut *mut Object, *mut usize, usize, usize)>;
+pub type ConfigurationValueFunc = Option<
+    unsafe extern "C" fn(
+        *mut c_void,
+        *const c_char,
+        *const c_char,
+        GCConfigurationType,
+        i64,
+    ),
+>;
+
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum oom_reason {
+    oom_no_failure = 0,
+    oom_budget = 1,
+    oom_cant_commit = 2,
+    oom_cant_reserve = 3,
+    oom_loh = 4,
+    oom_low_mem = 5,
+    oom_unproductive_full_gc = 6,
+}
+
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum failure_get_memory {
+    fgm_no_failure = 0,
+    fgm_reserve_segment = 1,
+    fgm_commit_segment_beg = 2,
+    fgm_commit_eph_segment = 3,
+    fgm_grow_table = 4,
+    fgm_commit_table = 5,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct oom_history {
+    pub reason: i32,
+    pub alloc_size: usize,
+    pub reserved: *mut u8,
+    pub allocated: *mut u8,
+    pub gc_index: usize,
+    pub fgm: i32,
+    pub size: usize,
+    pub available_pagefile_mb: usize,
+    pub loh_p: BOOL,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct GcDacVars {
+    pub major_version_number: u8,
+    pub minor_version_number: u8,
+    pub generation_size: usize,
+    pub total_generation_count: usize,
+    pub build_variant: *mut c_void,
+    pub built_with_svr: *mut c_void,
+    pub gc_global_mechanisms: *mut c_void,
+    pub generation_table: *mut c_void,
+    pub max_gen: *mut c_void,
+    pub mark_array: *mut c_void,
+    pub current_c_gc_state: *mut c_void,
+    pub ephemeral_heap_segment: *mut c_void,
+    pub saved_sweep_ephemeral_seg: *mut c_void,
+    pub saved_sweep_ephemeral_start: *mut c_void,
+    pub background_saved_lowest_address: *mut c_void,
+    pub background_saved_highest_address: *mut c_void,
+    pub alloc_allocated: *mut c_void,
+    pub next_sweep_obj: *mut c_void,
+    pub oom_info: oom_history,
+    pub finalize_queue: *mut c_void,
+    pub internal_root_array: *mut c_void,
+    pub internal_root_array_index: *mut c_void,
+    pub heap_analyze_success: *mut c_void,
+    pub n_heaps: *mut c_void,
+    pub g_heaps: *mut c_void,
+    pub gc_structures_invalid_cnt: *mut c_void,
+    pub interesting_data_per_heap: *mut c_void,
+    pub compact_reasons_per_heap: *mut c_void,
+    pub expand_mechanisms_per_heap: *mut c_void,
+    pub interesting_mechanism_bits_per_heap: *mut c_void,
+    pub handle_table_map: *mut c_void,
+    pub gc_heap_field_offsets: *mut c_void,
+    pub generation_field_offsets: *mut c_void,
+    pub bookkeeping_start: *mut c_void,
+    pub global_regions_to_decommit: *mut c_void,
+    pub global_free_huge_regions: *mut c_void,
+    pub free_regions: *mut c_void,
+    pub freeable_soh_segment: *mut c_void,
+    pub freeable_uoh_segment: *mut c_void,
+    pub total_bookkeeping_elements: i32,
+    pub count_free_region_kinds: i32,
+    pub card_table_info_size: usize,
+    pub dynamic_adaptation_mode: *mut c_void,
+    pub gc_descriptor: *mut c_void,
+    pub g_totalCpuCount: *mut c_void,
+}
+
+#[repr(C)]
+pub struct IGCHeap {
+    pub vtbl: *const IGCHeapVtbl,
+}
+
+#[repr(C)]
+pub struct IGCHandleStore {
+    pub vtbl: *const IGCHandleStoreVtbl,
+}
+
+#[repr(C)]
+pub struct IGCHandleManager {
+    pub vtbl: *const IGCHandleManagerVtbl,
+}
+
+#[repr(C)]
+pub struct IGCHeapVtbl {
+    pub is_valid_segment_size: unsafe extern "C" fn(*mut c_void, usize) -> bool,
+    pub is_valid_gen0_max_size: unsafe extern "C" fn(*mut c_void, usize) -> bool,
+    pub get_valid_segment_size: unsafe extern "C" fn(*mut c_void, bool) -> usize,
+    pub set_reserved_vm_limit: unsafe extern "C" fn(*mut c_void, usize),
+    pub wait_until_concurrent_gc_complete: unsafe extern "C" fn(*mut c_void),
+    pub is_concurrent_gc_in_progress: unsafe extern "C" fn(*mut c_void) -> bool,
+    pub temporary_enable_concurrent_gc: unsafe extern "C" fn(*mut c_void),
+    pub temporary_disable_concurrent_gc: unsafe extern "C" fn(*mut c_void),
+    pub is_concurrent_gc_enabled: unsafe extern "C" fn(*mut c_void) -> bool,
+    pub wait_until_concurrent_gc_complete_async: unsafe extern "C" fn(*mut c_void, i32) -> HRESULT,
+    pub get_number_of_finalizable: unsafe extern "C" fn(*mut c_void) -> usize,
+    pub get_next_finalizable: unsafe extern "C" fn(*mut c_void) -> *mut Object,
+    pub get_memory_info: unsafe extern "C" fn(
+        *mut c_void,
+        *mut u64,
+        *mut u64,
+        *mut u64,
+        *mut u64,
+        *mut u64,
+        *mut u64,
+        *mut u64,
+        *mut u64,
+        *mut u64,
+        *mut u64,
+        *mut u32,
+        *mut u32,
+        *mut bool,
+        *mut bool,
+        *mut u64,
+        *mut u64,
+        i32,
+    ),
+    pub get_memory_load: unsafe extern "C" fn(*mut c_void) -> u32,
+    pub get_gc_latency_mode: unsafe extern "C" fn(*mut c_void) -> i32,
+    pub set_gc_latency_mode: unsafe extern "C" fn(*mut c_void, i32) -> i32,
+    pub get_loh_compaction_mode: unsafe extern "C" fn(*mut c_void) -> i32,
+    pub set_loh_compaction_mode: unsafe extern "C" fn(*mut c_void, i32),
+    pub register_for_full_gc_notification: unsafe extern "C" fn(*mut c_void, u32, u32) -> bool,
+    pub cancel_full_gc_notification: unsafe extern "C" fn(*mut c_void) -> bool,
+    pub wait_for_full_gc_approach: unsafe extern "C" fn(*mut c_void, i32) -> i32,
+    pub wait_for_full_gc_complete: unsafe extern "C" fn(*mut c_void, i32) -> i32,
+    pub which_generation: unsafe extern "C" fn(*mut c_void, *mut Object) -> u32,
+    pub collection_count: unsafe extern "C" fn(*mut c_void, i32, i32) -> i32,
+    pub start_no_gc_region: unsafe extern "C" fn(*mut c_void, u64, bool, u64, bool) -> i32,
+    pub end_no_gc_region: unsafe extern "C" fn(*mut c_void) -> i32,
+    pub get_total_bytes_in_use: unsafe extern "C" fn(*mut c_void) -> usize,
+    pub get_total_allocated_bytes: unsafe extern "C" fn(*mut c_void) -> u64,
+    pub garbage_collect: unsafe extern "C" fn(*mut c_void, i32, bool, i32) -> HRESULT,
+    pub get_max_generation: unsafe extern "C" fn(*mut c_void) -> u32,
+    pub set_finalization_run: unsafe extern "C" fn(*mut c_void, *mut Object),
+    pub register_for_finalization: unsafe extern "C" fn(*mut c_void, i32, *mut Object) -> bool,
+    pub get_last_gc_percent_time_in_gc: unsafe extern "C" fn(*mut c_void) -> i32,
+    pub get_last_gc_generation_size: unsafe extern "C" fn(*mut c_void, i32) -> usize,
+    pub initialize: unsafe extern "C" fn(*mut c_void) -> HRESULT,
+    pub is_promoted: unsafe extern "C" fn(*mut c_void, *mut Object) -> bool,
+    pub is_heap_pointer: unsafe extern "C" fn(*mut c_void, *mut c_void, bool) -> bool,
+    pub get_condemned_generation: unsafe extern "C" fn(*mut c_void) -> u32,
+    pub is_gc_in_progress_helper: unsafe extern "C" fn(*mut c_void, bool) -> bool,
+    pub get_gc_count: unsafe extern "C" fn(*mut c_void) -> u32,
+    pub is_thread_using_allocation_context_heap:
+        unsafe extern "C" fn(*mut c_void, *mut gc_alloc_context, i32) -> bool,
+    pub is_ephemeral: unsafe extern "C" fn(*mut c_void, *mut Object) -> bool,
+    pub wait_until_gc_complete: unsafe extern "C" fn(*mut c_void, bool) -> u32,
+    pub fix_alloc_context: unsafe extern "C" fn(*mut c_void, *mut gc_alloc_context, *mut c_void, *mut c_void),
+    pub get_current_obj_size: unsafe extern "C" fn(*mut c_void) -> usize,
+    pub set_gc_in_progress: unsafe extern "C" fn(*mut c_void, bool),
+    pub runtime_structures_valid: unsafe extern "C" fn(*mut c_void) -> bool,
+    pub set_suspension_pending: unsafe extern "C" fn(*mut c_void, bool),
+    pub set_yield_processor_scaling_factor: unsafe extern "C" fn(*mut c_void, f32),
+    pub shutdown: unsafe extern "C" fn(*mut c_void),
+    pub get_last_gc_start_time: unsafe extern "C" fn(*mut c_void, i32) -> usize,
+    pub get_last_gc_duration: unsafe extern "C" fn(*mut c_void, i32) -> usize,
+    pub get_now: unsafe extern "C" fn(*mut c_void) -> usize,
+    pub alloc: unsafe extern "C" fn(*mut c_void, *mut gc_alloc_context, usize, u32) -> *mut Object,
+    pub publish_object: unsafe extern "C" fn(*mut c_void, *mut u8),
+    pub set_wait_for_gc_event: unsafe extern "C" fn(*mut c_void),
+    pub reset_wait_for_gc_event: unsafe extern "C" fn(*mut c_void),
+    pub is_large_object: unsafe extern "C" fn(*mut c_void, *mut Object) -> bool,
+    pub validate_object_member: unsafe extern "C" fn(*mut c_void, *mut Object),
+    pub next_obj: unsafe extern "C" fn(*mut c_void, *mut Object) -> *mut Object,
+    pub get_containing_object: unsafe extern "C" fn(*mut c_void, *mut c_void, bool) -> *mut Object,
+    pub diag_walk_object: unsafe extern "C" fn(*mut c_void, *mut Object, walk_fn, *mut c_void),
+    pub diag_walk_object2: unsafe extern "C" fn(*mut c_void, *mut Object, walk_fn2, *mut c_void),
+    pub diag_walk_heap: unsafe extern "C" fn(*mut c_void, walk_fn, *mut c_void, i32, bool),
+    pub diag_walk_survivors_with_type:
+        unsafe extern "C" fn(*mut c_void, *mut c_void, record_surv_fn, *mut c_void, walk_surv_type, i32),
+    pub diag_walk_finalize_queue: unsafe extern "C" fn(*mut c_void, *mut c_void, fq_walk_fn),
+    pub diag_scan_finalize_queue: unsafe extern "C" fn(*mut c_void, fq_scan_fn, *mut ScanContext),
+    pub diag_scan_handles: unsafe extern "C" fn(*mut c_void, handle_scan_fn, i32, *mut ScanContext),
+    pub diag_scan_dependent_handles:
+        unsafe extern "C" fn(*mut c_void, handle_scan_fn, i32, *mut ScanContext),
+    pub diag_descr_generations: unsafe extern "C" fn(*mut c_void, gen_walk_fn, *mut c_void),
+    pub diag_trace_gc_segments: unsafe extern "C" fn(*mut c_void),
+    pub diag_get_gc_settings: unsafe extern "C" fn(*mut c_void, *mut EtwGCSettingsInfo),
+    pub stress_heap: unsafe extern "C" fn(*mut c_void, *mut gc_alloc_context) -> bool,
+    pub register_frozen_segment: unsafe extern "C" fn(*mut c_void, *mut segment_info) -> segment_handle,
+    pub unregister_frozen_segment: unsafe extern "C" fn(*mut c_void, segment_handle),
+    pub is_in_frozen_segment: unsafe extern "C" fn(*mut c_void, *mut Object) -> bool,
+    pub control_events: unsafe extern "C" fn(*mut c_void, GCEventKeyword, GCEventLevel),
+    pub control_private_events: unsafe extern "C" fn(*mut c_void, GCEventKeyword, GCEventLevel),
+    pub get_generation_with_range:
+        unsafe extern "C" fn(*mut c_void, *mut Object, *mut *mut u8, *mut *mut u8, *mut *mut u8) -> u32,
+    pub get_total_pause_duration: unsafe extern "C" fn(*mut c_void) -> i64,
+    pub enumerate_configuration_values:
+        unsafe extern "C" fn(*mut c_void, *mut c_void, ConfigurationValueFunc),
+    pub update_frozen_segment: unsafe extern "C" fn(*mut c_void, segment_handle, *mut u8, *mut u8),
+    pub refresh_memory_limit: unsafe extern "C" fn(*mut c_void) -> i32,
+    pub enable_no_gc_region_callback:
+        unsafe extern "C" fn(*mut c_void, *mut NoGCRegionCallbackFinalizerWorkItem, u64) -> enable_no_gc_region_callback_status,
+    pub get_extra_work_for_finalization: unsafe extern "C" fn(*mut c_void) -> *mut FinalizerWorkItem,
+    pub get_generation_budget: unsafe extern "C" fn(*mut c_void, i32) -> u64,
+    pub get_loh_threshold: unsafe extern "C" fn(*mut c_void) -> usize,
+    pub diag_walk_heap_with_ac_handling:
+        unsafe extern "C" fn(*mut c_void, walk_fn, *mut c_void, i32, bool),
+    pub null_bridge_objects_weak_refs: unsafe extern "C" fn(*mut c_void, usize, *mut c_void),
+}
+
+#[repr(C)]
+pub struct IGCHandleStoreVtbl {
+    pub destructor: unsafe extern "C" fn(*mut c_void),
+    pub uproot: unsafe extern "C" fn(*mut c_void),
+    pub contains_handle: unsafe extern "C" fn(*mut c_void, OBJECTHANDLE) -> bool,
+    pub create_handle_of_type:
+        unsafe extern "C" fn(*mut c_void, *mut Object, HandleType) -> OBJECTHANDLE,
+    pub create_handle_of_type_with_affinity:
+        unsafe extern "C" fn(*mut c_void, *mut Object, HandleType, i32) -> OBJECTHANDLE,
+    pub create_handle_with_extra_info:
+        unsafe extern "C" fn(*mut c_void, *mut Object, HandleType, *mut c_void) -> OBJECTHANDLE,
+    pub create_dependent_handle:
+        unsafe extern "C" fn(*mut c_void, *mut Object, *mut Object) -> OBJECTHANDLE,
+}
+
+#[repr(C)]
+pub struct IGCHandleManagerVtbl {
+    pub initialize: unsafe extern "C" fn(*mut c_void) -> bool,
+    pub shutdown: unsafe extern "C" fn(*mut c_void),
+    pub get_global_handle_store: unsafe extern "C" fn(*mut c_void) -> *mut IGCHandleStore,
+    pub create_handle_store: unsafe extern "C" fn(*mut c_void) -> *mut IGCHandleStore,
+    pub destroy_handle_store: unsafe extern "C" fn(*mut c_void, *mut IGCHandleStore),
+    pub create_global_handle_of_type:
+        unsafe extern "C" fn(*mut c_void, *mut Object, HandleType) -> OBJECTHANDLE,
+    pub create_duplicate_handle: unsafe extern "C" fn(*mut c_void, OBJECTHANDLE) -> OBJECTHANDLE,
+    pub destroy_handle_of_type: unsafe extern "C" fn(*mut c_void, OBJECTHANDLE, HandleType),
+    pub destroy_handle_of_unknown_type: unsafe extern "C" fn(*mut c_void, OBJECTHANDLE),
+    pub set_extra_info_for_handle:
+        unsafe extern "C" fn(*mut c_void, OBJECTHANDLE, HandleType, *mut c_void),
+    pub get_extra_info_from_handle: unsafe extern "C" fn(*mut c_void, OBJECTHANDLE) -> *mut c_void,
+    pub store_object_in_handle: unsafe extern "C" fn(*mut c_void, OBJECTHANDLE, *mut Object),
+    pub store_object_in_handle_if_null:
+        unsafe extern "C" fn(*mut c_void, OBJECTHANDLE, *mut Object) -> bool,
+    pub set_dependent_handle_secondary:
+        unsafe extern "C" fn(*mut c_void, OBJECTHANDLE, *mut Object),
+    pub get_dependent_handle_secondary: unsafe extern "C" fn(*mut c_void, OBJECTHANDLE) -> *mut Object,
+    pub interlocked_compare_exchange_object_in_handle:
+        unsafe extern "C" fn(*mut c_void, OBJECTHANDLE, *mut Object, *mut Object) -> *mut Object,
+    pub handle_fetch_type: unsafe extern "C" fn(*mut c_void, OBJECTHANDLE) -> HandleType,
+    pub trace_ref_counted_handles: unsafe extern "C" fn(*mut c_void, HANDLESCANPROC, usize, usize),
+}
+
+#[repr(C)]
+pub struct IGCToCLRVtbl {
+    pub reserved: [*const c_void; 27],
+    pub stomp_write_barrier: unsafe extern "C" fn(*mut c_void, *mut WriteBarrierParameters),
+}
+
+#[repr(C)]
+pub struct IGCToCLR {
+    pub vtbl: *const IGCToCLRVtbl,
+}
+
+#[inline]
+pub unsafe fn call_stomp_write_barrier(clr: *mut IGCToCLR, args: *mut WriteBarrierParameters) {
+    if clr.is_null() {
+        return;
+    }
+    let vtbl = (*clr).vtbl;
+    if vtbl.is_null() {
+        return;
+    }
+    ((*vtbl).stomp_write_barrier)(clr.cast(), args);
+}
+
+pub const GCDACVARS_SIZE: usize = mem::size_of::<GcDacVars>();
+pub const GCDACVARS_FIELD_COUNT: usize = 45;
+
+#[inline]
+pub unsafe fn null_cstr() -> *const c_char {
+    ptr::null()
+}

@@ -1,37 +1,85 @@
-# Standalone Experiments
+# ZeroGC.rs
 
-This branch contains a template for standalone experiments, which means that experiments that are a library, which doesn't depend on runtime changes. This minimal template allows such experiments to avoid the overhead of having all the runtime, libraries and installer code.
+ZeroGC.rs is an experimental, from-scratch **Rust** reimplementation of
+[ZeroGC](https://github.com/dotnet/runtimelab/tree/feature/ZeroGC) — a
+standalone [CoreCLR GC](https://github.com/dotnet/runtime/blob/main/docs/design/coreclr/botr/garbage-collection.md)
+that only ever **allocates** memory and never collects, compacts, or
+reclaims it (a .NET analog of the JVM's ["Epsilon" no-op GC](https://openjdk.org/jeps/318)).
 
-## Create your experiment
+This is a **separate, independent experiment** from `feature/ZeroGC`: it does
+not share history or code with the C++ implementation. The C++ project is
+used purely as a design/behavioral reference — the bump-pointer arena
+allocator, per-thread allocation-context design, write-barrier/card-table
+setup, and handle-table semantics are all carried over, rewritten from
+scratch in Rust against the same CoreCLR standalone-GC ABI
+(`IGCHeap`/`IGCHandleManager`/`IGCHandleStore`, see
+[`gcinterface.h`](https://github.com/dotnet/runtime/blob/main/src/coreclr/gc/gcinterface.h)).
 
-1. Create a new branch from this branch and make sure the branch name follows the naming guidelines to get CI and Official Build support. The name should use the `feature/` prefix.
+Like the C++ original, ZeroGC.rs is loaded exactly like any other
+[standalone/out-of-process GC](https://github.com/dotnet/runtime/blob/main/docs/design/coreclr/botr/standalone-gc.md):
+via `DOTNET_GCName=zerogc_rs.dll` (or `.so`), sitting next to the app's
+managed executable. **No changes to the CoreCLR runtime are required or
+made** by this project.
 
-2. Identify whether you need to consume new APIs or features from `dotnet/runtime` and need to be able to consume these on a faster cadence than using a daily SDK build:
-    - I don't need to depend on `dotnet/runtime`:
-        1. Update the `global.json` file:
-             - Specify the minimum required `dotnet` tool and SDK version that you need to build and run tests
-             - Remove the `runtimes` section under `tools`
-        2. Set `UseCustomRuntimeVersion` property to `false` in `Directory.Build.props`
-        3. Remove the `VS.Redist.Common.NetCore.SharedFramework.x64.6.0` dependency from `Version.Details.xml` and the corresponding property from `Version.props`
-    - I do need to depend on `dotnet/runtime`:
-        1. Set a DARC dependency from `dotnet/runtime` to your branch in this repository. For more information on how to do it, see [here](https://github.com/dotnet/arcade/blob/main/Documentation/Darc.md#darc)
+## Why Rust?
 
+CoreCLR's GC-EE ABI is C++-vtable based. This experiment exists to answer:
+can a memory-safer systems language build an ABI-compatible standalone GC
+plugin without relying on C++, by hand-constructing `repr(C)` vtables that
+match the C++ interface layout exactly? See `src/ZeroGC.rs/src/ffi.rs` for
+the technique and its caveats (it is inherently `unsafe`-heavy at the ABI
+boundary, same as any FFI shim).
 
-        > Note that if you want to run `dotnet test` in you test projects you will need to either first run `build.cmd/sh` or install the runtime version specified by `MicrosoftNETCoreAppVersion` property in `Versions.props` in your global dotnet install. If you run `build.cmd/sh` arcade infrastructure will make sure that the repo `dotnet` SDK found in `<RepoRoot>\.dotnet` folder, has this runtime installed. Then during the build of the test projects, we generate a `.runsettings` file that points to this `dotnet` SDK.
+## Repository layout
 
+```
+src/ZeroGC.rs/
+  Cargo.toml           The crate manifest (cdylib)
+  src/
+    lib.rs              GC_VersionInfo / GC_Initialize exports, DllMain
+    ffi.rs               repr(C) ABI types + hand-built IGCHeap/IGCHandleManager/
+                         IGCHandleStore vtables, pinned to a specific
+                         GC_INTERFACE_MAJOR/MINOR_VERSION (see file header)
+    heap.rs              IGCHeap implementation: per-thread arena bump
+                         allocator, write barrier/card table setup, counters
+    handles.rs           IGCHandleStore / IGCHandleManager implementation
+    pal.rs               Minimal OS shim (VirtualAlloc/mmap, QPC/clock_gettime,
+                         memory-load queries) for Windows + Unix
+```
 
-> For both options above, you can choose whether your experiment needs arcade latest features, to do that, set the required DARC subscription from `dotnet/arcade` to this repository following these [instructions](https://github.com/dotnet/arcade/blob/main/Documentation/Darc.md#darc).
+## Building
 
-3. Set the right version for your library. In order to do that, set the following properties in `Versions.props`:
-    - `VersionPrefix`: the version prefix for the produced nuget package.
-    - `MajorVersion/MinorVersion/PatchVersion`: Properties that control file version.
-    - `PreReleaseVersionLabel`: this is the label that your package will contain when producing a non stable package. i.e: `MyExperiment.1.0.0-alpha-23432.1.nupkg`.
+```
+build.cmd   (Windows)
+build.sh    (Linux/macOS)
+```
 
-4. Choose the right set of platforms for CI and Official Builds by tweaking `eng/pipelines/runtimelab.yml` file.
+These scripts drive `cargo build [--release]` directly against
+`src/ZeroGC.rs/Cargo.toml` — there is no managed (dotnet/runtime) code in
+this experiment today, so the usual Arcade/msbuild orchestration is
+bypassed. You can also build directly with Cargo:
 
-5. Rename `Experimental.sln`, `Experimental.csproj` and `Experimental.Tests.csproj` to your experiment name.
+```
+cargo build --release --manifest-path src/ZeroGC.rs/Cargo.toml
+```
 
-The package produced from your branch will be published to the the [`dotnet-experimental`](https://dev.azure.com/dnceng/public/_packaging?_a=feed&feed=dotnet-experimental) feed.
+## Status
+
+This is an early bootstrap: the crate mirrors the C++ ZeroGC's behavior
+(bump-pointer arena, per-thread allocation contexts, trivial/no-op handling
+of collection-related APIs, handle table) but has not yet been validated
+end-to-end against a live CoreCLR host.
+
+## Known limitations
+
+Same as the C++ ZeroGC this is modeled on:
+
+- **Memory is never reclaimed.** This is the entire point of the GC, not a
+  bug — long-running or allocation-heavy processes will grow without bound.
+- No compaction, no generations, no finalization triggered by memory
+  pressure.
+- No heap walking / profiling API support (`ICorProfilerCallback` GC
+  callbacks, `dotnet-gcdump`, etc.).
 
 ## .NET Foundation
 

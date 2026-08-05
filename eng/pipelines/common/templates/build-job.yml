@@ -44,13 +44,15 @@ jobs:
           - _testBuildArg: -test
 
       steps:
+      - script: rustc --version && cargo --version
+        displayName: Show Rust toolchain version
+
       - script: $(_buildScript)
                 -ci
-                -pack
                 -c $(_BuildConfig)
                 $(_testBuildArg)
                 /p:TargetPlatform=${{ parameters.archType }}
-        displayName: Build and Test
+        displayName: Build
 
       - ${{ if eq(parameters.isOfficialBuild, true) }}:
         - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml

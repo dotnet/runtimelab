@@ -38,6 +38,10 @@ msbuild.wrn
 # Cross directory
 eng/common/cross
 
+# Rust/Cargo build output (Cargo.lock is intentionally committed for the
+# cdylib's reproducible builds - see src/ZeroGC.rs/Cargo.toml)
+/src/ZeroGC.rs/target/
+
 # Visual Studio
 .vs/
 
