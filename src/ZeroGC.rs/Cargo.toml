@@ -2,9 +2,26 @@
 name = "zerogc-rs"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [lib]
 crate-type = ["cdylib"]
+
+[features]
+default = ["bindgen-gen"]
+# Generates the plain-data GC ABI structs/enums in src/ffi.rs from the real
+# CoreCLR gc/ headers via `bindgen`+clang, at build time, instead of hand-
+# transcribing them. On by default -- a normal `cargo build` now requires
+# CORECLR_GC_DIR (path to a dotnet/runtime checkout's src\coreclr\gc) and
+# libclang to be available, exactly like the C++ ZeroGC build already
+# requires a local runtime checkout via -RuntimeRepo. Opt out with
+# `--no-default-features` if you don't have a runtime checkout handy --
+# ffi.rs then falls back to its own hand-written copies of these types. See
+# build.rs for details and required environment variables.
+bindgen-gen = ["dep:bindgen"]
+
+[build-dependencies]
+bindgen = { version = "0.72", optional = true }
 
 [profile.dev]
 panic = "abort"

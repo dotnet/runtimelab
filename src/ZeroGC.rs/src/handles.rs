@@ -289,7 +289,7 @@ impl ZeroGcHandleManager {
 
     pub unsafe fn handle_fetch_type(&mut self, handle: ffi::OBJECTHANDLE) -> ffi::HandleType {
         if handle.is_null() {
-            return ffi::HNDTYPE_DEFAULT;
+            return ffi::HandleType::HNDTYPE_DEFAULT;
         }
         (*ZeroGcHandleStore::slot_from_handle(handle)).r#type
     }
@@ -480,13 +480,13 @@ unsafe extern "C" fn handle_manager_trace_ref_counted_handles(
 }
 
 pub static HANDLE_STORE_VTBL: ffi::IGCHandleStoreVtbl = ffi::IGCHandleStoreVtbl {
-    destructor: handle_store_destructor,
     uproot: handle_store_uproot,
     contains_handle: handle_store_contains_handle,
     create_handle_of_type: handle_store_create_handle_of_type,
     create_handle_of_type_with_affinity: handle_store_create_handle_of_type_with_affinity,
     create_handle_with_extra_info: handle_store_create_handle_with_extra_info,
     create_dependent_handle: handle_store_create_dependent_handle,
+    destructor: handle_store_destructor,
 };
 
 pub static HANDLE_MANAGER_VTBL: ffi::IGCHandleManagerVtbl = ffi::IGCHandleManagerVtbl {

@@ -111,7 +111,6 @@ impl ZeroGcHeap {
         if self.initialized.swap(true, Ordering::SeqCst) {
             return ffi::S_OK;
         }
-
         self.start_time_nanos.store(pal::now_nanos(), Ordering::SeqCst);
         let arena_base = match pal::reserve(ARENA_RESERVE_SIZE) {
             Some(ptr) => ptr,
