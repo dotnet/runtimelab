@@ -5,7 +5,6 @@
 //
 #include "ZeroGC.h"
 #include <cstdio>
-#include <map>
 
 #if defined(ZEROGC_TRACE) && defined(HOST_WINDOWS)
 static void ZeroGCTrace(const char* msg)
@@ -85,19 +84,6 @@ static const int MAX_FROZEN_SEGMENTS = 64;
 static FrozenSegment g_frozenSegments[MAX_FROZEN_SEGMENTS];
 static CRITICAL_SECTION g_frozenSegmentsLock;
 
-// Tracks the address range of every large/pinned object's dedicated chunk
-// (see the isLarge branch in AllocateFromArena), keyed by the chunk's start
-// address, so that IsLargeObject() can answer "was this pointer's chunk
-// carved out as large?" from our own bookkeeping instead of asking the
-// object's MethodTable for its size. This is what lets ZeroGC avoid
-// depending on MethodTable's internal field layout (which is private VM
-// implementation detail, not part of the versioned GC/EE interface, and can
-// change shape across runtime major versions without any interface version
-// bump) - the only thing IsLargeObject needs to know, we already decided
-// for ourselves at allocation time.
-static std::map<uint8_t*, uint8_t*> g_largeObjectRanges; // Start -> End (exclusive)
-static CRITICAL_SECTION g_largeObjectRangesLock;
-
 ZeroGCHeap* ZeroGCHeap::CreateAndInitialize()
 {
     // NOTE: do NOT call Initialize() here. IGCHeap::Initialize() is a real
@@ -112,7 +98,6 @@ HRESULT ZeroGCHeap::Initialize()
 {
     ZGC_TRACE("ZeroGCHeap::Initialize - enter");
     InitializeCriticalSection(&g_frozenSegmentsLock);
-    InitializeCriticalSection(&g_largeObjectRangesLock);
     QueryPerformanceFrequency(&m_qpcFrequency);
     QueryPerformanceCounter(&m_startTime);
 
@@ -330,18 +315,6 @@ Object* ZeroGCHeap::AllocateFromArena(gc_alloc_context* acontext, size_t size, u
         acontext->alloc_limit = chunkStart + alignedSize;
     }
 
-    // Record this object's range for IsLargeObject() iff it actually meets
-    // the LOH size threshold - not merely because it got routed through the
-    // isLarge chunk-placement path above, which also covers small pinned
-    // (POH) allocations that are NOT "large objects" by size. This mirrors
-    // the exact criterion the removed MethodTable::GetBaseSize() check used.
-    if (alignedSize >= LARGE_OBJECT_SIZE)
-    {
-        EnterCriticalSection(&g_largeObjectRangesLock);
-        g_largeObjectRanges[chunkStart] = chunkStart + alignedSize;
-        LeaveCriticalSection(&g_largeObjectRangesLock);
-    }
-
     acontext->alloc_bytes += (int64_t)alignedSize;
     acontext->alloc_count++;
 
@@ -520,23 +493,8 @@ size_t ZeroGCHeap::GetNow()
 
 bool ZeroGCHeap::IsLargeObject(Object* pObj)
 {
-    // Answered purely from our own allocation-time bookkeeping (see
-    // AllocateFromArena) instead of dereferencing the object's MethodTable -
-    // this is the only place ZeroGC used to depend on MethodTable's private,
-    // unversioned internal layout, which made ZeroGC.dll binaries brittle
-    // across runtime major versions. Object identity/address is the only
-    // thing we need here, so no VM-internal type's field layout is touched.
-    uint8_t* p = (uint8_t*)pObj;
-    bool found = false;
-    EnterCriticalSection(&g_largeObjectRangesLock);
-    auto it = g_largeObjectRanges.upper_bound(p); // first range starting after p
-    if (it != g_largeObjectRanges.begin())
-    {
-        --it;
-        found = (p >= it->first && p < it->second);
-    }
-    LeaveCriticalSection(&g_largeObjectRangesLock);
-    return found;
+    MethodTable* mt = pObj->GetGCSafeMethodTable();
+    return mt->GetBaseSize() >= LARGE_OBJECT_SIZE;
 }
 
 void ZeroGCHeap::ValidateObjectMember(Object* obj) { ZGC_TRACE("ZeroGCHeap::ValidateObjectMember"); }
