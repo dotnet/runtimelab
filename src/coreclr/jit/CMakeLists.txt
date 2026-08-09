@@ -85,7 +85,7 @@ function(create_standalone_jit)
 
   if ((TARGETDETAILS_ARCH STREQUAL "wasm64") OR (TARGETDETAILS_ARCH STREQUAL "wasm32"))
     # We'll be linking against LLVM built without /guard:ehcont, so disable it.
-    set_target_properties(${TARGETDETAILS_TARGET} PROPERTIES CLR_EH_CONTINUATION OFF)
+    set_target_properties(${jitName} PROPERTIES CLR_EH_CONTINUATION OFF)
 
     # Shared C#/C++ Jit-EE interface sources.
     target_include_directories(${TARGETDETAILS_TARGET} PRIVATE "../tools/Common/JitInterface")
