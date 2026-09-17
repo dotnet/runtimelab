@@ -25,6 +25,8 @@ parameters:
   useContinueOnErrorDuringBuild: false
   shouldContinueOnError: false
   isOfficialBuild: false
+  enablePublishing: false
+  publishingVersion: 3
   runtimeFlavor: 'coreclr'
   runtimeVariant: ''
   helixQueues: ''
@@ -54,6 +56,8 @@ jobs:
     testResultsFormat: ${{ parameters.testResultsFormat }}
     enableMicrobuild: ${{ parameters.isOfficialBuild }}
     enableMicrobuildForMacAndLinux: ${{ parameters.isOfficialBuild }}
+    enablePublishing: ${{ parameters.enablePublishing }}
+    publishingVersion: ${{ parameters.publishingVersion }}
     templateContext: ${{ parameters.templateContext }}
 
     artifacts:

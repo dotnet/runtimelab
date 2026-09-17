@@ -1,20 +1,11 @@
-trigger:
-  batch: true
-  branches:
-    include:
-    - feature/*
-  paths:
-    include:
-    - '*'
-    exclude:
-    - '**.md'
-    - eng/Version.Details.xml
-    - .devcontainer/*
-    - .github/*
-    - docs/*
-    - LICENSE.TXT
-    - PATENTS.TXT
-    - THIRD-PARTY-NOTICES.TXT
+parameters:
+- name: publishToExperimentalFeed
+  displayName: Request publication after explicit user approval
+  type: boolean
+  default: false
+
+trigger: none
+pr: none
 
 variables:
 - template: /eng/pipelines/common/variables.yml
@@ -47,13 +38,12 @@ extends:
             jobParameters:
               templatePath: 'templates-official'
               isOfficialBuild: true
+              nameSuffix: coreclr
               timeoutInMinutes: 180
-              buildArgs: -s clr+libs+hosts+packs -c $(_BuildConfig)
-              postBuildSteps:
-                # Upload the results.
-                - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
-                  parameters:
-                    name: $(osGroup)$(osSubgroup)_$(archType)
+              # V4 Publish stages files into this build's pipeline artifact, not a package feed.
+              enablePublishing: true
+              publishingVersion: 4
+              buildArgs: -s clr+libs+host+packs -c $(_BuildConfig) -restore -build -sign -publish /p:PublishingVersion=4
 
         #
         # Build libraries AllConfigurations for packages
@@ -61,20 +51,42 @@ extends:
         - template: /eng/pipelines/common/platform-matrix.yml
           parameters:
             jobTemplate: /eng/pipelines/common/global-build-job.yml
-            buildConfig: Release
+            buildConfig: release
             platforms:
             - windows_x64
             jobParameters:
               templatePath: 'templates-official'
-              buildArgs: -s tools+libs -allConfigurations -c $(_BuildConfig) /p:BuildAllConfigurations=true /p:TestAssemblies=false /p:TestPackages=true
+              buildArgs: -s tools+libs -allConfigurations -c $(_BuildConfig) -restore -build -sign -publish /p:PublishingVersion=4 /p:EnableDefaultRidSpecificArtifacts=false /p:BuildAllConfigurations=true /p:TestAssemblies=false /p:TestPackages=true
               nameSuffix: Libraries_AllConfigurations
               isOfficialBuild: true
-              postBuildSteps:
-                - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
-                  parameters:
-                    name: Libraries_AllConfigurations
+              enablePublishing: true
+              publishingVersion: 4
               timeoutInMinutes: 95
 
-    - template: /eng/pipelines/official/stages/publish.yml
-      parameters:
-        isOfficialBuild: true
+    - ${{ if parameters.publishToExperimentalFeed }}:
+      - stage: RegisterAssets
+        displayName: Register build assets
+        dependsOn: Build
+        condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+        jobs:
+        - template: /eng/common/templates-official/job/publish-build-assets.yml
+          parameters:
+            configuration: Release
+            publishingVersion: 4
+            publishAssetsImmediately: false
+            isAssetlessBuild: false
+
+      - template: /eng/common/templates-official/post-build/post-build.yml
+        parameters:
+          publishingInfraVersion: 4
+          validateDependsOn:
+          - RegisterAssets
+          publishDependsOn:
+          - Validate
+          - RegisterAssets
+          enableSigningValidation: true
+          enableNugetValidation: true
+          enableSourceLinkValidation: true
+          requireDefaultChannels: true
+          publishAssetsImmediately: false
+          publishInstallersAndChecksums: true
