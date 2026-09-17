@@ -57,7 +57,8 @@ extends:
             - windows_x64
             jobParameters:
               templatePath: 'templates-official'
-              buildArgs: -s tools+libs -c $(_BuildConfig) -restore -build -publish /p:PublishingVersion=4 /p:EnableDefaultRidSpecificArtifacts=false /p:BuildAllConfigurations=true /p:TestAssemblies=false /p:TestPackages=true
+              # Unlike the runtime's packs subset, libraries need an explicit Pack action.
+              buildArgs: -s tools+libs -c $(_BuildConfig) -restore -build -pack -publish /p:PublishingVersion=4 /p:EnableDefaultRidSpecificArtifacts=false /p:BuildAllConfigurations=true /p:TestAssemblies=false /p:TestPackages=true
               nameSuffix: Libraries_AllConfigurations
               isOfficialBuild: true
               enableSigning: false
