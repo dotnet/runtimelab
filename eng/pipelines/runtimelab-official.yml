@@ -38,12 +38,13 @@ extends:
             jobParameters:
               templatePath: 'templates-official'
               isOfficialBuild: true
+              enableSigning: false
               nameSuffix: coreclr
               timeoutInMinutes: 180
               # V4 Publish stages files into this build's pipeline artifact, not a package feed.
               enablePublishing: true
               publishingVersion: 4
-              buildArgs: -s clr+libs+host+packs -c $(_BuildConfig) -restore -build -sign -publish /p:PublishingVersion=4
+              buildArgs: -s clr+libs+host+packs -c $(_BuildConfig) -restore -build -publish /p:PublishingVersion=4
 
         #
         # Build libraries AllConfigurations for packages
@@ -56,9 +57,10 @@ extends:
             - windows_x64
             jobParameters:
               templatePath: 'templates-official'
-              buildArgs: -s tools+libs -allConfigurations -c $(_BuildConfig) -restore -build -sign -publish /p:PublishingVersion=4 /p:EnableDefaultRidSpecificArtifacts=false /p:BuildAllConfigurations=true /p:TestAssemblies=false /p:TestPackages=true
+              buildArgs: -s tools+libs -allConfigurations -c $(_BuildConfig) -restore -build -publish /p:PublishingVersion=4 /p:EnableDefaultRidSpecificArtifacts=false /p:BuildAllConfigurations=true /p:TestAssemblies=false /p:TestPackages=true
               nameSuffix: Libraries_AllConfigurations
               isOfficialBuild: true
+              enableSigning: false
               enablePublishing: true
               publishingVersion: 4
               timeoutInMinutes: 95
@@ -84,7 +86,7 @@ extends:
           publishDependsOn:
           - Validate
           - RegisterAssets
-          enableSigningValidation: true
+          enableSigningValidation: false
           enableNugetValidation: true
           enableSourceLinkValidation: true
           requireDefaultChannels: true

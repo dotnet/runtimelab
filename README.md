@@ -16,7 +16,9 @@ seven characters.
 ## Build and publish
 
 [`eng/pipelines/runtimelab-official.yml`](eng/pipelines/runtimelab-official.yml)
-builds Release packages and uses the existing Arcade publishing stages.
+builds unsigned Release packages and uses the existing Arcade publishing stages.
+MicroBuild signing is disabled for this experimental baseline; normal publishing
+permissions and production-access checks still apply.
 CI is manual-only; `publishToExperimentalFeed` defaults to `false`.
 
 **Do not queue CI or publish to `dotnet-experimental` without explicit approval

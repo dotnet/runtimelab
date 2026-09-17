@@ -25,6 +25,7 @@ parameters:
   useContinueOnErrorDuringBuild: false
   shouldContinueOnError: false
   isOfficialBuild: false
+  enableSigning: ''
   enablePublishing: false
   publishingVersion: 3
   runtimeFlavor: 'coreclr'
@@ -54,8 +55,8 @@ jobs:
     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
     enablePublishTestResults: ${{ parameters.enablePublishTestResults }}
     testResultsFormat: ${{ parameters.testResultsFormat }}
-    enableMicrobuild: ${{ parameters.isOfficialBuild }}
-    enableMicrobuildForMacAndLinux: ${{ parameters.isOfficialBuild }}
+    enableMicrobuild: ${{ coalesce(parameters.enableSigning, parameters.isOfficialBuild) }}
+    enableMicrobuildForMacAndLinux: ${{ coalesce(parameters.enableSigning, parameters.isOfficialBuild) }}
     enablePublishing: ${{ parameters.enablePublishing }}
     publishingVersion: ${{ parameters.publishingVersion }}
     templateContext: ${{ parameters.templateContext }}
@@ -133,7 +134,10 @@ jobs:
 
       - name: _officialBuildParameter
         ${{ if eq(parameters.isOfficialBuild, true) }}:
-          value: /p:OfficialBuildId=$(Build.BuildNumber) /p:DotNetPublishUsingPipelines=true /p:SignType=$(_SignType) /p:DotNetSignType=$(_SignType)
+          ${{ if eq(coalesce(parameters.enableSigning, parameters.isOfficialBuild), true) }}:
+            value: /p:OfficialBuildId=$(Build.BuildNumber) /p:DotNetPublishUsingPipelines=true /p:SignType=$(_SignType) /p:DotNetSignType=$(_SignType)
+          ${{ else }}:
+            value: /p:OfficialBuildId=$(Build.BuildNumber) /p:DotNetPublishUsingPipelines=true
         ${{ if ne(parameters.isOfficialBuild, true) }}:
           value: ''
 
