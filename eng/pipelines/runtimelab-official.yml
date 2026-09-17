@@ -57,7 +57,7 @@ extends:
             - windows_x64
             jobParameters:
               templatePath: 'templates-official'
-              buildArgs: -s tools+libs -allConfigurations -c $(_BuildConfig) -restore -build -publish /p:PublishingVersion=4 /p:EnableDefaultRidSpecificArtifacts=false /p:BuildAllConfigurations=true /p:TestAssemblies=false /p:TestPackages=true
+              buildArgs: -s tools+libs -c $(_BuildConfig) -restore -build -publish /p:PublishingVersion=4 /p:EnableDefaultRidSpecificArtifacts=false /p:BuildAllConfigurations=true /p:TestAssemblies=false /p:TestPackages=true
               nameSuffix: Libraries_AllConfigurations
               isOfficialBuild: true
               enableSigning: false
