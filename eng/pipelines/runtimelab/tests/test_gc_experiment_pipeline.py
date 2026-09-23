@@ -62,6 +62,12 @@ REPRESENTATIVE_CONDITION = (
     "and(succeeded(), eq(variables['Build.Reason'], 'Manual'), "
     "eq(variables['System.TeamProject'], 'internal'))"
 )
+RUNTIMELAB_HELIX_SOURCE_VARIABLE = [
+    {
+        "name": "_HelixSource",
+        "value": "official/dotnet/runtimelab/$(Build.SourceBranch)",
+    }
+]
 
 
 def _load_yaml(path: Path) -> dict:
@@ -329,6 +335,34 @@ class GcExperimentPipelineTests(unittest.TestCase):
         self.assertEqual(
             [],
             _expand_conditionals(libraries_job["postBuildSteps"], defaults),
+        )
+
+    def test_representative_helix_jobs_use_runtimelab_source(self) -> None:
+        values = {
+            "publishToExperimentalFeed": False,
+            "gcExperimentMode": "representative",
+        }
+        jobs = _expand_conditionals(_build_jobs(self.pipeline), values)
+        correctness_job = next(
+            job
+            for job in jobs
+            if job.get("parameters", {}).get("jobParameters", {}).get("nameSuffix")
+            == "GC_Correctness"
+        )
+        stress_job = next(
+            job
+            for job in jobs
+            if job.get("parameters", {}).get("jobTemplate")
+            == "/eng/pipelines/common/templates/runtimes/run-test-job.yml"
+        )
+
+        self.assertEqual(
+            RUNTIMELAB_HELIX_SOURCE_VARIABLE,
+            correctness_job["parameters"]["variables"],
+        )
+        self.assertEqual(
+            RUNTIMELAB_HELIX_SOURCE_VARIABLE,
+            stress_job["parameters"]["variables"],
         )
 
     def test_representative_mode_is_single_and_fail_closed(self) -> None:
