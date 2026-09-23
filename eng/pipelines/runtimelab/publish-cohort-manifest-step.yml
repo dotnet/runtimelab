@@ -11,6 +11,27 @@ parameters:
 - name: buildConfig
   type: string
   default: ''
+- name: runtimeFlavor
+  type: string
+  default: ''
+- name: runtimeVariant
+  type: string
+  default: ''
+- name: helixQueues
+  type: object
+  default: []
+- name: targetRid
+  type: string
+  default: ''
+- name: nameSuffix
+  type: string
+  default: ''
+- name: platform
+  type: string
+  default: ''
+- name: shouldContinueOnError
+  type: boolean
+  default: false
 - name: cohortRole
   type: string
 - name: additionalArtifact

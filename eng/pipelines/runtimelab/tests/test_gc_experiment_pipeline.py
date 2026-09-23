@@ -26,6 +26,9 @@ RUN_TEST_TEMPLATE_PATH = (
     / "runtimes"
     / "run-test-job.yml"
 )
+GLOBAL_BUILD_TEMPLATE_PATH = (
+    REPO_ROOT / "eng" / "pipelines" / "common" / "global-build-job.yml"
+)
 REPRESENTATIVE_CONDITION = (
     "and(succeeded(), eq(variables['Build.Reason'], 'Manual'), "
     "eq(variables['System.TeamProject'], 'internal'))"
@@ -97,6 +100,22 @@ def _expand_conditionals(items: list, values: dict) -> list:
                 continue
         expanded.append(item)
     return expanded
+
+
+def _find_template_invocation(node: object, template: str) -> dict:
+    if isinstance(node, dict):
+        if node.get("template") == template:
+            return node
+        for value in node.values():
+            invocation = _find_template_invocation(value, template)
+            if invocation:
+                return invocation
+    elif isinstance(node, list):
+        for value in node:
+            invocation = _find_template_invocation(value, template)
+            if invocation:
+                return invocation
+    return {}
 
 
 class GcExperimentPipelineTests(unittest.TestCase):
@@ -447,6 +466,38 @@ class GcExperimentPipelineTests(unittest.TestCase):
             "$(System.JobName)",
         ):
             self.assertIn(variable, template)
+
+    def test_manifest_template_accepts_global_build_forwarded_parameters(self) -> None:
+        global_build = _load_yaml(GLOBAL_BUILD_TEMPLATE_PATH)
+        invocation = _find_template_invocation(
+            global_build, "${{ postBuildStep.template }}"
+        )
+        self.assertTrue(invocation)
+
+        forwarded_parameters = {
+            name
+            for name, value in invocation["parameters"].items()
+            if value == f"${{{{ parameters.{name} }}}}"
+        }
+        manifest_parameters = set(_parameters(_load_yaml(MANIFEST_TEMPLATE_PATH)))
+
+        self.assertEqual(
+            {
+                "osGroup",
+                "osSubgroup",
+                "archType",
+                "buildConfig",
+                "runtimeFlavor",
+                "runtimeVariant",
+                "helixQueues",
+                "targetRid",
+                "nameSuffix",
+                "platform",
+                "shouldContinueOnError",
+            },
+            forwarded_parameters,
+        )
+        self.assertLessEqual(forwarded_parameters, manifest_parameters)
 
 
 class CohortManifestTests(unittest.TestCase):
