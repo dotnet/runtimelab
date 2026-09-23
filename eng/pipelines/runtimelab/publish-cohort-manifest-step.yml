@@ -1,45 +1,11 @@
 parameters:
-- name: osGroup
-  type: string
-  default: ''
-- name: osSubgroup
-  type: string
-  default: ''
-- name: archType
-  type: string
-  default: ''
-- name: buildConfig
-  type: string
-  default: ''
-- name: runtimeFlavor
-  type: string
-  default: ''
-- name: runtimeVariant
-  type: string
-  default: ''
-- name: helixQueues
-  type: object
-  default: []
-- name: targetRid
-  type: string
-  default: ''
-- name: nameSuffix
-  type: string
-  default: ''
-- name: platform
-  type: string
-  default: ''
-- name: shouldContinueOnError
-  type: boolean
-  default: false
-- name: cohortRole
-  type: string
-- name: additionalArtifact
-  type: string
-  default: ''
-- name: condition
-  type: string
-  default: succeeded()
+  osGroup: ''
+  osSubgroup: ''
+  archType: ''
+  buildConfig: ''
+  cohortRole: ''
+  additionalArtifact: ''
+  condition: succeeded()
 
 steps:
 - ${{ if eq(parameters.osGroup, 'windows') }}:

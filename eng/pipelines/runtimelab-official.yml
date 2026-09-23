@@ -147,8 +147,6 @@ extends:
                     testBuildArgs: tree GC
                     scenarios:
                     - normal
-                    runtimeFlavor: coreclr
-                    runtimeVariant: ''
                     useHelixMonitor: true
                 extraVariablesTemplates:
                 - template: /eng/pipelines/common/templates/runtimes/test-variables.yml

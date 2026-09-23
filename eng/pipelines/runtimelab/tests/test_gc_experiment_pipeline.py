@@ -370,7 +370,8 @@ class GcExperimentPipelineTests(unittest.TestCase):
         post_build = parameters["jobParameters"]["postBuildSteps"][0]["parameters"]
         self.assertEqual("tree GC", post_build["testBuildArgs"])
         self.assertEqual(["normal"], post_build["scenarios"])
-        self.assertEqual("coreclr", post_build["runtimeFlavor"])
+        self.assertNotIn("runtimeFlavor", post_build)
+        self.assertNotIn("runtimeVariant", post_build)
 
     def test_gc_stress_uses_standard_plumbing_with_bounded_scenario(self) -> None:
         values = {
@@ -479,7 +480,7 @@ class GcExperimentPipelineTests(unittest.TestCase):
             for name, value in invocation["parameters"].items()
             if value == f"${{{{ parameters.{name} }}}}"
         }
-        manifest_parameters = set(_parameters(_load_yaml(MANIFEST_TEMPLATE_PATH)))
+        manifest_parameters = _load_yaml(MANIFEST_TEMPLATE_PATH)["parameters"]
 
         self.assertEqual(
             {
@@ -497,7 +498,38 @@ class GcExperimentPipelineTests(unittest.TestCase):
             },
             forwarded_parameters,
         )
-        self.assertLessEqual(forwarded_parameters, manifest_parameters)
+        self.assertIsInstance(manifest_parameters, dict)
+        self.assertEqual(
+            {
+                "osGroup",
+                "osSubgroup",
+                "archType",
+                "buildConfig",
+                "cohortRole",
+                "additionalArtifact",
+                "condition",
+            },
+            set(manifest_parameters),
+        )
+
+        values = {
+            "publishToExperimentalFeed": False,
+            "gcExperimentMode": "representative",
+        }
+        jobs = _expand_conditionals(_build_jobs(self.pipeline), values)
+        parameter_overlaps = {
+            (
+                job["parameters"]["jobParameters"].get("nameSuffix", ""),
+                step["template"],
+            ): forwarded_parameters & set(step.get("parameters", {}))
+            for job in jobs
+            if job.get("parameters", {}).get("jobTemplate")
+            == "/eng/pipelines/common/global-build-job.yml"
+            for step in job["parameters"]["jobParameters"].get("postBuildSteps", [])
+            if step.get("template")
+            and forwarded_parameters & set(step.get("parameters", {}))
+        }
+        self.assertEqual({}, parameter_overlaps)
 
 
 class CohortManifestTests(unittest.TestCase):
