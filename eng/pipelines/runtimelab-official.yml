@@ -17,8 +17,9 @@ pr: none
 resources:
   repositories:
   - repository: performance
-    type: git
-    name: internal/dotnet-performance
+    type: github
+    name: dotnet/performance
+    endpoint: public
     ref: refs/heads/main
 
 variables:

@@ -189,6 +189,20 @@ class GcExperimentPipelineTests(unittest.TestCase):
         self.assertTrue(libraries_job["enablePublishing"])
         self.assertEqual(4, libraries_job["publishingVersion"])
 
+    def test_performance_repository_uses_public_github_source(self) -> None:
+        self.assertEqual(
+            [
+                {
+                    "repository": "performance",
+                    "type": "github",
+                    "name": "dotnet/performance",
+                    "endpoint": "public",
+                    "ref": "refs/heads/main",
+                }
+            ],
+            self.pipeline["resources"]["repositories"],
+        )
+
     def test_performance_selector_expands_exactly_one_standard_lane(self) -> None:
         values = {
             "publishToExperimentalFeed": False,
