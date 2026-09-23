@@ -281,6 +281,7 @@ extends:
               - linux_x64
               jobParameters:
                 condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+                jobTemplate: /eng/common/templates-official/job/job.yml@self
                 liveLibrariesBuildConfig: Release
                 runKind: micro
                 runCategories: Runtime

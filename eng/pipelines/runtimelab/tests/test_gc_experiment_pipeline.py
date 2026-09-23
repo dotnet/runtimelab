@@ -192,6 +192,10 @@ class GcExperimentPipelineTests(unittest.TestCase):
         self.assertEqual(["linux_x64"], parameters["platforms"])
         self.assertEqual("release", parameters["buildConfig"])
         self.assertEqual("coreclr", parameters["runtimeFlavor"])
+        self.assertEqual(
+            "/eng/common/templates-official/job/job.yml@self",
+            parameters["jobParameters"]["jobTemplate"],
+        )
         self.assertEqual("micro", parameters["jobParameters"]["runKind"])
         self.assertEqual("Runtime", parameters["jobParameters"]["runCategories"])
         self.assertEqual("perfviper", parameters["jobParameters"]["logicalMachine"])
