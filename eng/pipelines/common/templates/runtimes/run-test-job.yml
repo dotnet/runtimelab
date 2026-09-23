@@ -31,6 +31,7 @@ parameters:
   unifiedBuildConfigOverride: ''
   extraBuildArgs: ''
   useHelixMonitor: false
+  gcStressScenarios: []
 
 ### Test run job
 
@@ -450,8 +451,12 @@ jobs:
           - jitstress2_jitstressregs0x2000
         ${{ if in(parameters.testGroup, 'gcstress0x3-gcstress0xc') }}:
           scenarios:
-          - gcstress0x3
-          - gcstress0xc
+          - ${{ if ne(length(parameters.gcStressScenarios), 0) }}:
+            - ${{ each scenario in parameters.gcStressScenarios }}:
+              - ${{ scenario }}
+          - ${{ else }}:
+            - gcstress0x3
+            - gcstress0xc
         ${{ if in(parameters.testGroup, 'gcstress-extra') }}:
           scenarios:
           - heapverify1

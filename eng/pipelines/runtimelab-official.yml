@@ -3,15 +3,33 @@ parameters:
   displayName: Request publication after explicit user approval
   type: boolean
   default: false
+- name: gcExperimentMode
+  displayName: Source-owned GC experiment mode
+  type: string
+  default: none
+  values:
+  - none
+  - representative
 
 trigger: none
 pr: none
+
+resources:
+  repositories:
+  - repository: performance
+    type: git
+    name: internal/dotnet-performance
+    ref: refs/heads/main
 
 variables:
 - template: /eng/pipelines/common/variables.yml
   parameters:
     templatePath: 'templates-official'
 - template: /eng/pipelines/helix-platforms.yml
+- name: performanceRepositoryRef
+  value: $[ resources.repositories.performance.ref ]
+- name: performanceSourceVersion
+  value: $[ resources.repositories.performance.version ]
 
 - ${{ if and(ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest')) }}:
   - name: TeamName
@@ -23,7 +41,18 @@ extends:
     isOfficialBuild: true
     stages:
     - stage: Build
+      variables:
+      - ${{ if and(eq(parameters.gcExperimentMode, 'representative'), eq(variables['System.TeamProject'], 'internal')) }}:
+        - group: DotNet-HelixApi-Access
       jobs:
+        - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
+          - template: /eng/common/core-templates/job/helix-job-monitor.yml
+            parameters:
+              helixAccessToken: $(HelixApiAccessToken)
+              timeoutInMinutes: 720
+              allowNoHelixJobs: false
+              condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+
         #
         # Build the whole product with Release CoreCLR
         #
@@ -45,6 +74,25 @@ extends:
               enablePublishing: true
               publishingVersion: 4
               buildArgs: -s clr+libs+host+packs -c $(_BuildConfig) -restore -build -publish /p:PublishingVersion=4
+              postBuildSteps:
+              - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
+                - template: /eng/pipelines/common/upload-artifact-step.yml
+                  parameters:
+                    rootFolder: $(Build.SourcesDirectory)/artifacts/bin
+                    includeRootFolder: false
+                    archiveType: $(archiveType)
+                    archiveExtension: $(archiveExtension)
+                    tarCompression: $(tarCompression)
+                    artifactName: BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr
+                    displayName: Runtime artifacts for performance
+                    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'), eq(variables['osGroup'], 'linux'))
+                    isOfficialBuild: true
+              - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
+                - template: /eng/pipelines/runtimelab/publish-cohort-manifest-step.yml
+                  parameters:
+                    cohortRole: runtime
+                    additionalArtifact: $(Build.StagingDirectory)/BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr$(archiveExtension)
+                    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
 
         #
         # Build libraries AllConfigurations for packages
@@ -65,6 +113,117 @@ extends:
               enablePublishing: true
               publishingVersion: 4
               timeoutInMinutes: 95
+              postBuildSteps:
+              - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
+                - template: /eng/pipelines/runtimelab/publish-cohort-manifest-step.yml
+                  parameters:
+                    cohortRole: libraries_all_configurations
+                    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+
+        #
+        # Run the smallest standard CoreCLR correctness lane on Linux x64.
+        #
+        - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
+          - template: /eng/pipelines/common/platform-matrix.yml
+            parameters:
+              jobTemplate: /eng/pipelines/common/global-build-job.yml
+              helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
+              buildConfig: checked
+              platforms:
+              - linux_x64
+              jobParameters:
+                condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+                timeoutInMinutes: 200
+                buildArgs: -s clr+libs+clr.hosts+packs -c debug -rc $(_BuildConfig)
+                postBuildSteps:
+                - template: /eng/pipelines/common/templates/runtimes/build-runtime-tests-and-send-to-helix.yml
+                  parameters:
+                    testBuildArgs: tree GC
+                    scenarios:
+                    - normal
+                    runtimeFlavor: coreclr
+                    runtimeVariant: ''
+                    useHelixMonitor: true
+                extraVariablesTemplates:
+                - template: /eng/pipelines/common/templates/runtimes/test-variables.yml
+                  parameters:
+                    testGroup: innerloop
+
+        #
+        # Run the standard CoreCLR GCStress plumbing on Linux x64, bounded to GCStress0xC.
+        #
+        - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
+          - template: /eng/pipelines/common/platform-matrix.yml
+            parameters:
+              jobTemplate: /eng/pipelines/common/global-build-job.yml
+              buildConfig: checked
+              platforms:
+              - linux_x64
+              jobParameters:
+                condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+                buildArgs: -s clr+libs -c $(_BuildConfig) -lc Release
+                postBuildSteps:
+                - template: /eng/pipelines/coreclr/templates/build-native-test-assets-step.yml
+                - template: /eng/pipelines/common/upload-artifact-step.yml
+                  parameters:
+                    rootFolder: $(Build.SourcesDirectory)/artifacts/bin
+                    includeRootFolder: false
+                    archiveType: $(archiveType)
+                    archiveExtension: $(archiveExtension)
+                    tarCompression: $(tarCompression)
+                    artifactName: BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)
+                    displayName: Build Assets
+                extraVariablesTemplates:
+                - template: /eng/pipelines/common/templates/runtimes/native-test-assets-variables.yml
+                  parameters:
+                    testGroup: gcstress0x3-gcstress0xc
+
+          - template: /eng/pipelines/common/platform-matrix.yml
+            parameters:
+              jobTemplate: /eng/pipelines/common/templates/runtimes/build-test-job.yml
+              buildConfig: checked
+              platforms:
+              - CoreClrTestBuildHost
+              jobParameters:
+                condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+                testGroup: gcstress0x3-gcstress0xc
+
+          - template: /eng/pipelines/common/platform-matrix.yml
+            parameters:
+              jobTemplate: /eng/pipelines/common/templates/runtimes/run-test-job.yml
+              buildConfig: checked
+              platforms:
+              - linux_x64
+              helixQueueGroup: ci
+              helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
+              jobParameters:
+                condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+                useHelixMonitor: true
+                testGroup: gcstress0x3-gcstress0xc
+                gcStressScenarios:
+                - gcstress0xc
+                liveLibrariesBuildConfig: Release
+                unifiedArtifactsName: BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)
+
+        #
+        # Consume the canonical Release build in one standard dotnet/performance microbenchmark lane.
+        #
+        - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
+          - template: /eng/pipelines/common/platform-matrix.yml
+            parameters:
+              jobTemplate: /eng/pipelines/templates/runtime-perf-job.yml@performance
+              buildConfig: release
+              runtimeFlavor: coreclr
+              platforms:
+              - linux_x64
+              jobParameters:
+                condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+                liveLibrariesBuildConfig: Release
+                runKind: micro
+                runCategories: Runtime
+                logicalMachine: perfviper
+                runtimeRepoAlias: self
+                performanceRepoAlias: performance
 
     - ${{ if parameters.publishToExperimentalFeed }}:
       - stage: RegisterAssets
