@@ -40,6 +40,9 @@ extends:
   parameters:
     isOfficialBuild: true
     stages:
+    - ${{ if and(eq(parameters.gcExperimentMode, 'representative'), or(ne(variables['Build.Reason'], 'Manual'), ne(variables['System.TeamProject'], 'internal'))) }}:
+      - gcExperimentModeRepresentativeRequiresManualInternal: error
+
     - stage: Build
       variables:
       - ${{ if and(eq(parameters.gcExperimentMode, 'representative'), eq(variables['System.TeamProject'], 'internal')) }}:
@@ -63,7 +66,8 @@ extends:
             buildConfig: release
             platforms:
             - linux_x64
-            - windows_x64
+            - ${{ if or(ne(parameters.gcExperimentMode, 'representative'), eq(parameters.publishToExperimentalFeed, true)) }}:
+              - windows_x64
             jobParameters:
               templatePath: 'templates-official'
               isOfficialBuild: true
@@ -97,28 +101,29 @@ extends:
         #
         # Build libraries AllConfigurations for packages
         #
-        - template: /eng/pipelines/common/platform-matrix.yml
-          parameters:
-            jobTemplate: /eng/pipelines/common/global-build-job.yml
-            buildConfig: release
-            platforms:
-            - windows_x64
-            jobParameters:
-              templatePath: 'templates-official'
-              # Unlike the runtime's packs subset, libraries need an explicit Pack action.
-              buildArgs: -s tools+libs -c $(_BuildConfig) -restore -build -pack -publish /p:PublishingVersion=4 /p:EnableDefaultRidSpecificArtifacts=false /p:BuildAllConfigurations=true /p:TestAssemblies=false /p:TestPackages=true
-              nameSuffix: Libraries_AllConfigurations
-              isOfficialBuild: true
-              enableSigning: false
-              enablePublishing: true
-              publishingVersion: 4
-              timeoutInMinutes: 95
-              postBuildSteps:
-              - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
-                - template: /eng/pipelines/runtimelab/publish-cohort-manifest-step.yml
-                  parameters:
-                    cohortRole: libraries_all_configurations
-                    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+        - ${{ if or(ne(parameters.gcExperimentMode, 'representative'), eq(parameters.publishToExperimentalFeed, true)) }}:
+          - template: /eng/pipelines/common/platform-matrix.yml
+            parameters:
+              jobTemplate: /eng/pipelines/common/global-build-job.yml
+              buildConfig: release
+              platforms:
+              - windows_x64
+              jobParameters:
+                templatePath: 'templates-official'
+                # Unlike the runtime's packs subset, libraries need an explicit Pack action.
+                buildArgs: -s tools+libs -c $(_BuildConfig) -restore -build -pack -publish /p:PublishingVersion=4 /p:EnableDefaultRidSpecificArtifacts=false /p:BuildAllConfigurations=true /p:TestAssemblies=false /p:TestPackages=true
+                nameSuffix: Libraries_AllConfigurations
+                isOfficialBuild: true
+                enableSigning: false
+                enablePublishing: true
+                publishingVersion: 4
+                timeoutInMinutes: 95
+                postBuildSteps:
+                - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
+                  - template: /eng/pipelines/runtimelab/publish-cohort-manifest-step.yml
+                    parameters:
+                      cohortRole: libraries_all_configurations
+                      condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
 
         #
         # Run the smallest standard CoreCLR correctness lane on Linux x64.

@@ -40,9 +40,14 @@ def _parameters(pipeline: dict) -> dict:
     return {parameter["name"]: parameter for parameter in pipeline["parameters"]}
 
 
+def _stages(pipeline: dict) -> list:
+    return pipeline["extends"]["parameters"]["stages"]
+
+
 def _build_jobs(pipeline: dict) -> list:
-    stages = pipeline["extends"]["parameters"]["stages"]
-    return next(stage["jobs"] for stage in stages if stage.get("stage") == "Build")
+    return next(
+        stage["jobs"] for stage in _stages(pipeline) if stage.get("stage") == "Build"
+    )
 
 
 def _condition_matches(condition: str, values: dict) -> bool:
@@ -66,7 +71,12 @@ def _condition_matches(condition: str, values: dict) -> bool:
         if expression.startswith(prefix):
             parameter, expected = expression[len(prefix) : -1].split(",", 1)
             expected = expected.strip().strip("'")
-            matches = str(values[parameter]) == expected
+            actual = values[parameter]
+            if isinstance(actual, bool):
+                actual = str(actual).lower()
+            else:
+                actual = str(actual)
+            matches = actual == expected
             return matches if operation == "eq" else not matches
     prefix = "in(parameters."
     if expression.startswith(prefix):
@@ -108,7 +118,10 @@ class GcExperimentPipelineTests(unittest.TestCase):
         self.assertEqual(2, len(jobs))
 
         runtime_job = jobs[0]["parameters"]
-        self.assertEqual(["linux_x64", "windows_x64"], runtime_job["platforms"])
+        self.assertEqual(
+            ["linux_x64", "windows_x64"],
+            _expand_conditionals(runtime_job["platforms"], defaults),
+        )
         self.assertEqual(
             "-s clr+libs+host+packs -c $(_BuildConfig) -restore -build -publish "
             "/p:PublishingVersion=4",
@@ -183,7 +196,14 @@ class GcExperimentPipelineTests(unittest.TestCase):
             "eq(variables['osGroup'], 'linux'))",
             artifact_parameters["condition"],
         )
-        libraries_job = _build_jobs(self.pipeline)[2]["parameters"]["jobParameters"]
+        default_jobs = _expand_conditionals(
+            _build_jobs(self.pipeline),
+            {
+                "publishToExperimentalFeed": False,
+                "gcExperimentMode": "none",
+            },
+        )
+        libraries_job = default_jobs[1]["parameters"]["jobParameters"]
         self.assertEqual(
             [],
             _expand_conditionals(libraries_job["postBuildSteps"], defaults),
@@ -199,16 +219,109 @@ class GcExperimentPipelineTests(unittest.TestCase):
             "gcExperimentMode": "representative",
         }
         jobs = _expand_conditionals(_build_jobs(self.pipeline), values)
-        self.assertEqual(8, len(jobs))
+        self.assertEqual(7, len(jobs))
         self.assertEqual(
             REPRESENTATIVE_CONDITION,
             jobs[0]["parameters"]["condition"],
         )
-        for job in jobs[3:]:
+        for job in jobs[2:]:
             self.assertEqual(
                 REPRESENTATIVE_CONDITION,
                 job["parameters"]["jobParameters"]["condition"],
             )
+
+        validation_condition = (
+            "${{ if and(eq(parameters.gcExperimentMode, 'representative'), "
+            "or(ne(variables['Build.Reason'], 'Manual'), "
+            "ne(variables['System.TeamProject'], 'internal'))) }}"
+        )
+        validation = next(
+            stage[validation_condition]
+            for stage in _stages(self.pipeline)
+            if validation_condition in stage
+        )
+        self.assertEqual(
+            [{"gcExperimentModeRepresentativeRequiresManualInternal": "error"}],
+            validation,
+        )
+
+    def test_representative_without_publication_is_linux_only(self) -> None:
+        values = {
+            "publishToExperimentalFeed": False,
+            "gcExperimentMode": "representative",
+        }
+        jobs = _expand_conditionals(_build_jobs(self.pipeline), values)
+        runtime_job = next(
+            job
+            for job in jobs
+            if job.get("parameters", {})
+            .get("jobParameters", {})
+            .get("nameSuffix")
+            == "coreclr"
+        )
+
+        self.assertEqual(
+            ["linux_x64"],
+            _expand_conditionals(runtime_job["parameters"]["platforms"], values),
+        )
+        self.assertFalse(
+            any(
+                job.get("parameters", {})
+                .get("jobParameters", {})
+                .get("nameSuffix")
+                == "Libraries_AllConfigurations"
+                for job in jobs
+            )
+        )
+        self.assertNotIn(
+            "windows_x64",
+            [
+                platform
+                for job in jobs
+                for platform in _expand_conditionals(
+                    job.get("parameters", {}).get("platforms", []), values
+                )
+            ],
+        )
+
+    def test_publication_restores_windows_and_libraries_jobs(self) -> None:
+        values = {
+            "publishToExperimentalFeed": True,
+            "gcExperimentMode": "representative",
+        }
+        jobs = _expand_conditionals(_build_jobs(self.pipeline), values)
+        runtime_job = next(
+            job
+            for job in jobs
+            if job.get("parameters", {})
+            .get("jobParameters", {})
+            .get("nameSuffix")
+            == "coreclr"
+        )
+        libraries_job = next(
+            job
+            for job in jobs
+            if job.get("parameters", {})
+            .get("jobParameters", {})
+            .get("nameSuffix")
+            == "Libraries_AllConfigurations"
+        )
+
+        self.assertEqual(8, len(jobs))
+        self.assertEqual(
+            ["linux_x64", "windows_x64"],
+            _expand_conditionals(runtime_job["parameters"]["platforms"], values),
+        )
+        self.assertEqual(
+            ["/eng/pipelines/runtimelab/publish-cohort-manifest-step.yml"],
+            [
+                step["template"]
+                for step in _expand_conditionals(
+                    libraries_job["parameters"]["jobParameters"]["postBuildSteps"],
+                    values,
+                )
+            ],
+        )
 
     def test_gc_normal_is_the_filtered_standard_correctness_lane(self) -> None:
         values = {
