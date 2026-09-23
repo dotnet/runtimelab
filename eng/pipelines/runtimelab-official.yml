@@ -39,6 +39,9 @@ extends:
   template: /eng/pipelines/common/templates/pipeline-with-resources.yml@self
   parameters:
     isOfficialBuild: true
+    ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
+      sdlSourceRepositoriesToExclude:
+      - performance
     stages:
     - ${{ if and(eq(parameters.gcExperimentMode, 'representative'), or(ne(variables['Build.Reason'], 'Manual'), ne(variables['System.TeamProject'], 'internal'))) }}:
       - gcExperimentModeRepresentativeRequiresManualInternal: error

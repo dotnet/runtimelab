@@ -49,6 +49,15 @@ NATIVE_TEST_ASSETS_TEMPLATE_PATH = (
 UPLOAD_ARTIFACT_TEMPLATE_PATH = (
     REPO_ROOT / "eng" / "pipelines" / "common" / "upload-artifact-step.yml"
 )
+PIPELINE_WITH_RESOURCES_TEMPLATE_PATH = (
+    REPO_ROOT / "eng" / "pipelines" / "common" / "templates" / "pipeline-with-resources.yml"
+)
+TEMPLATE_DISPATCH_PATH = (
+    REPO_ROOT / "eng" / "pipelines" / "common" / "templates" / "templateDispatch.yml"
+)
+TEMPLATE_1ES_PATH = (
+    REPO_ROOT / "eng" / "pipelines" / "common" / "templates" / "template1es.yml"
+)
 REPRESENTATIVE_CONDITION = (
     "and(succeeded(), eq(variables['Build.Reason'], 'Manual'), "
     "eq(variables['System.TeamProject'], 'internal'))"
@@ -206,6 +215,22 @@ class GcExperimentPipelineTests(unittest.TestCase):
         self.assertEqual(
             REPRESENTATIVE_CONDITION, parameters["jobParameters"]["condition"]
         )
+        representative_sdl_parameters = self.pipeline["extends"]["parameters"][
+            "${{ if eq(parameters.gcExperimentMode, 'representative') }}"
+        ]
+        self.assertEqual(
+            ["performance"],
+            representative_sdl_parameters["sdlSourceRepositoriesToExclude"],
+        )
+
+    def test_sdl_repository_exclusion_is_default_off(self) -> None:
+        for path in (
+            PIPELINE_WITH_RESOURCES_TEMPLATE_PATH,
+            TEMPLATE_DISPATCH_PATH,
+            TEMPLATE_1ES_PATH,
+        ):
+            parameters = _parameters(_load_yaml(path))
+            self.assertEqual([], parameters["sdlSourceRepositoriesToExclude"]["default"])
 
     def test_performance_artifact_task_is_default_off(self) -> None:
         runtime_job = _build_jobs(self.pipeline)[1]["parameters"]["jobParameters"]

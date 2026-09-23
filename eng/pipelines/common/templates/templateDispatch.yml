@@ -5,9 +5,13 @@ parameters:
     type: stageList
   - name: containers
     type: object
+  - name: sdlSourceRepositoriesToExclude
+    type: object
+    default: []
 
 extends:
   template: ${{ parameters.templatePath }}
   parameters:
     stages: ${{ parameters.stages }}
     containers: ${{ parameters.containers }}
+    sdlSourceRepositoriesToExclude: ${{ parameters.sdlSourceRepositoriesToExclude }}
