@@ -77,6 +77,14 @@ extends:
               # V4 Publish stages files into this build's pipeline artifact, not a package feed.
               enablePublishing: true
               publishingVersion: 4
+              templateContext:
+                outputs:
+                - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
+                  - output: pipelineArtifact
+                    displayName: Publish immutable package cohort manifest
+                    targetPath: $(Build.StagingDirectory)/gc-experiment-manifest
+                    artifactName: GCExperimentManifest_$(osGroup)$(osSubgroup)_$(archType)_release_runtime
+                    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
               buildArgs: -s clr+libs+host+packs -c $(_BuildConfig) -restore -build -publish /p:PublishingVersion=4
               postBuildSteps:
               - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
@@ -92,7 +100,7 @@ extends:
                     condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'), eq(variables['osGroup'], 'linux'))
                     isOfficialBuild: true
               - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
-                - template: /eng/pipelines/runtimelab/publish-cohort-manifest-step.yml
+                - template: /eng/pipelines/runtimelab/generate-cohort-manifest-step.yml
                   parameters:
                     cohortRole: runtime
                     additionalArtifact: $(Build.StagingDirectory)/BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr$(archiveExtension)
@@ -117,10 +125,18 @@ extends:
                 enableSigning: false
                 enablePublishing: true
                 publishingVersion: 4
+                templateContext:
+                  outputs:
+                  - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
+                    - output: pipelineArtifact
+                      displayName: Publish immutable package cohort manifest
+                      targetPath: $(Build.StagingDirectory)/gc-experiment-manifest
+                      artifactName: GCExperimentManifest_$(osGroup)$(osSubgroup)_$(archType)_release_libraries_all_configurations
+                      condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
                 timeoutInMinutes: 95
                 postBuildSteps:
                 - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
-                  - template: /eng/pipelines/runtimelab/publish-cohort-manifest-step.yml
+                  - template: /eng/pipelines/runtimelab/generate-cohort-manifest-step.yml
                     parameters:
                       cohortRole: libraries_all_configurations
                       condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))

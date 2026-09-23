@@ -52,12 +52,3 @@ steps:
         "${artifact_args[@]}"
     displayName: Generate immutable package cohort manifest
     condition: ${{ parameters.condition }}
-
-- template: /eng/pipelines/common/templates/publish-pipeline-artifacts.yml
-  parameters:
-    isOfficialBuild: true
-    displayName: Publish immutable package cohort manifest
-    inputs:
-      targetPath: $(Build.StagingDirectory)/gc-experiment-manifest
-      artifactName: GCExperimentManifest_${{ parameters.osGroup }}${{ parameters.osSubgroup }}_${{ parameters.archType }}_${{ parameters.buildConfig }}_${{ parameters.cohortRole }}
-    condition: ${{ parameters.condition }}

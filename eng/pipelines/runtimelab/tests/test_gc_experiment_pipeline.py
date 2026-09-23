@@ -12,7 +12,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[4]
 PIPELINE_PATH = REPO_ROOT / "eng" / "pipelines" / "runtimelab-official.yml"
 MANIFEST_TEMPLATE_PATH = (
-    REPO_ROOT / "eng" / "pipelines" / "runtimelab" / "publish-cohort-manifest-step.yml"
+    REPO_ROOT / "eng" / "pipelines" / "runtimelab" / "generate-cohort-manifest-step.yml"
 )
 MANIFEST_GENERATOR_PATH = (
     REPO_ROOT / "eng" / "pipelines" / "runtimelab" / "generate_cohort_manifest.py"
@@ -195,12 +195,19 @@ class GcExperimentPipelineTests(unittest.TestCase):
 
         default_steps = _expand_conditionals(post_build_steps, defaults)
         selected_steps = _expand_conditionals(post_build_steps, selected)
+        default_outputs = _expand_conditionals(
+            runtime_job["templateContext"]["outputs"], defaults
+        )
+        selected_outputs = _expand_conditionals(
+            runtime_job["templateContext"]["outputs"], selected
+        )
 
         self.assertEqual([], default_steps)
+        self.assertEqual([], default_outputs)
         self.assertEqual(
             [
                 "/eng/pipelines/common/upload-artifact-step.yml",
-                "/eng/pipelines/runtimelab/publish-cohort-manifest-step.yml",
+                "/eng/pipelines/runtimelab/generate-cohort-manifest-step.yml",
             ],
             [step["template"] for step in selected_steps],
         )
@@ -214,6 +221,21 @@ class GcExperimentPipelineTests(unittest.TestCase):
             "eq(variables['System.TeamProject'], 'internal'), "
             "eq(variables['osGroup'], 'linux'))",
             artifact_parameters["condition"],
+        )
+        self.assertEqual(
+            [
+                {
+                    "output": "pipelineArtifact",
+                    "displayName": "Publish immutable package cohort manifest",
+                    "targetPath": "$(Build.StagingDirectory)/gc-experiment-manifest",
+                    "artifactName": (
+                        "GCExperimentManifest_$(osGroup)$(osSubgroup)_"
+                        "$(archType)_release_runtime"
+                    ),
+                    "condition": REPRESENTATIVE_CONDITION,
+                }
+            ],
+            selected_outputs,
         )
         default_jobs = _expand_conditionals(
             _build_jobs(self.pipeline),
@@ -332,7 +354,7 @@ class GcExperimentPipelineTests(unittest.TestCase):
             _expand_conditionals(runtime_job["parameters"]["platforms"], values),
         )
         self.assertEqual(
-            ["/eng/pipelines/runtimelab/publish-cohort-manifest-step.yml"],
+            ["/eng/pipelines/runtimelab/generate-cohort-manifest-step.yml"],
             [
                 step["template"]
                 for step in _expand_conditionals(
@@ -340,6 +362,26 @@ class GcExperimentPipelineTests(unittest.TestCase):
                     values,
                 )
             ],
+        )
+        self.assertEqual(
+            [
+                {
+                    "output": "pipelineArtifact",
+                    "displayName": "Publish immutable package cohort manifest",
+                    "targetPath": "$(Build.StagingDirectory)/gc-experiment-manifest",
+                    "artifactName": (
+                        "GCExperimentManifest_$(osGroup)$(osSubgroup)_"
+                        "$(archType)_release_libraries_all_configurations"
+                    ),
+                    "condition": REPRESENTATIVE_CONDITION,
+                }
+            ],
+            _expand_conditionals(
+                libraries_job["parameters"]["jobParameters"]["templateContext"][
+                    "outputs"
+                ],
+                values,
+            ),
         )
 
     def test_gc_normal_is_the_filtered_standard_correctness_lane(self) -> None:
@@ -456,6 +498,8 @@ class GcExperimentPipelineTests(unittest.TestCase):
 
     def test_manifest_template_passes_source_and_build_identity(self) -> None:
         template = MANIFEST_TEMPLATE_PATH.read_text(encoding="utf-8")
+        self.assertNotIn("PublishPipelineArtifact", template)
+        self.assertNotIn("publish-pipeline-artifacts.yml", template)
         for variable in (
             "$(Build.Repository.Uri)",
             "$(Build.SourceBranch)",
