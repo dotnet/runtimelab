@@ -81,6 +81,11 @@ extends:
                 outputs:
                 - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
                   - output: pipelineArtifact
+                    displayName: Publish runtime artifacts for performance
+                    targetPath: $(Build.StagingDirectory)/BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr$(archiveExtension)
+                    artifactName: BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr
+                    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'), eq(variables['osGroup'], 'linux'))
+                  - output: pipelineArtifact
                     displayName: Publish immutable package cohort manifest
                     targetPath: $(Build.StagingDirectory)/gc-experiment-manifest
                     artifactName: GCExperimentManifest_$(osGroup)$(osSubgroup)_$(archType)_release_runtime
@@ -99,6 +104,7 @@ extends:
                     displayName: Runtime artifacts for performance
                     condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'), eq(variables['osGroup'], 'linux'))
                     isOfficialBuild: true
+                    publishArtifact: false
               - ${{ if eq(parameters.gcExperimentMode, 'representative') }}:
                 - template: /eng/pipelines/runtimelab/generate-cohort-manifest-step.yml
                   parameters:

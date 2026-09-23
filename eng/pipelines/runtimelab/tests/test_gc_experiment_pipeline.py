@@ -222,8 +222,27 @@ class GcExperimentPipelineTests(unittest.TestCase):
             "eq(variables['osGroup'], 'linux'))",
             artifact_parameters["condition"],
         )
+        self.assertFalse(artifact_parameters["publishArtifact"])
         self.assertEqual(
             [
+                {
+                    "output": "pipelineArtifact",
+                    "displayName": "Publish runtime artifacts for performance",
+                    "targetPath": (
+                        "$(Build.StagingDirectory)/BuildArtifacts_$(osGroup)"
+                        "$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr"
+                        "$(archiveExtension)"
+                    ),
+                    "artifactName": (
+                        "BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_"
+                        "$(_BuildConfig)_coreclr"
+                    ),
+                    "condition": (
+                        "and(succeeded(), eq(variables['Build.Reason'], 'Manual'), "
+                        "eq(variables['System.TeamProject'], 'internal'), "
+                        "eq(variables['osGroup'], 'linux'))"
+                    ),
+                },
                 {
                     "output": "pipelineArtifact",
                     "displayName": "Publish immutable package cohort manifest",
