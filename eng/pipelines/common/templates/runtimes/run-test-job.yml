@@ -32,6 +32,7 @@ parameters:
   extraBuildArgs: ''
   useHelixMonitor: false
   gcStressScenarios: []
+  templatePath: 'templates'
 
 ### Test run job
 
@@ -54,6 +55,7 @@ jobs:
     helixType: 'build/tests/'
     runtimeVariant: ${{ parameters.runtimeVariant }}
     pool: ${{ parameters.pool }}
+    templatePath: ${{ parameters.templatePath }}
     condition: and(succeeded(), ${{ parameters.condition }})
     logsName: '${{ parameters.runtimeFlavor }}_${{ parameters.runtimeVariant }}_$(LogNamePrefix)_Attempt$(System.JobAttempt)_$(osGroup)$(osSubgroup)_$(archType)_$(buildConfig)_${{ parameters.testGroup }}'
 

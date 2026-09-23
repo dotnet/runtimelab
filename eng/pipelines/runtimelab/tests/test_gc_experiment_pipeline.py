@@ -29,6 +29,26 @@ RUN_TEST_TEMPLATE_PATH = (
 GLOBAL_BUILD_TEMPLATE_PATH = (
     REPO_ROOT / "eng" / "pipelines" / "common" / "global-build-job.yml"
 )
+BUILD_TEST_TEMPLATE_PATH = (
+    REPO_ROOT
+    / "eng"
+    / "pipelines"
+    / "common"
+    / "templates"
+    / "runtimes"
+    / "build-test-job.yml"
+)
+NATIVE_TEST_ASSETS_TEMPLATE_PATH = (
+    REPO_ROOT
+    / "eng"
+    / "pipelines"
+    / "coreclr"
+    / "templates"
+    / "build-native-test-assets-step.yml"
+)
+UPLOAD_ARTIFACT_TEMPLATE_PATH = (
+    REPO_ROOT / "eng" / "pipelines" / "common" / "upload-artifact-step.yml"
+)
 REPRESENTATIVE_CONDITION = (
     "and(succeeded(), eq(variables['Build.Reason'], 'Manual'), "
     "eq(variables['System.TeamProject'], 'internal'))"
@@ -473,6 +493,39 @@ class GcExperimentPipelineTests(unittest.TestCase):
             "GCStress",
             native_asset_job["parameters"]["jobParameters"]["nameSuffix"],
         )
+        native_job_parameters = native_asset_job["parameters"]["jobParameters"]
+        self.assertEqual("templates-official", native_job_parameters["templatePath"])
+        self.assertTrue(native_job_parameters["isOfficialBuild"])
+        self.assertEqual(
+            [
+                "$(nativeTestArtifactName)",
+                "BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)",
+            ],
+            [
+                output["artifactName"]
+                for output in native_job_parameters["templateContext"]["outputs"]
+            ],
+        )
+        for step in native_job_parameters["postBuildSteps"]:
+            self.assertFalse(step["parameters"]["publishArtifact"])
+
+        build_job = next(
+            job
+            for job in stress_jobs
+            if job["parameters"]["jobTemplate"]
+            == "/eng/pipelines/common/templates/runtimes/build-test-job.yml"
+        )
+        build_job_parameters = build_job["parameters"]["jobParameters"]
+        self.assertEqual("templates-official", build_job_parameters["templatePath"])
+        self.assertTrue(build_job_parameters["isOfficialBuild"])
+        self.assertFalse(build_job_parameters["publishArtifacts"])
+        self.assertEqual(
+            ["$(managedGenericTestArtifactName)", "$(microsoftNetSdkIlArtifactName)"],
+            [
+                output["artifactName"]
+                for output in build_job_parameters["templateContext"]["outputs"]
+            ],
+        )
         run_job = next(
             job
             for job in stress_jobs
@@ -486,6 +539,10 @@ class GcExperimentPipelineTests(unittest.TestCase):
         self.assertEqual(
             "GCStress",
             run_job["parameters"]["jobParameters"]["unifiedBuildNameSuffix"],
+        )
+        self.assertEqual(
+            "templates-official",
+            run_job["parameters"]["jobParameters"]["templatePath"],
         )
         self.assertEqual(
             {
@@ -505,6 +562,22 @@ class GcExperimentPipelineTests(unittest.TestCase):
 
         run_test_template = _load_yaml(RUN_TEST_TEMPLATE_PATH)
         self.assertEqual([], run_test_template["parameters"]["gcStressScenarios"])
+        self.assertEqual("templates", run_test_template["parameters"]["templatePath"])
+        self.assertEqual(
+            "templates",
+            _load_yaml(BUILD_TEST_TEMPLATE_PATH)["parameters"]["templatePath"],
+        )
+        self.assertTrue(
+            _load_yaml(BUILD_TEST_TEMPLATE_PATH)["parameters"]["publishArtifacts"]
+        )
+        self.assertTrue(
+            _load_yaml(NATIVE_TEST_ASSETS_TEMPLATE_PATH)["parameters"][
+                "publishArtifact"
+            ]
+        )
+        self.assertTrue(
+            _load_yaml(UPLOAD_ARTIFACT_TEMPLATE_PATH)["parameters"]["publishArtifact"]
+        )
         template_text = RUN_TEST_TEMPLATE_PATH.read_text(encoding="utf-8")
         self.assertIn("- gcstress0x3", template_text)
         self.assertIn("- gcstress0xc", template_text)

@@ -160,6 +160,8 @@ extends:
               - linux_x64
               jobParameters:
                 condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+                templatePath: templates-official
+                isOfficialBuild: true
                 nameSuffix: GC_Correctness
                 timeoutInMinutes: 200
                 buildArgs: -s clr+libs+clr.hosts+packs -c debug -rc $(_BuildConfig)
@@ -187,10 +189,26 @@ extends:
               - linux_x64
               jobParameters:
                 condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+                templatePath: templates-official
+                isOfficialBuild: true
                 nameSuffix: GCStress
+                templateContext:
+                  outputs:
+                  - output: pipelineArtifact
+                    displayName: Publish native test components
+                    targetPath: $(Build.StagingDirectory)/$(nativeTestArtifactName)$(archiveExtension)
+                    artifactName: $(nativeTestArtifactName)
+                    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+                  - output: pipelineArtifact
+                    displayName: Publish GCStress build assets
+                    targetPath: $(Build.StagingDirectory)/BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)$(archiveExtension)
+                    artifactName: BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)
+                    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
                 buildArgs: -s clr+libs -c $(_BuildConfig) -lc Release
                 postBuildSteps:
                 - template: /eng/pipelines/coreclr/templates/build-native-test-assets-step.yml
+                  parameters:
+                    publishArtifact: false
                 - template: /eng/pipelines/common/upload-artifact-step.yml
                   parameters:
                     rootFolder: $(Build.SourcesDirectory)/artifacts/bin
@@ -200,6 +218,7 @@ extends:
                     tarCompression: $(tarCompression)
                     artifactName: BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)
                     displayName: Build Assets
+                    publishArtifact: false
                 extraVariablesTemplates:
                 - template: /eng/pipelines/common/templates/runtimes/native-test-assets-variables.yml
                   parameters:
@@ -214,6 +233,21 @@ extends:
               jobParameters:
                 condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
                 testGroup: gcstress0x3-gcstress0xc
+                isOfficialBuild: true
+                templatePath: templates-official
+                publishArtifacts: false
+                templateContext:
+                  outputs:
+                  - output: pipelineArtifact
+                    displayName: Publish managed test components
+                    targetPath: $(Build.StagingDirectory)/$(managedGenericTestArtifactName).tar.gz
+                    artifactName: $(managedGenericTestArtifactName)
+                    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+                  - output: pipelineArtifact
+                    displayName: Publish Microsoft.NET.Sdk.IL package
+                    targetPath: $(Build.StagingDirectory)/$(microsoftNetSdkIlArtifactName).tar.gz
+                    artifactName: $(microsoftNetSdkIlArtifactName)
+                    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
 
           - template: /eng/pipelines/common/platform-matrix.yml
             parameters:
@@ -232,6 +266,7 @@ extends:
                 liveLibrariesBuildConfig: Release
                 unifiedArtifactsName: BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)
                 unifiedBuildNameSuffix: GCStress
+                templatePath: templates-official
 
         #
         # Consume the canonical Release build in one standard dotnet/performance microbenchmark lane.
