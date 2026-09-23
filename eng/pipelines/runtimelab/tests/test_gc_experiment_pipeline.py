@@ -232,6 +232,9 @@ class GcExperimentPipelineTests(unittest.TestCase):
         parameters = correctness_jobs[0]["parameters"]
         self.assertEqual(["linux_x64"], parameters["platforms"])
         self.assertEqual("checked", parameters["buildConfig"])
+        self.assertEqual(
+            "GC_Correctness", parameters["jobParameters"]["nameSuffix"]
+        )
         post_build = parameters["jobParameters"]["postBuildSteps"][0]["parameters"]
         self.assertEqual("tree GC", post_build["testBuildArgs"])
         self.assertEqual(["normal"], post_build["scenarios"])
@@ -262,6 +265,20 @@ class GcExperimentPipelineTests(unittest.TestCase):
             if template["template"].endswith("native-test-assets-variables.yml")
         ]
         self.assertEqual(["gcstress0x3-gcstress0xc"], native_asset_groups)
+        native_asset_job = next(
+            job
+            for job in jobs
+            if any(
+                template["template"].endswith("native-test-assets-variables.yml")
+                for template in job.get("parameters", {})
+                .get("jobParameters", {})
+                .get("extraVariablesTemplates", [])
+            )
+        )
+        self.assertEqual(
+            "GCStress",
+            native_asset_job["parameters"]["jobParameters"]["nameSuffix"],
+        )
         run_job = next(
             job
             for job in stress_jobs
@@ -271,6 +288,25 @@ class GcExperimentPipelineTests(unittest.TestCase):
         self.assertEqual(
             ["gcstress0xc"],
             run_job["parameters"]["jobParameters"]["gcStressScenarios"],
+        )
+        self.assertEqual(
+            "GCStress",
+            run_job["parameters"]["jobParameters"]["unifiedBuildNameSuffix"],
+        )
+        self.assertEqual(
+            {
+                "build_linux_x64_checked_GC_Correctness",
+                "build_linux_x64_checked_GCStress",
+            },
+            {
+                "build_linux_x64_checked_"
+                + job["parameters"]["jobParameters"]["nameSuffix"]
+                for job in jobs
+                if job.get("parameters", {}).get("jobTemplate")
+                == "/eng/pipelines/common/global-build-job.yml"
+                and job["parameters"]["buildConfig"] == "checked"
+                and job["parameters"]["platforms"] == ["linux_x64"]
+            },
         )
 
         run_test_template = _load_yaml(RUN_TEST_TEMPLATE_PATH)

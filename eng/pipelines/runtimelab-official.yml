@@ -133,6 +133,7 @@ extends:
               - linux_x64
               jobParameters:
                 condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+                nameSuffix: GC_Correctness
                 timeoutInMinutes: 200
                 buildArgs: -s clr+libs+clr.hosts+packs -c debug -rc $(_BuildConfig)
                 postBuildSteps:
@@ -161,6 +162,7 @@ extends:
               - linux_x64
               jobParameters:
                 condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
+                nameSuffix: GCStress
                 buildArgs: -s clr+libs -c $(_BuildConfig) -lc Release
                 postBuildSteps:
                 - template: /eng/pipelines/coreclr/templates/build-native-test-assets-step.yml
@@ -204,6 +206,7 @@ extends:
                 - gcstress0xc
                 liveLibrariesBuildConfig: Release
                 unifiedArtifactsName: BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)
+                unifiedBuildNameSuffix: GCStress
 
         #
         # Consume the canonical Release build in one standard dotnet/performance microbenchmark lane.
