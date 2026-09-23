@@ -8,9 +8,6 @@ parameters:
     type: stageList
   - name: containers
     type: object
-  - name: sdlSourceRepositoriesToExclude
-    type: object
-    default: []
 
 
 resources:
@@ -34,11 +31,6 @@ extends:
         enabled: true
       tsa:
         enabled: true
-      ${{ if ne(length(parameters.sdlSourceRepositoriesToExclude), 0) }}:
-        sourceRepositoriesToScan:
-          exclude:
-          - ${{ each repository in parameters.sdlSourceRepositoriesToExclude }}:
-            - repository: ${{ repository }}
     pool:
       name: $(DncEngInternalBuildPool)
       image: 1es-windows-2022

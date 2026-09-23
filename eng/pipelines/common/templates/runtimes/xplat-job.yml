@@ -20,7 +20,6 @@ parameters:
   enableMicrobuild: ''
   disableComponentGovernance: ''
   templatePath: 'templates'
-  templateContext: {}
 
   variables: {} ## any extra variables to add to the defaults defined below
 
@@ -50,7 +49,6 @@ jobs:
     strategy: ${{ parameters.strategy }}
 
     pool: ${{ parameters.pool }}
-    templateContext: ${{ parameters.templateContext }}
 
     workspace:
       clean: all

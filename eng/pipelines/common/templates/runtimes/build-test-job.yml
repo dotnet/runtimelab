@@ -15,9 +15,6 @@ parameters:
   crossBuild: false
   isOfficialBuild: false
   useNativeAOTRuntime: false
-  templatePath: 'templates'
-  templateContext: {}
-  publishArtifacts: true
 
 ### Build managed test components (native components are getting built as part
 ### of the product build job).
@@ -34,8 +31,6 @@ jobs:
     runtimeVariant: ${{ parameters.runtimeVariant }}
     testGroup: ${{ parameters.testGroup }}
     pool: ${{ parameters.pool }}
-    templatePath: ${{ parameters.templatePath }}
-    templateContext: ${{ parameters.templateContext }}
 
     # Test jobs should continue on error for internal builds
     ${{ if eq(variables['System.TeamProject'], 'internal') }}:
@@ -135,7 +130,6 @@ jobs:
         tarCompression: gz
         artifactName: $(managedGenericTestArtifactName)
         displayName: 'managed test components (generic)'
-        publishArtifact: ${{ parameters.publishArtifacts }}
 
 
     # Publish .packages/microsoft.net.sdk.il needed for traversing
@@ -149,4 +143,3 @@ jobs:
         archiveExtension: '.tar.gz'
         artifactName: $(microsoftNetSdkIlArtifactName)
         displayName: 'Microsoft.NET.Sdk.IL package'
-        publishArtifact: ${{ parameters.publishArtifacts }}

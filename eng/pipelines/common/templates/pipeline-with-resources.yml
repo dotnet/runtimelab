@@ -4,9 +4,6 @@ parameters:
   - name: isOfficialBuild
     type: boolean
     default: false
-  - name: sdlSourceRepositoriesToExclude
-    type: object
-    default: []
 
 extends:
   template: templateDispatch.yml
@@ -17,7 +14,6 @@ extends:
       templatePath: templatePublic.yml
 
     stages: ${{ parameters.stages }}
-    sdlSourceRepositoriesToExclude: ${{ parameters.sdlSourceRepositoriesToExclude }}
 
     containers:
       linux_arm:

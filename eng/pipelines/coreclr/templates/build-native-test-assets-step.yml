@@ -2,7 +2,6 @@
 parameters:
   compiler: ''
   extraBuildArgs: ''
-  publishArtifact: true
 
 steps:
   - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) skipmanaged skipgeneratelayout $(nativeTestArtifactConfig) -arch $(archType) $(crossArg) $(priorityArg) ${{ parameters.extraBuildArgs }} ${{ parameters.compiler }}
@@ -16,4 +15,3 @@ steps:
       archiveExtension: $(archiveExtension)
       artifactName: $(nativeTestArtifactName)
       displayName: 'native test components'
-      publishArtifact: ${{ parameters.publishArtifact }}

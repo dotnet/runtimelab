@@ -31,8 +31,6 @@ parameters:
   unifiedBuildConfigOverride: ''
   extraBuildArgs: ''
   useHelixMonitor: false
-  gcStressScenarios: []
-  templatePath: 'templates'
 
 ### Test run job
 
@@ -55,7 +53,6 @@ jobs:
     helixType: 'build/tests/'
     runtimeVariant: ${{ parameters.runtimeVariant }}
     pool: ${{ parameters.pool }}
-    templatePath: ${{ parameters.templatePath }}
     condition: and(succeeded(), ${{ parameters.condition }})
     logsName: '${{ parameters.runtimeFlavor }}_${{ parameters.runtimeVariant }}_$(LogNamePrefix)_Attempt$(System.JobAttempt)_$(osGroup)$(osSubgroup)_$(archType)_$(buildConfig)_${{ parameters.testGroup }}'
 
@@ -453,12 +450,8 @@ jobs:
           - jitstress2_jitstressregs0x2000
         ${{ if in(parameters.testGroup, 'gcstress0x3-gcstress0xc') }}:
           scenarios:
-          - ${{ if ne(length(parameters.gcStressScenarios), 0) }}:
-            - ${{ each scenario in parameters.gcStressScenarios }}:
-              - ${{ scenario }}
-          - ${{ else }}:
-            - gcstress0x3
-            - gcstress0xc
+          - gcstress0x3
+          - gcstress0xc
         ${{ if in(parameters.testGroup, 'gcstress-extra') }}:
           scenarios:
           - heapverify1

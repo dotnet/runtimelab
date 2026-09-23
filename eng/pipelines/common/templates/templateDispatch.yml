@@ -5,14 +5,9 @@ parameters:
     type: stageList
   - name: containers
     type: object
-  - name: sdlSourceRepositoriesToExclude
-    type: object
-    default: []
 
 extends:
   template: ${{ parameters.templatePath }}
   parameters:
     stages: ${{ parameters.stages }}
     containers: ${{ parameters.containers }}
-    ${{ if eq(parameters.templatePath, 'template1es.yml') }}:
-      sdlSourceRepositoriesToExclude: ${{ parameters.sdlSourceRepositoriesToExclude }}
