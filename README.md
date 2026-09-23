@@ -46,12 +46,12 @@ unrelated Windows Release and Libraries AllConfigurations jobs. Those canonical
 jobs remain unchanged for the default mode and are restored when publication is
 explicitly requested.
 
-The performance lane consumes the existing public `dotnet/performance` GitHub
-resource through the repository-established `public` endpoint, along with the
-standard performance and Helix resources used by that template. GC validation
-requires the existing `DotNet-HelixApi-Access` variable group and CoreCLR Helix
-queues. No schedules, Azure definitions, service connections, permissions,
-variable groups, or queue workloads are created by this source change.
+The performance lane requires read access to the existing
+`internal/dotnet-performance` Azure Repos resource and the standard performance
+and Helix resources used by that template. GC validation requires the existing
+`DotNet-HelixApi-Access` variable group and CoreCLR Helix queues. No schedules,
+Azure definitions, service connections, permissions, variable groups, or queue
+workloads are created by this source change.
 
 When representative mode is selected, each selected canonical package job
 publishes a `GCExperimentManifest_*` artifact. The manifest records runtime and
