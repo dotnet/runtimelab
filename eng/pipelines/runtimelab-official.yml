@@ -283,6 +283,7 @@ extends:
               platforms:
               - linux_x64
               jobParameters:
+                additionalSetupParameters: --skip-perflab-upload
                 condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'), eq(variables['System.TeamProject'], 'internal'))
                 jobTemplate: /eng/common/templates-official/job/job.yml@performance
                 liveLibrariesBuildConfig: Release

@@ -205,6 +205,10 @@ class GcExperimentPipelineTests(unittest.TestCase):
             "/eng/common/templates-official/job/job.yml@performance",
             parameters["jobParameters"]["jobTemplate"],
         )
+        self.assertEqual(
+            "--skip-perflab-upload",
+            parameters["jobParameters"]["additionalSetupParameters"],
+        )
         self.assertEqual("micro", parameters["jobParameters"]["runKind"])
         self.assertEqual("Runtime", parameters["jobParameters"]["runCategories"])
         self.assertEqual("perfviper", parameters["jobParameters"]["logicalMachine"])
