@@ -14,4 +14,5 @@ extends:
   parameters:
     stages: ${{ parameters.stages }}
     containers: ${{ parameters.containers }}
-    sdlSourceRepositoriesToExclude: ${{ parameters.sdlSourceRepositoriesToExclude }}
+    ${{ if eq(parameters.templatePath, 'template1es.yml') }}:
+      sdlSourceRepositoriesToExclude: ${{ parameters.sdlSourceRepositoriesToExclude }}

@@ -232,6 +232,15 @@ class GcExperimentPipelineTests(unittest.TestCase):
             parameters = _parameters(_load_yaml(path))
             self.assertEqual([], parameters["sdlSourceRepositoriesToExclude"]["default"])
 
+        dispatch = _load_yaml(TEMPLATE_DISPATCH_PATH)
+        official_parameters = dispatch["extends"]["parameters"][
+            "${{ if eq(parameters.templatePath, 'template1es.yml') }}"
+        ]
+        self.assertEqual(
+            "${{ parameters.sdlSourceRepositoriesToExclude }}",
+            official_parameters["sdlSourceRepositoriesToExclude"],
+        )
+
     def test_performance_artifact_task_is_default_off(self) -> None:
         runtime_job = _build_jobs(self.pipeline)[1]["parameters"]["jobParameters"]
         post_build_steps = runtime_job["postBuildSteps"]
