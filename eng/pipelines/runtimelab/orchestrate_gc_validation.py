@@ -47,6 +47,7 @@ ADMISSION_ARTIFACT_PREFIX = "GCValidationAdmission_"
 ADMISSION_RECEIPT_NAME = "gc-validation-admission.json"
 MAX_ADMISSION_ARTIFACT_BYTES = 1024 * 1024
 MAX_ADMISSION_RECEIPT_BYTES = 256 * 1024
+TERMINAL_EVIDENCE_GRACE_SECONDS = 120
 TRANSIENT_INFRASTRUCTURE_PATTERNS = (
     re.compile(r"\bwe stopped hearing from agent\b", re.IGNORECASE),
     re.compile(r"\bagent\b.*\blost communication\b", re.IGNORECASE),
@@ -858,6 +859,20 @@ def terminal_candidate_evidence(
     return evidence, timeline
 
 
+def expire_pending_terminal_evidence(evidence: dict, reason: str) -> dict:
+    expired = dict(evidence)
+    expired.update(
+        {
+            "valid": False,
+            "pending": False,
+            "status": "invalid",
+            "pendingExpired": True,
+            "pendingExpirationReason": reason,
+        }
+    )
+    return expired
+
+
 def hydrated_matching_runs(
     client: AzureDevOpsClient,
     *,
@@ -928,6 +943,7 @@ class GcValidationOrchestrator:
         monitor_timeout_seconds: int,
         poll_seconds: int,
         adoption_timeout_seconds: int,
+        terminal_evidence_grace_seconds: int = TERMINAL_EVIDENCE_GRACE_SECONDS,
         sleep: Callable[[float], None] = time.sleep,
         monotonic: Callable[[], float] = time.monotonic,
     ):
@@ -941,9 +957,11 @@ class GcValidationOrchestrator:
         self.monitor_timeout_seconds = monitor_timeout_seconds
         self.poll_seconds = poll_seconds
         self.adoption_timeout_seconds = adoption_timeout_seconds
+        self.terminal_evidence_grace_seconds = terminal_evidence_grace_seconds
         self.sleep = sleep
         self.monotonic = monotonic
         self.terminal_evidence_cache: dict[int, tuple[dict, dict]] = {}
+        self.terminal_pending_since: dict[int, float] = {}
         self.receipt = {
             "schemaVersion": 1,
             "definitionId": client.pipeline_id,
@@ -1041,6 +1059,20 @@ class GcValidationOrchestrator:
             source_ref=self.source_ref,
             source_version=self.source_version,
         )
+        evidence, timeline = result
+        if evidence.get("pending") is True:
+            now = self.monotonic()
+            pending_since = self.terminal_pending_since.setdefault(run_id, now)
+            pending_seconds = max(0.0, now - pending_since)
+            if pending_seconds >= self.terminal_evidence_grace_seconds:
+                evidence = expire_pending_terminal_evidence(
+                    evidence,
+                    "terminal timeline or admission artifact remained "
+                    f"incomplete for {pending_seconds:.1f} seconds",
+                )
+                result = evidence, timeline
+        else:
+            self.terminal_pending_since.pop(run_id, None)
         if result[0]["valid"]:
             self.terminal_evidence_cache[run_id] = result
         else:
@@ -1636,6 +1668,8 @@ class GcValidationAdmission:
             eligible = []
             rejected = []
             evidence_by_run_id = {}
+            completed_pending_ids = set()
+            deadline_reached = None
             for run in matches:
                 run_id = int(run["id"])
                 if run.get("state") == "completed":
@@ -1658,6 +1692,18 @@ class GcValidationAdmission:
                         evidence = evidence_result[0]
                     else:
                         evidence = cached[0]
+                    if evidence.get("pending") is True:
+                        completed_pending_ids.add(run_id)
+                        if deadline_reached is None:
+                            deadline_reached = self.monotonic() >= deadline
+                        if deadline_reached:
+                            completed_pending_ids.remove(run_id)
+                            evidence = expire_pending_terminal_evidence(
+                                evidence,
+                                "terminal timeline or admission artifact "
+                                "remained incomplete through the admission "
+                                "observation window",
+                            )
                 else:
                     evidence = active_candidate_evidence(
                         self.client, run_id
@@ -1688,11 +1734,16 @@ class GcValidationAdmission:
                 canonical_run_id = eligible_ids[0]
                 self.receipt["canonicalRunId"] = canonical_run_id
                 if self.current_run_id != canonical_run_id:
+                    if canonical_run_id in completed_pending_ids:
+                        self.write_receipt()
+                        self.sleep(self.poll_seconds)
+                        continue
                     self.receipt["status"] = "rejectedDuplicate"
                     self.receipt["finishedAt"] = utc_now()
                     self.write_receipt()
                     return False
-                deadline_reached = self.monotonic() >= deadline
+                if deadline_reached is None:
+                    deadline_reached = self.monotonic() >= deadline
                 if (
                     self.current_run_id in active_ids
                     and evidence_by_run_id[self.current_run_id]["valid"]

@@ -64,6 +64,9 @@ run IDs, admitted status, and canonical SHA-256. A baseline run, skipped Build,
 missing artifact, or mismatched receipt is recorded as a rejected candidate and
 does not prevent the parent from queueing or adopting a genuine shard. The
 overall pipeline result alone is never accepted as proof of shard success.
+Incomplete terminal timeline or artifact visibility is retried for a bounded
+two-minute consistency window; evidence that remains incomplete is rejected so
+it cannot indefinitely suppress a genuine replacement shard.
 
 The parent uses only `System.AccessToken` and checks its effective
 `QueueBuilds` permission on definition 163 before submitting a child. It

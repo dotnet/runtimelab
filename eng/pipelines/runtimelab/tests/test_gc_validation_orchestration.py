@@ -133,6 +133,8 @@ class FakeClient:
             return {"records": []}
         if scenario == "timeline-null" and run["state"] != "completed":
             return {"records": None}
+        if scenario == "terminal-timeline-null":
+            return {"records": None}
         if scenario == "baseline-forgery":
             timeline["records"] = [
                 record
@@ -246,7 +248,10 @@ def run_variable_value(run: dict, name: str) -> str:
 
 
 def create_orchestrator(
-    client: FakeClient, output_directory: Path
+    client: FakeClient,
+    output_directory: Path,
+    *,
+    terminal_evidence_grace_seconds: int = 120,
 ) -> GcValidationOrchestrator:
     return GcValidationOrchestrator(
         client,
@@ -258,6 +263,7 @@ def create_orchestrator(
         monitor_timeout_seconds=60,
         poll_seconds=0,
         adoption_timeout_seconds=1,
+        terminal_evidence_grace_seconds=terminal_evidence_grace_seconds,
         sleep=lambda _: None,
     )
 
@@ -925,6 +931,84 @@ class GcValidationOrchestrationTests(unittest.TestCase):
                 self.assertFalse(first["valid"])
                 self.assertTrue(second["valid"])
                 self.assertEqual([1000, 1000], client.timeline_calls)
+
+    def test_expired_incomplete_terminal_evidence_allows_replacement(
+        self,
+    ) -> None:
+        for scenario in ("terminal-timeline-null", "artifact-pending"):
+            with self.subTest(scenario=scenario):
+                with tempfile.TemporaryDirectory() as directory:
+                    client = FakeClient(complete_on_get=False)
+                    orchestrator = create_orchestrator(
+                        client,
+                        Path(directory),
+                        terminal_evidence_grace_seconds=0,
+                    )
+                    seed_run(
+                        client,
+                        orchestrator,
+                        scenario=scenario,
+                        run_id=1000,
+                    )
+                    client.queue_calls.clear()
+
+                    attempt = orchestrator.ensure_run(ROOTS[0], 1)
+                    receipt = json.loads(
+                        orchestrator.receipt_path.read_text(encoding="utf-8")
+                    )
+
+                self.assertEqual(1, len(client.queue_calls))
+                self.assertEqual(1001, attempt["runId"])
+                rejected = receipt["children"][ROOTS[0]][
+                    "rejectedCandidates"
+                ]
+                self.assertTrue(rejected[0]["nativeEvidence"]["pendingExpired"])
+
+    def test_admission_ignores_completed_pending_candidate_after_deadline(
+        self,
+    ) -> None:
+        client = FakeClient(complete_on_get=False)
+        with tempfile.TemporaryDirectory() as directory:
+            orchestrator = create_orchestrator(client, Path(directory))
+            seed_run(
+                client,
+                orchestrator,
+                scenario="terminal-timeline-null",
+                run_id=1000,
+            )
+            seed_run(
+                client,
+                orchestrator,
+                scenario="genuine",
+                run_id=1001,
+                state="inProgress",
+                result=None,
+            )
+            admission = GcValidationAdmission(
+                client,
+                Path(directory) / "expired-terminal",
+                CAMPAIGN_ID,
+                PARENT_BUILD_ID,
+                ROOTS[0],
+                1,
+                SOURCE_REF,
+                SOURCE_VERSION,
+                1001,
+                observation_seconds=0,
+                poll_seconds=1,
+            )
+
+            self.assertTrue(admission.run())
+            receipt = json.loads(
+                admission.receipt_path.read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(1001, receipt["canonicalRunId"])
+        self.assertTrue(
+            receipt["rejectedCandidates"][0]["nativeEvidence"][
+                "pendingExpired"
+            ]
+        )
 
     def test_valid_genuine_shard_uses_native_evidence_not_overall_result(
         self,
