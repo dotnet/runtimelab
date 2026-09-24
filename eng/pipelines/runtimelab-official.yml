@@ -80,7 +80,7 @@ extends:
                 - ${{ if ne(parameters.standardGcArtifactProducer, 'none') }}:
                   - output: pipelineArtifact
                     displayName: Publish standard CoreCLR archive
-                    targetPath: $(Build.StagingDirectory)/BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr$(archiveExtension)
+                    targetPath: $(Build.StagingDirectory)/StandardGcArchiveOutput/BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr
                     artifactName: BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr
                 - ${{ if eq(parameters.standardGcArtifactProducer, 'full') }}:
                   - output: pipelineArtifact
@@ -107,6 +107,15 @@ extends:
                     displayName: Standard CoreCLR build assets
                     isOfficialBuild: true
                     publishArtifact: false
+                - task: CopyFiles@2
+                  displayName: Stage standard CoreCLR archive for publication
+                  inputs:
+                    SourceFolder: $(Build.StagingDirectory)
+                    Contents: BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr$(archiveExtension)
+                    TargetFolder: $(Build.StagingDirectory)/StandardGcArchiveOutput/BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr
+                    CleanTargetFolder: true
+                    OverWrite: false
+                    flattenFolders: true
               - ${{ if eq(parameters.standardGcArtifactProducer, 'full') }}:
                 - template: /eng/pipelines/runtimelab/create-dotnet-layout-step.yml
                   parameters:

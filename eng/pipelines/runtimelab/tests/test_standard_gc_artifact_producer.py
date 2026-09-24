@@ -49,7 +49,7 @@ LAYOUT_GENERATOR_PATH = (
     REPO_ROOT / "eng" / "pipelines" / "runtimelab" / "create_dotnet_layout.py"
 )
 BASE_SHA = "5ffec89f0944c7ca7001bd3c57713f4fa0fe9492"
-FINAL_BASELINE_SHA = "d93e03a189638ce6ac9c032f77c884290857ce54"
+FINAL_BASELINE_SHA = "0eb8c02a0f784e131673af5beea5180052979924"
 
 
 def _load_module(path: Path, name: str):
@@ -301,6 +301,58 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
         self.assertNotIn("PublishPipelineArtifact@1", PRODUCER_TEMPLATE_PATH.read_text())
         self.assertIn("templateContext:", authored)
         self.assertIn("outputs:", authored)
+
+    def test_standard_coreclr_output_is_a_single_archive_directory(self):
+        build_stage = self.pipeline["extends"]["parameters"]["stages"][3]
+        build_job = build_stage["jobs"][0]
+        job_parameters = build_job["parameters"]["jobParameters"]
+        outputs = job_parameters["templateContext"]["outputs"][0]
+        output = next(iter(outputs.values()))[0]
+
+        artifact_name = (
+            "BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_"
+            "$(_BuildConfig)_coreclr"
+        )
+        output_directory = (
+            "$(Build.StagingDirectory)/StandardGcArchiveOutput/"
+            f"{artifact_name}"
+        )
+        archive_file = f"{artifact_name}$(archiveExtension)"
+
+        self.assertEqual(output_directory, output["targetPath"])
+        self.assertEqual(artifact_name, output["artifactName"])
+
+        copy_step = job_parameters["postBuildSteps"][0]
+        copy_task = next(
+            step
+            for step in next(iter(copy_step.values()))
+            if step.get("task") == "CopyFiles@2"
+        )
+        self.assertEqual(
+            {
+                "SourceFolder": "$(Build.StagingDirectory)",
+                "Contents": archive_file,
+                "TargetFolder": output_directory,
+                "CleanTargetFolder": True,
+                "OverWrite": False,
+                "flattenFolders": True,
+            },
+            copy_task["inputs"],
+        )
+
+    def test_standard_coreclr_archive_has_one_native_publication(self):
+        pipeline_text = PIPELINE_PATH.read_text(encoding="utf-8")
+        artifact_name = (
+            "BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_"
+            "$(_BuildConfig)_coreclr"
+        )
+
+        self.assertEqual(2, pipeline_text.count(f"artifactName: {artifact_name}"))
+        self.assertNotIn("PublishPipelineArtifact@", pipeline_text)
+        self.assertIn(
+            f"Contents: {artifact_name}$(archiveExtension)",
+            pipeline_text,
+        )
 
     def test_definition163_orchestration_is_not_changed(self):
         changed = subprocess.run(
