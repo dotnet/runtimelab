@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import ssl
 import sys
 import time
 from typing import Callable
@@ -281,7 +282,25 @@ class AzureDevOpsClient:
                 content = response.read()
                 return json.loads(content) if content else {}
         except urllib.error.HTTPError as error:
-            detail = error.read().decode("utf-8", errors="replace")
+            try:
+                detail = error.read().decode("utf-8", errors="replace")
+            except (
+                http.client.HTTPException,
+                ssl.SSLError,
+                OSError,
+                UnicodeDecodeError,
+            ) as body_error:
+                if method == "POST":
+                    raise AmbiguousQueueResponse(
+                        "Queue response was ambiguous while reading the HTTP "
+                        f"{error.code} error body: {body_error}"
+                    ) from body_error
+                raise ApiRequestError(
+                    method,
+                    url,
+                    error.code,
+                    f"error response body could not be read: {body_error}",
+                ) from body_error
             if method == "POST" and (
                 error.code in (408, 429) or error.code >= 500
             ):
@@ -294,6 +313,8 @@ class AzureDevOpsClient:
             TimeoutError,
             ConnectionError,
             http.client.HTTPException,
+            ssl.SSLError,
+            OSError,
             json.JSONDecodeError,
             UnicodeDecodeError,
         ) as error:
@@ -377,6 +398,64 @@ class AzureDevOpsClient:
             f"{run_id}/timeline?api-version=7.1"
         )
         return self.request_json("GET", url)
+
+
+def hydrated_matching_runs(
+    client: AzureDevOpsClient,
+    *,
+    campaign_id: str,
+    parent_build_id: str,
+    root: str,
+    source_ref: str,
+    source_version: str,
+    attempt: int | None = None,
+) -> list[dict]:
+    matches = []
+    parent_run_id = int(parent_build_id)
+    for summary in client.list_runs():
+        try:
+            run_id = int(summary.get("id", 0))
+        except (TypeError, ValueError):
+            continue
+        # Azure build IDs increase project-wide, so a child queued by this
+        # parent must have a larger ID. This avoids hydrating historical List
+        # entries whose live response shape omits variables and resources.
+        if run_id <= parent_run_id:
+            continue
+        variables = run_variables(summary)
+        if all(
+            name.casefold() in variables for name in RUN_IDENTITY_VARIABLE_NAMES
+        ):
+            if not run_identity_matches(
+                summary,
+                campaign_id=campaign_id,
+                parent_build_id=parent_build_id,
+                root=root,
+            ):
+                continue
+        detail = client.get_run(run_id)
+        run = dict(summary)
+        run.update(detail)
+        if run_matches(
+            run,
+            campaign_id=campaign_id,
+            parent_build_id=parent_build_id,
+            root=root,
+            source_ref=source_ref,
+            source_version=source_version,
+            attempt=attempt,
+        ):
+            matches.append(run)
+    return sorted(matches, key=lambda run: int(run["id"]))
+
+
+def positive_run_id(response: object) -> int | None:
+    if not isinstance(response, dict):
+        return None
+    value = response.get("id")
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        return None
+    return value
 
 
 class GcValidationOrchestrator:
@@ -474,42 +553,13 @@ class GcValidationOrchestrator:
         }
 
     def matching_runs(self, root: str) -> list[dict]:
-        matches = []
-        for summary in self.client.list_runs():
-            try:
-                run_id = int(summary.get("id", 0))
-            except (TypeError, ValueError):
-                continue
-            if run_id <= 0:
-                continue
-            variables = run_variables(summary)
-            if all(
-                name.casefold() in variables
-                for name in RUN_IDENTITY_VARIABLE_NAMES
-            ):
-                if not run_identity_matches(
-                    summary,
-                    campaign_id=self.campaign_id,
-                    parent_build_id=self.parent_build_id,
-                    root=root,
-                ):
-                    continue
-            detail = self.client.get_run(run_id)
-            run = dict(summary)
-            run.update(detail)
-            if run_matches(
-                run,
-                campaign_id=self.campaign_id,
-                parent_build_id=self.parent_build_id,
-                root=root,
-                source_ref=self.source_ref,
-                source_version=self.source_version,
-            ):
-                matches.append(run)
-        return sorted(
-            matches,
-            key=lambda run: (run_attempt(run), int(run["id"])),
-            reverse=True,
+        return hydrated_matching_runs(
+            self.client,
+            campaign_id=self.campaign_id,
+            parent_build_id=self.parent_build_id,
+            root=root,
+            source_ref=self.source_ref,
+            source_version=self.source_version,
         )
 
     def validate_attempt_one_for_retry(self, root: str, run: dict) -> dict:
@@ -552,26 +602,34 @@ class GcValidationOrchestrator:
         by_attempt = {}
         for run in matches:
             by_attempt.setdefault(run_attempt(run), []).append(run)
-        for attempt, runs in by_attempt.items():
-            if len(runs) > 1:
-                raise OrchestrationError(
-                    f"{root} has duplicate attempt {attempt} runs: "
-                    + ", ".join(str(run["id"]) for run in runs)
-                )
+        canonical_matches = []
+        for runs in by_attempt.values():
+            canonical = dict(min(runs, key=lambda run: int(run["id"])))
+            duplicates = sorted(
+                int(run["id"])
+                for run in runs
+                if int(run["id"]) != int(canonical["id"])
+            )
+            if duplicates:
+                canonical["_duplicateRunIds"] = duplicates
+            canonical_matches.append(canonical)
         if 2 in by_attempt:
             if 1 not in by_attempt:
                 raise OrchestrationError(
                     f"{root} attempt 2 exists without attempt 1."
                 )
-            validated_attempt_one = self.validate_attempt_one_for_retry(
-                root, by_attempt[1][0]
+            attempt_one = next(
+                run for run in canonical_matches if run_attempt(run) == 1
             )
-            matches = [
+            validated_attempt_one = self.validate_attempt_one_for_retry(
+                root, attempt_one
+            )
+            canonical_matches = [
                 validated_attempt_one if run_attempt(run) == 1 else run
-                for run in matches
+                for run in canonical_matches
             ]
         return sorted(
-            matches,
+            canonical_matches,
             key=lambda run: (run_attempt(run), int(run["id"])),
             reverse=True,
         )
@@ -584,6 +642,7 @@ class GcValidationOrchestrator:
         *,
         adopted: bool,
         ambiguous_response: bool,
+        returned_run_id: int | None = None,
     ) -> dict:
         attempt = int(request["templateParameters"]["gcValidationAttempt"])
         run_id = int(run["id"])
@@ -607,6 +666,10 @@ class GcValidationOrchestrator:
             "result": run.get("result"),
             "terminal": run.get("state") == "completed",
         }
+        if returned_run_id is not None:
+            attempt_receipt["returnedRunId"] = returned_run_id
+        if run.get("_duplicateRunIds"):
+            attempt_receipt["duplicateRunIds"] = run["_duplicateRunIds"]
         if run.get("_failureClassification") is not None:
             attempt_receipt["failureClassification"] = run[
                 "_failureClassification"
@@ -632,7 +695,7 @@ class GcValidationOrchestrator:
         self.write_receipt()
         return attempt_receipt
 
-    def adopt_after_ambiguous_response(
+    def adopt_canonical_after_queue_response(
         self, root: str, attempt: int
     ) -> dict:
         deadline = self.monotonic() + self.adoption_timeout_seconds
@@ -649,11 +712,6 @@ class GcValidationOrchestrator:
                 matches = []
                 last_read_error = str(error)
             active = [run for run in matches if run.get("state") != "completed"]
-            if len(active) > 1:
-                raise OrchestrationError(
-                    f"{root} has multiple active attempt {attempt} runs: "
-                    + ", ".join(str(run["id"]) for run in active)
-                )
             if active:
                 return active[0]
             if matches:
@@ -666,8 +724,8 @@ class GcValidationOrchestrator:
                 )
                 raise AmbiguousQueueResponse(
                     f"No matching {root} attempt {attempt} run appeared after "
-                    "an ambiguous queue response; the queue request will not be "
-                    f"retried.{detail}"
+                    "the queue response; the queue request will not be retried."
+                    f"{detail}"
                 )
             self.sleep(min(self.poll_seconds, 5))
 
@@ -740,14 +798,26 @@ class GcValidationOrchestrator:
         self.write_receipt()
 
         ambiguous_response = False
+        returned_run_id = None
         try:
-            run = self.client.queue_run(request)
-            if not isinstance(run, dict) or "id" not in run:
+            response = self.client.queue_run(request)
+            returned_run_id = positive_run_id(response)
+            if returned_run_id is None:
                 ambiguous_response = True
-                run = self.adopt_after_ambiguous_response(root, attempt)
         except AmbiguousQueueResponse:
             ambiguous_response = True
-            run = self.adopt_after_ambiguous_response(root, attempt)
+        if returned_run_id is not None:
+            self.receipt["children"][root]["pendingRequest"][
+                "returnedRunId"
+            ] = returned_run_id
+            self.write_receipt()
+
+        run = self.adopt_canonical_after_queue_response(root, attempt)
+        adopted = (
+            ambiguous_response
+            or returned_run_id is None
+            or int(run["id"]) != returned_run_id
+        )
 
         self.receipt["runsQueued"] += 1
         self.receipt["children"][root].pop("pendingRequest", None)
@@ -755,8 +825,9 @@ class GcValidationOrchestrator:
             root,
             request,
             run,
-            adopted=ambiguous_response,
+            adopted=adopted,
             ambiguous_response=ambiguous_response,
+            returned_run_id=returned_run_id,
         )
 
     def refresh_attempt(self, root: str, attempt_receipt: dict) -> dict:
@@ -896,6 +967,114 @@ class GcValidationOrchestrator:
         return self.receipt["succeeded"]
 
 
+class GcValidationAdmission:
+    def __init__(
+        self,
+        client: AzureDevOpsClient,
+        output_directory: Path,
+        campaign_id: str,
+        parent_build_id: str,
+        root: str,
+        attempt: int,
+        source_ref: str,
+        source_version: str,
+        current_run_id: int,
+        observation_seconds: int,
+        poll_seconds: int,
+        sleep: Callable[[float], None] = time.sleep,
+        monotonic: Callable[[], float] = time.monotonic,
+    ):
+        self.client = client
+        self.output_directory = output_directory
+        self.receipt_path = output_directory / "gc-validation-admission.json"
+        self.campaign_id = campaign_id
+        self.parent_build_id = parent_build_id
+        self.root = root
+        self.attempt = attempt
+        self.source_ref = source_ref
+        self.source_version = source_version
+        self.current_run_id = current_run_id
+        self.observation_seconds = observation_seconds
+        self.poll_seconds = poll_seconds
+        self.sleep = sleep
+        self.monotonic = monotonic
+        self.receipt = {
+            "schemaVersion": 1,
+            "definitionId": client.pipeline_id,
+            "campaignId": campaign_id,
+            "parentBuildId": parent_build_id,
+            "root": root,
+            "attempt": attempt,
+            "sourceRef": source_ref,
+            "sourceVersion": source_version,
+            "currentRunId": current_run_id,
+            "status": "observing",
+            "admitted": False,
+            "startedAt": utc_now(),
+        }
+
+    def write_receipt(self) -> None:
+        self.receipt["updatedAt"] = utc_now()
+        canonical = dict(self.receipt)
+        canonical.pop("canonicalSha256", None)
+        self.receipt["canonicalSha256"] = sha256_bytes(
+            canonical_json_bytes(canonical)
+        )
+        atomic_write_json(self.receipt_path, self.receipt)
+
+    def run(self) -> bool:
+        self.output_directory.mkdir(parents=True, exist_ok=True)
+        deadline = self.monotonic() + self.observation_seconds
+        while True:
+            matches = hydrated_matching_runs(
+                self.client,
+                campaign_id=self.campaign_id,
+                parent_build_id=self.parent_build_id,
+                root=self.root,
+                source_ref=self.source_ref,
+                source_version=self.source_version,
+                attempt=self.attempt,
+            )
+            active = [
+                run for run in matches if run.get("state") != "completed"
+            ]
+            matching_ids = sorted(int(run["id"]) for run in matches)
+            active_ids = sorted(int(run["id"]) for run in active)
+            self.receipt["matchingRunIds"] = matching_ids
+            self.receipt["activeRunIds"] = active_ids
+            if self.current_run_id in matching_ids:
+                canonical_run_id = matching_ids[0]
+                self.receipt["canonicalRunId"] = canonical_run_id
+                if self.current_run_id != canonical_run_id:
+                    self.receipt["status"] = "rejectedDuplicate"
+                    self.receipt["finishedAt"] = utc_now()
+                    self.write_receipt()
+                    return False
+                if (
+                    self.current_run_id in active_ids
+                    and self.monotonic() >= deadline
+                ):
+                    self.receipt["status"] = "admitted"
+                    self.receipt["admitted"] = True
+                    self.receipt["finishedAt"] = utc_now()
+                    self.write_receipt()
+                    return True
+                if (
+                    self.current_run_id not in active_ids
+                    and self.monotonic() >= deadline
+                ):
+                    raise OrchestrationError(
+                        f"Current run {self.current_run_id} is not active."
+                    )
+            elif self.monotonic() >= deadline:
+                raise OrchestrationError(
+                    f"Current run {self.current_run_id} did not appear as an "
+                    f"active matching {self.root} attempt {self.attempt} run."
+                )
+            self.write_receipt()
+            self.sleep(self.poll_seconds)
+
+
 def require_environment(name: str) -> str:
     value = os.environ.get(name)
     if not value:
@@ -942,11 +1121,20 @@ def main() -> int:
     parser.add_argument("--monitor-timeout-minutes", type=int, default=1380)
     parser.add_argument("--poll-seconds", type=int, default=30)
     parser.add_argument("--adoption-timeout-seconds", type=int, default=120)
+    parser.add_argument("--admit-child", action="store_true")
+    parser.add_argument("--root", choices=ROOTS)
+    parser.add_argument("--attempt", type=int, choices=(1, 2))
+    parser.add_argument("--admission-observation-seconds", type=int, default=60)
+    parser.add_argument("--admission-poll-seconds", type=int, default=5)
     args = parser.parse_args()
 
     output_directory = args.output_directory
     output_directory.mkdir(parents=True, exist_ok=True)
-    fallback_receipt = output_directory / "gc-validation-children.json"
+    fallback_receipt = output_directory / (
+        "gc-validation-admission.json"
+        if args.admit_child
+        else "gc-validation-children.json"
+    )
     try:
         collection_uri = require_environment("SYSTEM_COLLECTIONURI")
         project_id = require_environment("SYSTEM_TEAMPROJECTID")
@@ -977,6 +1165,34 @@ def main() -> int:
             definition_id,
             access_token,
         )
+        if args.admit_child:
+            if args.root is None or args.attempt is None:
+                raise OrchestrationError(
+                    "--root and --attempt are required with --admit-child."
+                )
+            if args.admission_observation_seconds < 0:
+                raise OrchestrationError(
+                    "Admission observation seconds cannot be negative."
+                )
+            if args.admission_poll_seconds <= 0:
+                raise OrchestrationError(
+                    "Admission poll seconds must be positive."
+                )
+            admission = GcValidationAdmission(
+                client,
+                output_directory,
+                campaign_id,
+                parent_build_id,
+                args.root,
+                args.attempt,
+                source_ref,
+                source_version,
+                int(build_id),
+                args.admission_observation_seconds,
+                args.admission_poll_seconds,
+            )
+            return 0 if admission.run() else 1
+
         orchestrator = GcValidationOrchestrator(
             client,
             output_directory,
@@ -996,10 +1212,17 @@ def main() -> int:
                 "status": "failedBeforeInitialization",
                 "error": str(error),
                 "finishedAt": utc_now(),
-                "runsQueued": 0,
-                "allTerminalReceipts": False,
-                "succeeded": False,
             }
+            if args.admit_child:
+                receipt["admitted"] = False
+            else:
+                receipt.update(
+                    {
+                        "runsQueued": 0,
+                        "allTerminalReceipts": False,
+                        "succeeded": False,
+                    }
+                )
             receipt["canonicalSha256"] = sha256_bytes(canonical_json_bytes(receipt))
             atomic_write_json(fallback_receipt, receipt)
         else:
@@ -1011,8 +1234,11 @@ def main() -> int:
             )
             receipt["error"] = str(error)
             receipt["finishedAt"] = utc_now()
-            receipt["allTerminalReceipts"] = False
-            receipt["succeeded"] = False
+            if args.admit_child:
+                receipt["admitted"] = False
+            else:
+                receipt["allTerminalReceipts"] = False
+                receipt["succeeded"] = False
             canonical = dict(receipt)
             canonical.pop("canonicalSha256", None)
             receipt["canonicalSha256"] = sha256_bytes(

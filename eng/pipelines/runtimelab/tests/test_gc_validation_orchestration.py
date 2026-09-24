@@ -1,11 +1,15 @@
+from concurrent.futures import ThreadPoolExecutor
 import copy
 import hashlib
 import http.client
 import json
 from pathlib import Path
+import ssl
 import sys
 import tempfile
+import threading
 import unittest
+import urllib.error
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -15,6 +19,7 @@ from orchestrate_gc_validation import (
     AmbiguousQueueResponse,
     ApiRequestError,
     AzureDevOpsClient,
+    GcValidationAdmission,
     GcValidationOrchestrator,
     OrchestrationError,
     PermissionPreflightError,
@@ -199,11 +204,27 @@ class GcValidationOrchestrationTests(unittest.TestCase):
                     raise self.value
                 return self.value
 
+        class ErrorBody:
+            def read(self) -> bytes:
+                raise http.client.IncompleteRead(b"error", 1)
+
+            def close(self) -> None:
+                pass
+
         failures = (
             Response(http.client.IncompleteRead(b'{"id":', 1)),
             http.client.BadStatusLine("invalid status"),
+            ssl.SSLError("TLS response ended early"),
+            OSError("socket read failed"),
             Response(b"{"),
             Response(b"\xff"),
+            urllib.error.HTTPError(
+                "https://example.test/runs",
+                500,
+                "server error",
+                {},
+                ErrorBody(),
+            ),
         )
         original_urlopen = orchestrate_gc_validation.urllib.request.urlopen
         try:
@@ -414,6 +435,14 @@ class GcValidationOrchestrationTests(unittest.TestCase):
             }
             detail["variables"] = copy.deepcopy(returned_variables)
             detail["resources"] = copy.deepcopy(request["resources"])
+            listing["value"].insert(
+                0,
+                {
+                    "id": int(PARENT_BUILD_ID),
+                    "state": "inProgress",
+                    "templateParameters": {},
+                },
+            )
             get_calls = []
             client.list_runs = lambda: copy.deepcopy(listing["value"])
 
@@ -451,42 +480,228 @@ class GcValidationOrchestrationTests(unittest.TestCase):
             1000, receipt["children"][ROOTS[0]]["currentRunId"]
         )
 
-    def test_invalid_successful_post_shape_is_adopted_without_requeue(self) -> None:
+    def test_nonpositive_or_invalid_post_id_is_adopted_without_requeue(self) -> None:
+        for response in ([], {}, {"id": 0}, {"id": -1}, {"id": True}, {"id": "1"}):
+            with self.subTest(response=response):
+                with tempfile.TemporaryDirectory() as directory:
+                    client = FakeClient()
+                    queue_run = client.queue_run
+
+                    def queue_without_positive_id(request):
+                        queue_run(request)
+                        return response
+
+                    client.queue_run = queue_without_positive_id
+                    orchestrator = create_orchestrator(client, Path(directory))
+                    attempt = orchestrator.ensure_run(ROOTS[0], 1)
+
+                self.assertEqual(1, len(client.queue_calls))
+                self.assertTrue(attempt["adopted"])
+                self.assertTrue(attempt["ambiguousQueueResponse"])
+                self.assertEqual(1000, attempt["runId"])
+
+    def test_duplicate_matching_attempt_uses_lowest_run_id(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            client = FakeClient()
-            queue_run = client.queue_run
-
-            def queue_without_run_shape(request):
-                queue_run(request)
-                return []
-
-            client.queue_run = queue_without_run_shape
+            client = FakeClient(complete_on_get=False)
             orchestrator = create_orchestrator(client, Path(directory))
+            request = orchestrator.build_request(ROOTS[0], 1)
+            for run_id in (458, 457):
+                client.queue_run(request)
+                client.runs[-1]["id"] = run_id
+            client.queue_calls.clear()
+
             attempt = orchestrator.ensure_run(ROOTS[0], 1)
 
-        self.assertEqual(1, len(client.queue_calls))
-        self.assertTrue(attempt["adopted"])
-        self.assertTrue(attempt["ambiguousQueueResponse"])
-        self.assertEqual(1000, attempt["runId"])
+        self.assertEqual([], client.queue_calls)
+        self.assertEqual(457, attempt["runId"])
+        self.assertEqual([458], attempt["duplicateRunIds"])
 
-    def test_duplicate_matching_attempts_fail_before_queue(self) -> None:
-        for attempt in (1, 2):
-            with self.subTest(attempt=attempt):
-                with tempfile.TemporaryDirectory() as directory:
-                    client = FakeClient(complete_on_get=False)
-                    orchestrator = create_orchestrator(client, Path(directory))
-                    request = orchestrator.build_request(ROOTS[0], attempt)
-                    for run_id in (1, 2):
-                        client.queue_run(request)
-                        client.runs[-1]["id"] = run_id
-                    client.queue_calls.clear()
-                    with self.assertRaisesRegex(
-                        OrchestrationError,
-                        f"duplicate attempt {attempt} runs",
-                    ):
-                        orchestrator.ensure_run(ROOTS[0], attempt)
+    def test_two_concurrent_parents_adopt_same_canonical_run(self) -> None:
+        class ConcurrentClient(FakeClient):
+            def __init__(self):
+                super().__init__(complete_on_get=False)
+                self.initial_lists = 0
+                self.lock = threading.Lock()
+                self.list_barrier = threading.Barrier(2)
 
-                self.assertEqual([], client.queue_calls)
+            def list_runs(self) -> list[dict]:
+                with self.lock:
+                    snapshot = super().list_runs()
+                    synchronize = self.initial_lists < 2
+                    self.initial_lists += 1
+                if synchronize:
+                    self.list_barrier.wait(timeout=5)
+                return snapshot
+
+            def queue_run(self, request: dict) -> dict:
+                with self.lock:
+                    return super().queue_run(request)
+
+            def get_run(self, run_id: int) -> dict:
+                with self.lock:
+                    return super().get_run(run_id)
+
+        client = ConcurrentClient()
+        with (
+            tempfile.TemporaryDirectory() as first_directory,
+            tempfile.TemporaryDirectory() as second_directory,
+        ):
+            orchestrators = (
+                create_orchestrator(client, Path(first_directory)),
+                create_orchestrator(client, Path(second_directory)),
+            )
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                attempts = list(
+                    executor.map(
+                        lambda orchestrator: orchestrator.ensure_run(
+                            ROOTS[0], 1
+                        ),
+                        orchestrators,
+                    )
+                )
+
+        self.assertEqual(2, len(client.queue_calls))
+        self.assertEqual([1000, 1000], [attempt["runId"] for attempt in attempts])
+        self.assertEqual(
+            [1000, 1001],
+            sorted(attempt["returnedRunId"] for attempt in attempts),
+        )
+        self.assertEqual(1, sum(attempt["adopted"] for attempt in attempts))
+
+    def test_two_duplicate_children_admit_only_lowest_run_id(self) -> None:
+        class SynchronizedAdmissionClient(FakeClient):
+            def __init__(self):
+                super().__init__(complete_on_get=False)
+                self.initial_lists = 0
+                self.lock = threading.Lock()
+                self.list_barrier = threading.Barrier(2)
+
+            def list_runs(self) -> list[dict]:
+                snapshot = super().list_runs()
+                with self.lock:
+                    synchronize = self.initial_lists < 2
+                    self.initial_lists += 1
+                if synchronize:
+                    self.list_barrier.wait(timeout=5)
+                return snapshot
+
+        client = SynchronizedAdmissionClient()
+        with tempfile.TemporaryDirectory() as directory:
+            request = create_orchestrator(
+                client, Path(directory)
+            ).build_request(ROOTS[0], 1)
+            for run_id in (1000, 1001):
+                client.queue_run(request)
+                client.runs[-1]["id"] = run_id
+            client.queue_calls.clear()
+            admissions = {
+                run_id: GcValidationAdmission(
+                    client,
+                    Path(directory) / str(run_id),
+                    CAMPAIGN_ID,
+                    PARENT_BUILD_ID,
+                    ROOTS[0],
+                    1,
+                    SOURCE_REF,
+                    SOURCE_VERSION,
+                    run_id,
+                    observation_seconds=0,
+                    poll_seconds=1,
+                )
+                for run_id in (1000, 1001)
+            }
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                results = dict(
+                    zip(
+                        admissions,
+                        executor.map(
+                            lambda admission: admission.run(),
+                            admissions.values(),
+                        ),
+                    )
+                )
+
+        self.assertEqual({1000: True, 1001: False}, results)
+
+    def test_higher_run_waits_for_delayed_canonical_visibility(self) -> None:
+        class DelayedCanonicalAdmissionClient(FakeClient):
+            def __init__(self):
+                super().__init__(complete_on_get=False)
+                self.list_count = 0
+
+            def list_runs(self) -> list[dict]:
+                self.list_count += 1
+                if self.list_count == 1:
+                    return [self.runs[1]]
+                return super().list_runs()
+
+        client = DelayedCanonicalAdmissionClient()
+        with tempfile.TemporaryDirectory() as directory:
+            request = create_orchestrator(
+                client, Path(directory)
+            ).build_request(ROOTS[0], 1)
+            for run_id in (1000, 1001):
+                client.queue_run(request)
+                client.runs[-1]["id"] = run_id
+            monotonic_values = iter((0.0, 1.0))
+            admission = GcValidationAdmission(
+                client,
+                Path(directory) / "delayed",
+                CAMPAIGN_ID,
+                PARENT_BUILD_ID,
+                ROOTS[0],
+                1,
+                SOURCE_REF,
+                SOURCE_VERSION,
+                1001,
+                observation_seconds=10,
+                poll_seconds=0,
+                sleep=lambda _: None,
+                monotonic=lambda: next(monotonic_values),
+            )
+
+            self.assertFalse(admission.run())
+            receipt = json.loads(
+                admission.receipt_path.read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(2, client.list_count)
+        self.assertEqual(1000, receipt["canonicalRunId"])
+        self.assertEqual([1000, 1001], receipt["activeRunIds"])
+
+    def test_completed_canonical_still_rejects_later_duplicate(self) -> None:
+        client = FakeClient(complete_on_get=False)
+        with tempfile.TemporaryDirectory() as directory:
+            request = create_orchestrator(
+                client, Path(directory)
+            ).build_request(ROOTS[0], 1)
+            for run_id in (1000, 1001):
+                client.queue_run(request)
+                client.runs[-1]["id"] = run_id
+            client.runs[0]["state"] = "completed"
+            client.runs[0]["result"] = "succeeded"
+            admission = GcValidationAdmission(
+                client,
+                Path(directory) / "completed-canonical",
+                CAMPAIGN_ID,
+                PARENT_BUILD_ID,
+                ROOTS[0],
+                1,
+                SOURCE_REF,
+                SOURCE_VERSION,
+                1001,
+                observation_seconds=0,
+                poll_seconds=1,
+            )
+
+            self.assertFalse(admission.run())
+            receipt = json.loads(
+                admission.receipt_path.read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(1000, receipt["canonicalRunId"])
+        self.assertEqual([1000, 1001], receipt["matchingRunIds"])
+        self.assertEqual([1001], receipt["activeRunIds"])
 
     def test_attempt_two_without_attempt_one_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

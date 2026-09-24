@@ -50,6 +50,9 @@ BASELINE_PIPELINE_HASH = (
     "b8732c8723cd1da1ddaaa92134a2332e04fca50be0af29e436ca04dee658aa3b"
 )
 BASELINE_CONDITION = "${{ if eq(parameters.gcValidationMode, 'baseline') }}"
+ADMISSION_CONDITION = (
+    "${{ if eq(parameters.gcValidationMode, 'correctness-shard') }}"
+)
 STRESS_CONDITION = "${{ if eq(parameters.gcValidationMode, 'correctness-stress') }}"
 MONITOR_ARGUMENT = "${{ variables.enableHelixJobMonitor }}"
 MONITOR_PARAMETER_CONDITION = (
@@ -107,6 +110,10 @@ def authoritative_graph(value: object) -> object:
                 else key
             ): authoritative_graph(item)
             for key, item in value.items()
+            if not (
+                key == "dependsOn"
+                and item == "${{ parameters.dependsOn }}"
+            )
         }
     if isinstance(value, list):
         return [authoritative_graph(item) for item in value]
@@ -159,7 +166,14 @@ class GcValidationArchitectureTests(unittest.TestCase):
                     ),
                 )
                 self.assertEqual(
-                    [{"name": "enableHelixJobMonitor", "type": "string"}],
+                    [
+                        {"name": "enableHelixJobMonitor", "type": "string"},
+                        {
+                            "name": "dependsOn",
+                            "type": "object",
+                            "default": [],
+                        },
+                    ],
                     load_yaml(template_path)["parameters"],
                 )
 
@@ -208,6 +222,7 @@ class GcValidationArchitectureTests(unittest.TestCase):
                     "template": template,
                     "parameters": {
                         "enableHelixJobMonitor": MONITOR_ARGUMENT,
+                        "dependsOn": ["GCValidationAdmission"],
                     },
                 }
             ]
@@ -216,8 +231,39 @@ class GcValidationArchitectureTests(unittest.TestCase):
             condition: value
             for condition, value in self.conditions.items()
             if "correctness-shard" in condition
+            and condition != ADMISSION_CONDITION
         }
         self.assertEqual(expected_conditions, actual_conditions)
+
+    def test_shard_admission_precedes_authoritative_graph(self) -> None:
+        admission_stages = self.conditions[ADMISSION_CONDITION]
+        self.assertEqual(1, len(admission_stages))
+        admission = admission_stages[0]
+        self.assertEqual("GCValidationAdmission", admission["stage"])
+        self.assertEqual(1, len(admission["jobs"]))
+        job = admission["jobs"][0]
+        self.assertEqual("AdmitCanonicalGcValidationShard", job["job"])
+        admission_step = next(
+            step
+            for step in job["steps"]
+            if step.get("displayName") == "Admit canonical child run"
+        )
+        self.assertIn("--admit-child", admission_step["bash"])
+        self.assertEqual(
+            "$(System.AccessToken)",
+            admission_step["env"]["SYSTEM_ACCESSTOKEN"],
+        )
+        publish_step = next(
+            step
+            for step in job["steps"]
+            if step.get("displayName")
+            == "Publish GC validation admission receipt"
+        )
+        self.assertEqual("always()", publish_step["condition"])
+        self.assertEqual(
+            "GCValidationAdmission_$(Build.BuildId)",
+            publish_step["inputs"]["artifactName"],
+        )
 
     def test_parent_orchestration_queues_only_closed_shards(self) -> None:
         stress_stages = self.conditions[STRESS_CONDITION]
@@ -289,11 +335,16 @@ class GcValidationArchitectureTests(unittest.TestCase):
             )
             root_after = write(
                 "root-after",
-                "stages:\n- stage: Shared\n  jobs:\n  - job: Build\n",
+                "stages:\n- stage: Shared\n  dependsOn: []\n"
+                "  jobs:\n  - job: Build\n",
             )
             shard = write(
                 "shard",
-                "stages:\n- stage: Shared\n  jobs:\n  - job: Build\n"
+                "stages:\n- stage: GCValidationAdmission\n"
+                "  jobs:\n  - job: Admit\n"
+                "- stage: Shared\n"
+                "  dependsOn:\n  - GCValidationAdmission\n"
+                "  jobs:\n  - job: Build\n"
                 "    templateContext: {}\n",
             )
 

@@ -5,6 +5,9 @@ from pathlib import Path
 import yaml
 
 
+ADMISSION_STAGE_NAME = "GCValidationAdmission"
+
+
 def load_final_yaml(path: Path) -> dict:
     content = path.read_text(encoding="utf-8")
     if path.suffix == ".json":
@@ -40,6 +43,45 @@ def normalize_inert_metadata(value: object) -> object:
     return value
 
 
+def normalize_authority_preview(preview: dict) -> dict:
+    preview = normalize_inert_metadata(preview)
+    normalized = dict(preview)
+    normalized["stages"] = [
+        normalize_execution_stage(stage, expected_dependency=[])
+        for stage in preview["stages"]
+    ]
+    return normalized
+
+
+def normalize_execution_stage(
+    stage: dict, *, expected_dependency: list[str]
+) -> dict:
+    normalized = dict(stage)
+    actual_dependency = normalized.pop("dependsOn", [])
+    if actual_dependency != expected_dependency:
+        raise AssertionError(
+            f"{stage.get('stage')} has unexpected dependsOn {actual_dependency!r}"
+        )
+    return normalized
+
+
+def shard_execution_stages(preview: dict) -> list[dict]:
+    preview = normalize_inert_metadata(preview)
+    stages = preview["stages"]
+    if not stages or stages[0].get("stage") != ADMISSION_STAGE_NAME:
+        raise AssertionError("shard preview does not start with GCValidationAdmission")
+    if sum(
+        stage.get("stage") == ADMISSION_STAGE_NAME for stage in stages
+    ) != 1:
+        raise AssertionError("shard preview must contain one admission stage")
+    return [
+        normalize_execution_stage(
+            stage, expected_dependency=[ADMISSION_STAGE_NAME]
+        )
+        for stage in stages[1:]
+    ]
+
+
 def compare_previews(
     baseline_before: Path,
     baseline_after: Path,
@@ -57,12 +99,12 @@ def compare_previews(
         raise AssertionError("root preview sets do not match")
 
     for name in sorted(expected_roots):
-        before = normalize_inert_metadata(load_final_yaml(root_before[name]))
-        after = normalize_inert_metadata(load_final_yaml(root_after[name]))
-        shard = normalize_inert_metadata(load_final_yaml(shards[name]))
+        before = normalize_authority_preview(load_final_yaml(root_before[name]))
+        after = normalize_authority_preview(load_final_yaml(root_after[name]))
+        shard_stages = shard_execution_stages(load_final_yaml(shards[name]))
         if before != after:
             raise AssertionError(f"{name} standard root preview changed")
-        if before["stages"] != shard["stages"]:
+        if before["stages"] != shard_stages:
             raise AssertionError(f"{name} shard stages differ from the standard root")
 
 

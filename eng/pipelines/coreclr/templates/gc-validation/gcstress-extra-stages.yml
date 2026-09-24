@@ -1,9 +1,13 @@
 parameters:
 - name: enableHelixJobMonitor
   type: string
+- name: dependsOn
+  type: object
+  default: []
 
 stages:
 - stage: Build
+  dependsOn: ${{ parameters.dependsOn }}
   jobs:
   - ${{ if eq(parameters.enableHelixJobMonitor, 'true') }}:
     - template: /eng/common/core-templates/job/helix-job-monitor.yml
