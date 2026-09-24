@@ -3,6 +3,25 @@ parameters:
   displayName: Request publication after explicit user approval
   type: boolean
   default: false
+- name: standardGcArtifactProducer
+  displayName: Standard-GC artifact producer mode
+  type: string
+  default: none
+  values:
+  - none
+  - full
+- name: standardGcCampaignId
+  displayName: Standard-GC campaign identity
+  type: string
+  default: ''
+- name: standardGcCohortId
+  displayName: Standard-GC cohort identity
+  type: string
+  default: ''
+- name: externalRuntimeAspNetValidationBinding
+  displayName: Authoritative ASP.NET validation binding path
+  type: string
+  default: ''
 
 trigger: none
 pr: none
@@ -22,6 +41,13 @@ extends:
   parameters:
     isOfficialBuild: true
     stages:
+    - ${{ if and(eq(parameters.standardGcArtifactProducer, 'full'), or(ne(variables['Build.Reason'], 'Manual'), ne(variables['System.TeamProject'], 'internal'))) }}:
+      - standardGcArtifactProducerRequiresManualInternal: error
+    - ${{ if and(eq(parameters.standardGcArtifactProducer, 'full'), eq(parameters.standardGcCampaignId, '')) }}:
+      - standardGcArtifactProducerRequiresCampaignId: error
+    - ${{ if and(eq(parameters.standardGcArtifactProducer, 'full'), eq(parameters.standardGcCohortId, '')) }}:
+      - standardGcArtifactProducerRequiresCohortId: error
+
     - stage: Build
       jobs:
         #
@@ -35,6 +61,10 @@ extends:
             platforms:
             - linux_x64
             - windows_x64
+            - ${{ if eq(parameters.standardGcArtifactProducer, 'full') }}:
+              - windows_x86
+              - linux_arm64
+              - windows_arm64
             jobParameters:
               templatePath: 'templates-official'
               isOfficialBuild: true
@@ -44,7 +74,47 @@ extends:
               # V4 Publish stages files into this build's pipeline artifact, not a package feed.
               enablePublishing: true
               publishingVersion: 4
+              templateContext:
+                outputs:
+                - ${{ if eq(parameters.standardGcArtifactProducer, 'full') }}:
+                  - output: pipelineArtifact
+                    displayName: Publish standard CoreCLR archive
+                    targetPath: $(Build.StagingDirectory)/BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr$(archiveExtension)
+                    artifactName: BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr
+                  - output: pipelineArtifact
+                    displayName: Publish Windows x64 dotnet layout
+                    targetPath: $(Build.StagingDirectory)/ExternalDotnetLayout_windows_x64_Release_coreclr.zip
+                    artifactName: ExternalDotnetLayout_windows_x64_Release_coreclr
+                    condition: and(succeeded(), eq(variables['osGroup'], 'windows'), eq(variables['archType'], 'x64'))
+                  - output: pipelineArtifact
+                    displayName: Publish Windows ARM64 dotnet layout
+                    targetPath: $(Build.StagingDirectory)/ExternalDotnetLayout_windows_arm64_Release_coreclr.zip
+                    artifactName: ExternalDotnetLayout_windows_arm64_Release_coreclr
+                    condition: and(succeeded(), eq(variables['osGroup'], 'windows'), eq(variables['archType'], 'arm64'))
               buildArgs: -s clr+libs+host+packs -c $(_BuildConfig) -restore -build -publish /p:PublishingVersion=4
+              postBuildSteps:
+              - ${{ if eq(parameters.standardGcArtifactProducer, 'full') }}:
+                - template: /eng/pipelines/common/upload-artifact-step.yml
+                  parameters:
+                    rootFolder: $(Build.SourcesDirectory)/artifacts/bin
+                    includeRootFolder: false
+                    archiveType: $(archiveType)
+                    archiveExtension: $(archiveExtension)
+                    tarCompression: $(tarCompression)
+                    artifactName: BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr
+                    displayName: Standard CoreCLR build assets
+                    isOfficialBuild: true
+                    publishArtifact: false
+                - template: /eng/pipelines/runtimelab/create-dotnet-layout-step.yml
+                  parameters:
+                    rid: win-x64
+                    artifactName: ExternalDotnetLayout_windows_x64_Release_coreclr
+                    condition: and(succeeded(), eq(variables['osGroup'], 'windows'), eq(variables['archType'], 'x64'))
+                - template: /eng/pipelines/runtimelab/create-dotnet-layout-step.yml
+                  parameters:
+                    rid: win-arm64
+                    artifactName: ExternalDotnetLayout_windows_arm64_Release_coreclr
+                    condition: and(succeeded(), eq(variables['osGroup'], 'windows'), eq(variables['archType'], 'arm64'))
 
         #
         # Build libraries AllConfigurations for packages
@@ -65,6 +135,25 @@ extends:
               enablePublishing: true
               publishingVersion: 4
               timeoutInMinutes: 95
+
+        - ${{ if eq(parameters.standardGcArtifactProducer, 'full') }}:
+          - template: /eng/pipelines/runtimelab/standard-gc-artifact-producer-jobs.yml
+            parameters:
+              campaignId: ${{ parameters.standardGcCampaignId }}
+              cohortId: ${{ parameters.standardGcCohortId }}
+              aspNetValidationBinding: ${{ parameters.externalRuntimeAspNetValidationBinding }}
+
+    - ${{ if eq(parameters.standardGcArtifactProducer, 'full') }}:
+      - stage: StandardGcArtifactManifest
+        displayName: Standard-GC artifact manifest
+        dependsOn: Build
+        condition: succeededOrFailed()
+        jobs:
+        - template: /eng/pipelines/runtimelab/standard-gc-manifest-job.yml
+          parameters:
+            campaignId: ${{ parameters.standardGcCampaignId }}
+            cohortId: ${{ parameters.standardGcCohortId }}
+            aspNetValidationBinding: ${{ parameters.externalRuntimeAspNetValidationBinding }}
 
     - ${{ if parameters.publishToExperimentalFeed }}:
       - stage: RegisterAssets

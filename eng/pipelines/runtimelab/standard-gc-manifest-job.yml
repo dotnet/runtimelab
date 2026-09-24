@@ -1,0 +1,74 @@
+parameters:
+  campaignId: ''
+  cohortId: ''
+  aspNetValidationBinding: ''
+
+jobs:
+- template: /eng/common/templates-official/job/job.yml
+  parameters:
+    name: GenerateStandardGcArtifactManifest
+    displayName: Generate standard-GC artifact manifest
+    pool:
+      name: $(DncEngInternalBuildPool)
+      os: linux
+      demands: ImageOverride -equals build.azurelinux.3.amd64
+    templateContext:
+      outputs:
+      - output: pipelineArtifact
+        displayName: Publish standard-GC artifact manifest
+        targetPath: $(Build.StagingDirectory)/standard-gc-manifest
+        artifactName: StandardGCArtifactManifest
+        condition: always()
+      - output: pipelineArtifact
+        displayName: Publish definition 306 validation
+        targetPath: $(Build.StagingDirectory)/standard-gc-manifest/ExternalRuntime306Validation
+        artifactName: ExternalRuntime306Validation
+        condition: always()
+    steps:
+    - checkout: self
+      clean: true
+      fetchDepth: 1
+      fetchTags: false
+
+    - task: DownloadPipelineArtifact@2
+      displayName: Download producer artifacts
+      condition: always()
+      continueOnError: true
+      inputs:
+        buildType: current
+        targetPath: $(Pipeline.Workspace)/standard-gc-artifacts
+
+    - bash: |
+        set -uo pipefail
+        output='$(Build.StagingDirectory)/standard-gc-manifest'
+        mkdir -p "$output"
+        args=(
+          --requirements '$(Build.SourcesDirectory)/eng/pipelines/runtimelab/standard-gc-artifact-requirements-v2.json'
+          --artifact-root '$(Pipeline.Workspace)/standard-gc-artifacts'
+          --output-root "$output"
+          --source-repository 'dotnet/runtimelab'
+          --source-branch '$(Build.SourceBranch)'
+          --source-commit '$(Build.SourceVersion)'
+          --producer-definition-id '895'
+          --producer-build-id '$(Build.BuildId)'
+          --campaign-id '${{ parameters.campaignId }}'
+          --cohort-id '${{ parameters.cohortId }}'
+          --coverage-rows-sha256 'e49b7ec1f45de576ae709ca25ef7715012ec25fdd425ef93633dce5b2d29245f'
+        )
+        if [ -n '${{ parameters.aspNetValidationBinding }}' ]; then
+          args+=(--aspnet-validation-binding '${{ parameters.aspNetValidationBinding }}')
+        fi
+        python3 '$(Build.SourcesDirectory)/eng/pipelines/runtimelab/generate_standard_gc_manifest.py' "${args[@]}"
+        status=$?
+        printf '%s\n' "$status" > "$output/generation-exit-code.txt"
+        exit 0
+      displayName: Generate fail-closed manifests
+      condition: always()
+
+    - bash: |
+        output='$(Build.StagingDirectory)/standard-gc-manifest'
+        test -f "$output/standard-gc-cohort-manifest.json"
+        test -f "$output/ExternalRuntime306Validation/external-runtime-306-validation.json"
+        test "$(cat "$output/generation-exit-code.txt")" = 0
+      displayName: Enforce complete producer cohort
+      condition: always()

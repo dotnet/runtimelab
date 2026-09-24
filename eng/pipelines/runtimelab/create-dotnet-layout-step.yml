@@ -1,0 +1,37 @@
+parameters:
+  osGroup: ''
+  osSubgroup: ''
+  archType: ''
+  buildConfig: ''
+  runtimeFlavor: ''
+  runtimeVariant: ''
+  helixQueues: ''
+  targetRid: ''
+  nameSuffix: ''
+  platform: ''
+  shouldContinueOnError: false
+  rid: ''
+  artifactName: ''
+  condition: succeeded()
+
+steps:
+- powershell: |
+    py -3 eng/pipelines/runtimelab/create_dotnet_layout.py `
+      --source-root "$(Build.SourcesDirectory)\artifacts\bin" `
+      --package-root "$(Build.SourcesDirectory)\artifacts\packages\$(buildConfigUpper)" `
+      --output "$(Build.StagingDirectory)\${{ parameters.artifactName }}" `
+      --rid "${{ parameters.rid }}"
+  displayName: Create immutable ${{ parameters.rid }} dotnet layout
+  condition: ${{ parameters.condition }}
+
+- template: /eng/pipelines/common/upload-artifact-step.yml
+  parameters:
+    rootFolder: $(Build.StagingDirectory)/${{ parameters.artifactName }}
+    includeRootFolder: false
+    archiveType: zip
+    archiveExtension: '.zip'
+    artifactName: ${{ parameters.artifactName }}
+    displayName: ${{ parameters.rid }} dotnet layout
+    condition: ${{ parameters.condition }}
+    isOfficialBuild: true
+    publishArtifact: false

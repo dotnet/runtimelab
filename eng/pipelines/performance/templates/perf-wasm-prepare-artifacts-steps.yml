@@ -12,6 +12,8 @@ parameters:
   downloadCoreClrWorkloadPackages: false
   # The CoreCLR build publishes its workload packages so the Mono build (above) can consume them.
   publishCoreClrWorkloadPackages: false
+  isOfficialBuild: false
+  publishArtifacts: true
 
 steps:
   # Stage the CoreCLR packages built by the wasm_coreclr job into the local package feed so the
@@ -115,13 +117,14 @@ steps:
           'Microsoft.NETCore.App.Runtime.browser-wasm.*.nupkg' \
           'Microsoft.NETCore.App.Crossgen2.*.nupkg'
       displayName: "Stage CoreCLR workload packages"
-    - template: /eng/pipelines/common/templates/publish-pipeline-artifacts.yml
-      parameters:
-        isOfficialBuild: false
-        displayName: Publish CoreCLR workload packages
-        inputs:
-          targetPath: $(Build.SourcesDirectory)/artifacts/staging-coreclr-workload-packages
-          artifactName: BrowserWasmCoreCLRWorkloadPackages_$(_hostedOs)
+    - ${{ if eq(parameters.publishArtifacts, true) }}:
+      - template: /eng/pipelines/common/templates/publish-pipeline-artifacts.yml
+        parameters:
+          isOfficialBuild: ${{ parameters.isOfficialBuild }}
+          displayName: Publish CoreCLR workload packages
+          inputs:
+            targetPath: $(Build.SourcesDirectory)/artifacts/staging-coreclr-workload-packages
+            artifactName: BrowserWasmCoreCLRWorkloadPackages_$(_hostedOs)
 
   - template: /eng/pipelines/common/upload-artifact-step.yml
     parameters:
@@ -132,3 +135,5 @@ steps:
       archiveType: tar
       tarCompression: gz
       archiveExtension: '.tar.gz'
+      isOfficialBuild: ${{ parameters.isOfficialBuild }}
+      publishArtifact: ${{ parameters.publishArtifacts }}
