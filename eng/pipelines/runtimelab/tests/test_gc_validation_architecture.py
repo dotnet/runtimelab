@@ -47,9 +47,9 @@ BASELINE_PIPELINE_HASH = (
 )
 BASELINE_CONDITION = "${{ if eq(parameters.gcValidationMode, 'baseline') }}"
 STRESS_CONDITION = "${{ if eq(parameters.gcValidationMode, 'correctness-stress') }}"
-MONITOR_ARGUMENT = "${{ eq(variables['enableHelixJobMonitor'], true) }}"
+MONITOR_ARGUMENT = "${{ variables.enableHelixJobMonitor }}"
 MONITOR_PARAMETER_CONDITION = (
-    "${{ if eq(parameters.enableHelixJobMonitor, true) }}"
+    "${{ if eq(parameters.enableHelixJobMonitor, 'true') }}"
 )
 MONITOR_VARIABLE_CONDITION = (
     "${{ if eq(variables['enableHelixJobMonitor'], true) }}"
@@ -155,7 +155,7 @@ class GcValidationArchitectureTests(unittest.TestCase):
                     ),
                 )
                 self.assertEqual(
-                    [{"name": "enableHelixJobMonitor", "type": "boolean"}],
+                    [{"name": "enableHelixJobMonitor", "type": "string"}],
                     load_yaml(template_path)["parameters"],
                 )
 

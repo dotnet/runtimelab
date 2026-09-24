@@ -1,11 +1,11 @@
 parameters:
 - name: enableHelixJobMonitor
-  type: boolean
+  type: string
 
 stages:
 - stage: Build
   jobs:
-  - ${{ if eq(parameters.enableHelixJobMonitor, true) }}:
+  - ${{ if eq(parameters.enableHelixJobMonitor, 'true') }}:
     - template: /eng/common/core-templates/job/helix-job-monitor.yml
       parameters:
         helixAccessToken: $(HelixApiAccessToken)
