@@ -22,6 +22,12 @@ def parse_named_paths(values: list[str]) -> dict[str, Path]:
     return result
 
 
+def baseline_execution_contract(preview: dict) -> dict:
+    preview = dict(preview)
+    preview.pop("parameters", None)
+    return preview
+
+
 def compare_previews(
     baseline_before: Path,
     baseline_after: Path,
@@ -29,7 +35,9 @@ def compare_previews(
     root_after: dict[str, Path],
     shards: dict[str, Path],
 ) -> None:
-    if load_final_yaml(baseline_before) != load_final_yaml(baseline_after):
+    before = baseline_execution_contract(load_final_yaml(baseline_before))
+    after = baseline_execution_contract(load_final_yaml(baseline_after))
+    if before != after:
         raise AssertionError("definition 163 baseline preview changed")
 
     expected_roots = set(root_before)

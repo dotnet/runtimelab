@@ -180,7 +180,10 @@ class GcValidationArchitectureTests(unittest.TestCase):
                 return path
 
             baseline_before = write("baseline-before", "stages:\n- stage: Baseline\n")
-            baseline_after = write("baseline-after", "stages:\n- stage: Baseline\n")
+            baseline_after = write(
+                "baseline-after",
+                "parameters:\n- name: AddedSelector\nstages:\n- stage: Baseline\n",
+            )
             root_before = write("root-before", "stages:\n- stage: Shared\n")
             root_after = write("root-after", "stages:\n- stage: Shared\n")
             shard = write("shard", "stages:\n- stage: Shared\n")
