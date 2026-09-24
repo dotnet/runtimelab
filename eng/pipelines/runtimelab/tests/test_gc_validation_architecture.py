@@ -191,10 +191,20 @@ class GcValidationArchitectureTests(unittest.TestCase):
         )
         self.assertEqual("string", self.parameters["gcValidationCampaignId"]["type"])
         self.assertEqual("", self.parameters["gcValidationCampaignId"]["default"])
+        self.assertEqual("string", self.parameters["gcValidationRunKind"]["type"])
+        self.assertEqual(
+            ["direct", "parent-child"],
+            self.parameters["gcValidationRunKind"]["values"],
+        )
+        self.assertEqual(
+            "direct", self.parameters["gcValidationRunKind"]["default"]
+        )
         self.assertEqual(
             "string", self.parameters["gcValidationParentBuildId"]["type"]
         )
-        self.assertEqual("", self.parameters["gcValidationParentBuildId"]["default"])
+        self.assertEqual(
+            "direct", self.parameters["gcValidationParentBuildId"]["default"]
+        )
         self.assertEqual("number", self.parameters["gcValidationAttempt"]["type"])
         self.assertEqual(1, self.parameters["gcValidationAttempt"]["default"])
         self.assertEqual([1, 2], self.parameters["gcValidationAttempt"]["values"])
@@ -243,12 +253,24 @@ class GcValidationArchitectureTests(unittest.TestCase):
         self.assertEqual(1, len(admission["jobs"]))
         job = admission["jobs"][0]
         self.assertEqual("AdmitCanonicalGcValidationShard", job["job"])
+        identity_step = next(
+            step
+            for step in job["steps"]
+            if step.get("displayName") == "Publish GC validation run identity"
+        )
+        self.assertIn("--emit-run-identity-tags", identity_step["bash"])
+        self.assertEqual(
+            "${{ parameters.gcValidationRunKind }}",
+            identity_step["env"]["GC_VALIDATION_RUN_KIND"],
+        )
+        self.assertNotIn("SYSTEM_ACCESSTOKEN", identity_step["env"])
         admission_step = next(
             step
             for step in job["steps"]
             if step.get("displayName") == "Admit canonical child run"
         )
         self.assertIn("--admit-child", admission_step["bash"])
+        self.assertIn("--run-kind", admission_step["bash"])
         self.assertEqual(
             "$(System.AccessToken)",
             admission_step["env"]["SYSTEM_ACCESSTOKEN"],
@@ -292,7 +314,7 @@ class GcValidationArchitectureTests(unittest.TestCase):
             orchestration_step["env"]["GC_VALIDATION_CAMPAIGN_ID"],
         )
         self.assertEqual(
-            "${{ parameters.gcValidationParentBuildId }}",
+            "$(Build.BuildId)",
             orchestration_step["env"]["GC_VALIDATION_PARENT_BUILD_ID"],
         )
         publish_step = next(

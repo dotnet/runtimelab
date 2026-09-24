@@ -28,17 +28,24 @@ ROOTS = (
 )
 EXPECTED_DEFINITION_ID = 163
 BUILD_SECURITY_NAMESPACE_ID = "33344d9c-fc72-4d6f-aba5-fa317101a7e9"
-RUN_VARIABLE_MODE = "GC_VALIDATION_MODE"
-RUN_VARIABLE_CAMPAIGN_ID = "GC_VALIDATION_CAMPAIGN_ID"
-RUN_VARIABLE_PARENT_BUILD_ID = "GC_VALIDATION_PARENT_BUILD_ID"
-RUN_VARIABLE_ROOT = "GC_VALIDATION_ROOT"
-RUN_VARIABLE_ATTEMPT = "GC_VALIDATION_ATTEMPT"
-RUN_IDENTITY_VARIABLE_NAMES = (
-    RUN_VARIABLE_MODE,
-    RUN_VARIABLE_CAMPAIGN_ID,
-    RUN_VARIABLE_PARENT_BUILD_ID,
-    RUN_VARIABLE_ROOT,
-    RUN_VARIABLE_ATTEMPT,
+RUN_KIND_DIRECT = "direct"
+RUN_KIND_PARENT_CHILD = "parent-child"
+RUN_KINDS = (RUN_KIND_DIRECT, RUN_KIND_PARENT_CHILD)
+RUN_IDENTITY_TAG_PREFIXES = {
+    "mode": "gc-validation.mode.",
+    "runKind": "gc-validation.kind.",
+    "campaignId": "gc-validation.campaign.",
+    "parentBuildId": "gc-validation.parent.",
+    "root": "gc-validation.root.",
+    "attempt": "gc-validation.attempt.",
+}
+RUN_IDENTITY_TAG_FIELDS = (
+    "mode",
+    "runKind",
+    "campaignId",
+    "parentBuildId",
+    "root",
+    "attempt",
 )
 ADMISSION_STAGE_IDENTIFIER = "gcvalidationadmission"
 ADMISSION_JOB_IDENTIFIER = "admitcanonicalgcvalidationshard"
@@ -107,56 +114,104 @@ def atomic_write_json(path: Path, value: object) -> None:
     temporary_path.replace(path)
 
 
-def variable_value(value: object) -> str:
-    if value is None:
-        return ""
-    if isinstance(value, dict):
-        value = value.get("value", "")
-    return str(value)
-
-
 def repository_resource(run: dict) -> dict:
     resources = run.get("resources") or {}
     repositories = resources.get("repositories") or {}
     return repositories.get("self") or {}
 
 
-def run_variables(run: dict) -> dict[str, object]:
-    variables = run.get("variables") or {}
-    return {str(name).casefold(): value for name, value in variables.items()}
+def run_tags(run: dict) -> set[str]:
+    tags = run.get("tags") or []
+    return {
+        str(tag).casefold()
+        for tag in tags
+        if isinstance(tag, str) and tag
+    }
 
 
-def run_variable(run: dict, name: str) -> str:
-    return variable_value(run_variables(run).get(name.casefold()))
+def identity_tags(
+    *,
+    run_kind: str,
+    campaign_id: str,
+    parent_build_id: str,
+    root: str,
+    attempt: int,
+) -> tuple[str, ...]:
+    values = {
+        "mode": "correctness-shard",
+        "runKind": run_kind,
+        "campaignId": campaign_id,
+        "parentBuildId": parent_build_id,
+        "root": root,
+        "attempt": str(attempt),
+    }
+    return tuple(
+        RUN_IDENTITY_TAG_PREFIXES[name] + values[name]
+        for name in RUN_IDENTITY_TAG_FIELDS
+    )
+
+
+def run_tag_value(run: dict, field: str) -> str:
+    prefix = RUN_IDENTITY_TAG_PREFIXES[field]
+    values = [
+        tag[len(prefix) :]
+        for tag in run.get("tags") or []
+        if isinstance(tag, str)
+        and tag.casefold().startswith(prefix.casefold())
+    ]
+    if len(values) != 1:
+        raise ValueError(
+            f"Run has {len(values)} {field} identity tags; expected one."
+        )
+    return values[0]
+
+
+def has_complete_run_identity(run: dict) -> bool:
+    tags = run_tags(run)
+    return all(
+        sum(tag.startswith(prefix.casefold()) for tag in tags) == 1
+        for prefix in RUN_IDENTITY_TAG_PREFIXES.values()
+    )
 
 
 def run_attempt(run: dict) -> int:
-    return int(run_variable(run, RUN_VARIABLE_ATTEMPT))
+    return int(run_tag_value(run, "attempt"))
 
 
 def run_identity_matches(
     run: dict,
     *,
+    run_kind: str,
     campaign_id: str,
     parent_build_id: str,
     root: str,
 ) -> bool:
     try:
         run_id = int(run.get("id", 0))
+        actual_attempt = run_attempt(run)
     except (TypeError, ValueError):
         return False
+    expected_tags = {
+        tag.casefold()
+        for tag in identity_tags(
+            run_kind=run_kind,
+            campaign_id=campaign_id,
+            parent_build_id=parent_build_id,
+            root=root,
+            attempt=actual_attempt,
+        )
+    }
     return (
         run_id > 0
-        and run_variable(run, RUN_VARIABLE_MODE) == "correctness-shard"
-        and run_variable(run, RUN_VARIABLE_CAMPAIGN_ID) == campaign_id
-        and run_variable(run, RUN_VARIABLE_PARENT_BUILD_ID) == parent_build_id
-        and run_variable(run, RUN_VARIABLE_ROOT) == root
+        and has_complete_run_identity(run)
+        and expected_tags.issubset(run_tags(run))
     )
 
 
 def run_matches(
     run: dict,
     *,
+    run_kind: str,
     campaign_id: str,
     parent_build_id: str,
     root: str,
@@ -167,6 +222,7 @@ def run_matches(
     repository = repository_resource(run)
     if not run_identity_matches(
         run,
+        run_kind=run_kind,
         campaign_id=campaign_id,
         parent_build_id=parent_build_id,
         root=root,
@@ -354,6 +410,7 @@ def validate_admission_receipt(
     receipt: object,
     *,
     definition_id: int,
+    run_kind: str,
     campaign_id: str,
     parent_build_id: str,
     root: str,
@@ -369,8 +426,9 @@ def validate_admission_receipt(
         }
     errors = []
     expected = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "definitionId": definition_id,
+        "runKind": run_kind,
         "campaignId": campaign_id,
         "parentBuildId": parent_build_id,
         "root": root,
@@ -763,6 +821,7 @@ def terminal_candidate_evidence(
     client: AzureDevOpsClient,
     *,
     run_id: int,
+    run_kind: str,
     campaign_id: str,
     parent_build_id: str,
     root: str,
@@ -813,6 +872,7 @@ def terminal_candidate_evidence(
                 receipt_evidence = validate_admission_receipt(
                     receipt,
                     definition_id=client.pipeline_id,
+                    run_kind=run_kind,
                     campaign_id=campaign_id,
                     parent_build_id=parent_build_id,
                     root=root,
@@ -876,6 +936,7 @@ def expire_pending_terminal_evidence(evidence: dict, reason: str) -> dict:
 def hydrated_matching_runs(
     client: AzureDevOpsClient,
     *,
+    run_kind: str,
     campaign_id: str,
     parent_build_id: str,
     root: str,
@@ -884,7 +945,11 @@ def hydrated_matching_runs(
     attempt: int | None = None,
 ) -> list[dict]:
     matches = []
-    parent_run_id = int(parent_build_id)
+    parent_run_id = (
+        int(parent_build_id)
+        if run_kind == RUN_KIND_PARENT_CHILD
+        else 0
+    )
     for summary in client.list_runs():
         try:
             run_id = int(summary.get("id", 0))
@@ -892,15 +957,13 @@ def hydrated_matching_runs(
             continue
         # Azure build IDs increase project-wide, so a child queued by this
         # parent must have a larger ID. This avoids hydrating historical List
-        # entries whose live response shape omits variables and resources.
+        # entries whose live response shape can omit tags and resources.
         if run_id <= parent_run_id:
             continue
-        variables = run_variables(summary)
-        if all(
-            name.casefold() in variables for name in RUN_IDENTITY_VARIABLE_NAMES
-        ):
+        if has_complete_run_identity(summary):
             if not run_identity_matches(
                 summary,
+                run_kind=run_kind,
                 campaign_id=campaign_id,
                 parent_build_id=parent_build_id,
                 root=root,
@@ -911,6 +974,7 @@ def hydrated_matching_runs(
         run.update(detail)
         if run_matches(
             run,
+            run_kind=run_kind,
             campaign_id=campaign_id,
             parent_build_id=parent_build_id,
             root=root,
@@ -963,8 +1027,9 @@ class GcValidationOrchestrator:
         self.terminal_evidence_cache: dict[int, tuple[dict, dict]] = {}
         self.terminal_pending_since: dict[int, float] = {}
         self.receipt = {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "definitionId": client.pipeline_id,
+            "childRunKind": RUN_KIND_PARENT_CHILD,
             "campaignId": campaign_id,
             "parentBuildId": parent_build_id,
             "sourceRef": source_ref,
@@ -998,32 +1063,11 @@ class GcValidationOrchestrator:
                     }
                 }
             },
-            "variables": {
-                RUN_VARIABLE_MODE: {
-                    "value": "correctness-shard",
-                    "isSecret": False,
-                },
-                RUN_VARIABLE_CAMPAIGN_ID: {
-                    "value": self.campaign_id,
-                    "isSecret": False,
-                },
-                RUN_VARIABLE_PARENT_BUILD_ID: {
-                    "value": self.parent_build_id,
-                    "isSecret": False,
-                },
-                RUN_VARIABLE_ROOT: {
-                    "value": root,
-                    "isSecret": False,
-                },
-                RUN_VARIABLE_ATTEMPT: {
-                    "value": str(attempt),
-                    "isSecret": False,
-                },
-            },
             "templateParameters": {
                 "gcValidationMode": "correctness-shard",
                 "gcValidationRoot": root,
                 "gcValidationCampaignId": self.campaign_id,
+                "gcValidationRunKind": RUN_KIND_PARENT_CHILD,
                 "gcValidationParentBuildId": self.parent_build_id,
                 "gcValidationAttempt": str(attempt),
             },
@@ -1032,6 +1076,7 @@ class GcValidationOrchestrator:
     def matching_runs(self, root: str) -> list[dict]:
         return hydrated_matching_runs(
             self.client,
+            run_kind=RUN_KIND_PARENT_CHILD,
             campaign_id=self.campaign_id,
             parent_build_id=self.parent_build_id,
             root=root,
@@ -1052,6 +1097,7 @@ class GcValidationOrchestrator:
         result = terminal_candidate_evidence(
             self.client,
             run_id=run_id,
+            run_kind=RUN_KIND_PARENT_CHILD,
             campaign_id=self.campaign_id,
             parent_build_id=self.parent_build_id,
             root=root,
@@ -1122,6 +1168,7 @@ class GcValidationOrchestrator:
         fresh.update(self.client.get_run(int(run["id"])))
         if not run_matches(
             fresh,
+            run_kind=RUN_KIND_PARENT_CHILD,
             campaign_id=self.campaign_id,
             parent_build_id=self.parent_build_id,
             root=root,
@@ -1601,6 +1648,7 @@ class GcValidationAdmission:
         self,
         client: AzureDevOpsClient,
         output_directory: Path,
+        run_kind: str,
         campaign_id: str,
         parent_build_id: str,
         root: str,
@@ -1616,6 +1664,7 @@ class GcValidationAdmission:
         self.client = client
         self.output_directory = output_directory
         self.receipt_path = output_directory / "gc-validation-admission.json"
+        self.run_kind = run_kind
         self.campaign_id = campaign_id
         self.parent_build_id = parent_build_id
         self.root = root
@@ -1629,8 +1678,9 @@ class GcValidationAdmission:
         self.monotonic = monotonic
         self.terminal_evidence_cache: dict[int, tuple[dict, dict]] = {}
         self.receipt = {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "definitionId": client.pipeline_id,
+            "runKind": run_kind,
             "campaignId": campaign_id,
             "parentBuildId": parent_build_id,
             "root": root,
@@ -1658,6 +1708,7 @@ class GcValidationAdmission:
         while True:
             matches = hydrated_matching_runs(
                 self.client,
+                run_kind=self.run_kind,
                 campaign_id=self.campaign_id,
                 parent_build_id=self.parent_build_id,
                 root=self.root,
@@ -1678,6 +1729,7 @@ class GcValidationAdmission:
                         evidence_result = terminal_candidate_evidence(
                             self.client,
                             run_id=run_id,
+                            run_kind=self.run_kind,
                             campaign_id=self.campaign_id,
                             parent_build_id=self.parent_build_id,
                             root=self.root,
@@ -1810,23 +1862,117 @@ def resolve_campaign_id(explicit_campaign_id: str, build_id: str) -> str:
     return campaign_id
 
 
+def validate_shard_identity(
+    *,
+    run_kind: str,
+    campaign_id: str,
+    parent_build_id: str,
+    root: str | None,
+    attempt: int | None,
+    current_run_id: int | None = None,
+) -> None:
+    if run_kind not in RUN_KINDS:
+        raise OrchestrationError(
+            f"Run kind must be one of {', '.join(RUN_KINDS)}."
+        )
+    if not campaign_id:
+        raise OrchestrationError(
+            "Correctness shard campaign ID must be explicit."
+        )
+    resolve_campaign_id(campaign_id, parent_build_id)
+    if root not in ROOTS:
+        raise OrchestrationError("Correctness shard root is missing or invalid.")
+    if attempt not in (1, 2):
+        raise OrchestrationError("Correctness shard attempt must be 1 or 2.")
+    if run_kind == RUN_KIND_DIRECT:
+        if parent_build_id != RUN_KIND_DIRECT:
+            raise OrchestrationError(
+                "Direct correctness shards must use parent build ID 'direct'."
+            )
+        if attempt != 1:
+            raise OrchestrationError(
+                "Direct correctness shards permit attempt 1 only."
+            )
+        return
+    if not parent_build_id.isdigit() or int(parent_build_id) <= 0:
+        raise OrchestrationError(
+            "Parent-child correctness shards require a positive numeric "
+            "parent build ID."
+        )
+    if current_run_id is not None and int(parent_build_id) >= current_run_id:
+        raise OrchestrationError(
+            "Parent-child correctness shard parent build ID must precede "
+            "the child run ID."
+        )
+
+
+def emit_run_identity_tags(
+    *,
+    run_kind: str,
+    campaign_id: str,
+    parent_build_id: str,
+    root: str,
+    attempt: int,
+) -> None:
+    validate_shard_identity(
+        run_kind=run_kind,
+        campaign_id=campaign_id,
+        parent_build_id=parent_build_id,
+        root=root,
+        attempt=attempt,
+    )
+    for tag in identity_tags(
+        run_kind=run_kind,
+        campaign_id=campaign_id,
+        parent_build_id=parent_build_id,
+        root=root,
+        attempt=attempt,
+    ):
+        print(f"##vso[build.addbuildtag]{tag}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Queue and monitor definition 163 GC validation shard runs."
     )
-    parser.add_argument("--output-directory", type=Path, required=True)
+    parser.add_argument("--output-directory", type=Path)
     parser.add_argument("--campaign-id", default="")
     parser.add_argument("--parent-build-id", default="")
+    parser.add_argument("--run-kind", choices=RUN_KINDS)
     parser.add_argument("--monitor-timeout-minutes", type=int, default=1380)
     parser.add_argument("--poll-seconds", type=int, default=30)
-    parser.add_argument("--adoption-timeout-seconds", type=int, default=120)
+    parser.add_argument("--adoption-timeout-seconds", type=int, default=900)
     parser.add_argument("--admit-child", action="store_true")
+    parser.add_argument("--emit-run-identity-tags", action="store_true")
     parser.add_argument("--root", choices=ROOTS)
     parser.add_argument("--attempt", type=int, choices=(1, 2))
     parser.add_argument("--admission-observation-seconds", type=int, default=60)
     parser.add_argument("--admission-poll-seconds", type=int, default=5)
     args = parser.parse_args()
 
+    if args.emit_run_identity_tags:
+        if args.admit_child:
+            parser.error(
+                "--emit-run-identity-tags and --admit-child are mutually exclusive."
+            )
+        try:
+            emit_run_identity_tags(
+                run_kind=args.run_kind or "",
+                campaign_id=args.campaign_id,
+                parent_build_id=args.parent_build_id,
+                root=args.root or "",
+                attempt=args.attempt or 0,
+            )
+            return 0
+        except Exception as error:
+            print(
+                f"GC validation identity publication failed: {error}",
+                file=sys.stderr,
+            )
+            return 1
+
+    if args.output_directory is None:
+        parser.error("--output-directory is required unless publishing identity tags.")
     output_directory = args.output_directory
     output_directory.mkdir(parents=True, exist_ok=True)
     fallback_receipt = output_directory / (
@@ -1853,11 +1999,6 @@ def main() -> int:
             )
         if not source_ref.startswith("refs/"):
             raise OrchestrationError("BUILD_SOURCEBRANCH must be a full refs/* name.")
-        parent_build_id = args.parent_build_id or build_id
-        if not parent_build_id.isdigit():
-            raise OrchestrationError("Parent build ID must be numeric.")
-        campaign_id = resolve_campaign_id(args.campaign_id, parent_build_id)
-
         client = AzureDevOpsClient(
             collection_uri,
             project_id,
@@ -1865,10 +2006,25 @@ def main() -> int:
             access_token,
         )
         if args.admit_child:
-            if args.root is None or args.attempt is None:
+            if (
+                args.run_kind is None
+                or args.root is None
+                or args.attempt is None
+            ):
                 raise OrchestrationError(
-                    "--root and --attempt are required with --admit-child."
+                    "--run-kind, --root, and --attempt are required with "
+                    "--admit-child."
                 )
+            parent_build_id = args.parent_build_id
+            campaign_id = args.campaign_id
+            validate_shard_identity(
+                run_kind=args.run_kind,
+                campaign_id=campaign_id,
+                parent_build_id=parent_build_id,
+                root=args.root,
+                attempt=args.attempt,
+                current_run_id=int(build_id),
+            )
             if args.admission_observation_seconds < 0:
                 raise OrchestrationError(
                     "Admission observation seconds cannot be negative."
@@ -1880,6 +2036,7 @@ def main() -> int:
             admission = GcValidationAdmission(
                 client,
                 output_directory,
+                args.run_kind,
                 campaign_id,
                 parent_build_id,
                 args.root,
@@ -1892,6 +2049,10 @@ def main() -> int:
             )
             return 0 if admission.run() else 1
 
+        parent_build_id = args.parent_build_id or build_id
+        if not parent_build_id.isdigit():
+            raise OrchestrationError("Parent build ID must be numeric.")
+        campaign_id = resolve_campaign_id(args.campaign_id, parent_build_id)
         orchestrator = GcValidationOrchestrator(
             client,
             output_directory,
@@ -1907,7 +2068,7 @@ def main() -> int:
     except Exception as error:
         if not fallback_receipt.exists():
             receipt = {
-                "schemaVersion": 1,
+                "schemaVersion": 2,
                 "status": "failedBeforeInitialization",
                 "error": str(error),
                 "finishedAt": utc_now(),
