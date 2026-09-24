@@ -31,6 +31,13 @@ REQUIREMENTS_PATH = (
     / "runtimelab"
     / "standard-gc-artifact-requirements-v2.json"
 )
+ASPNET_BINDING_PATH = (
+    REPO_ROOT
+    / "eng"
+    / "pipelines"
+    / "runtimelab"
+    / "external-runtime-aspnet-binding-v1.json"
+)
 GENERATOR_PATH = (
     REPO_ROOT
     / "eng"
@@ -219,6 +226,20 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
             ),
         )
 
+    def test_finalized_aspnet_binding_is_exact_and_strictly_validated(self):
+        binding = json.loads(ASPNET_BINDING_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(
+            manifest_generator.ASPNET_BINDING_CANONICAL_SHA256,
+            manifest_generator._canonical_sha256(binding),
+        )
+        summary = manifest_generator._validate_aspnet_binding(ASPNET_BINDING_PATH)
+        self.assertEqual(76, summary["rowCount"])
+        self.assertEqual(7, summary["profileCount"])
+        self.assertEqual(
+            {"1208": 2, "1209": 26, "1505": 48},
+            summary["definitionRowCounts"],
+        )
+
     def test_official_outputs_cover_every_native_archive(self):
         authored = (
             PIPELINE_PATH.read_text(encoding="utf-8")
@@ -405,15 +426,32 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "authority hash"):
                 manifest_generator.generate(args)
 
-    def test_aspnet_binding_boundary_is_explicitly_fail_closed(self):
+    def test_aspnet_binding_boundary_validates_authority_and_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             binding = root / "aspnet.json"
             binding.write_text('{"rows":[]}', encoding="utf-8")
             args = self._manifest_args(root, root / "output")
             args.aspnet_validation_binding = binding
-            with self.assertRaisesRegex(ValueError, "intentionally unbound"):
+            with self.assertRaisesRegex(ValueError, "authority hash"):
                 manifest_generator.generate(args)
+
+            artifacts = root / "artifacts"
+            output = root / "output"
+            artifacts.mkdir()
+            self._create_complete_artifact_fixture(artifacts)
+            args = self._manifest_args(artifacts, output)
+            args.aspnet_validation_binding = ASPNET_BINDING_PATH
+            manifest, _, errors = manifest_generator.generate(args)
+            self.assertTrue(errors)
+            self.assertEqual(
+                "blocked-missing-transport-payloads",
+                manifest["aspNetValidation"]["status"],
+            )
+            self.assertEqual(
+                manifest_generator.ASPNET_BINDING_CANONICAL_SHA256,
+                manifest["aspNetValidation"]["binding"]["canonicalSha256"],
+            )
 
     def test_dotnet_layout_requires_runtime_package_byte_identity(self):
         with tempfile.TemporaryDirectory() as directory:

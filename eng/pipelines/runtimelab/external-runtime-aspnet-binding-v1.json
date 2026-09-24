@@ -1,0 +1,1565 @@
+{
+  "schemaVersion": 1,
+  "coverageRowsSha256": "e49b7ec1f45de576ae709ca25ef7715012ec25fdd425ef93633dce5b2d29245f",
+  "selectionContractSha256": "da875e8bc7d0d3c8af05955a719d57ec043fe145bca4cbb97c2c63c1c75afadf",
+  "coverageContractSha256": "9e9cbeca3b2850874e72152e70bbe1e8bae2ec9f4d17b4e4b30655932f9db197",
+  "authorityCommit": "be2a3fcb97487ecbaca53aa8bdc88abba6d7df62",
+  "selectors": {
+    "linux-x64-coreclr-release-runtime-pack": {
+      "status": "available",
+      "queueEligible": true,
+      "rid": "linux-x64",
+      "os": "linux",
+      "architecture": "x64",
+      "runtimeFlavor": "coreclr",
+      "gcFlavor": "embedded-coreclr",
+      "configuration": "Release",
+      "packageKind": "shipping runtime-pack nupkg",
+      "package": {
+        "id": "Microsoft.NETCore.App.Runtime.linux-x64",
+        "version": "12.0.0-gcbase.1.26467.4",
+        "feed": "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-experimental/nuget/v3/index.json",
+        "sha512": "16b039c3f504e2c7a8d55567576a52ddae9514854283f91a493fb33ad6ac6ffab668bb6364afdd0093ab9f8eb36f64d475e54c7d60af4e00150ca009329d20c1",
+        "pipelineArtifactName": "build_linux_x64_release_coreclr_Artifacts",
+        "pipelineArtifactPath": "packages/shipping/Microsoft.NETCore.App.Runtime.linux-x64.12.0.0-gcbase.1.26467.4.nupkg"
+      },
+      "source": {
+        "repository": "dotnet/runtimelab",
+        "branch": "feature/gc/baseline",
+        "refName": "refs/heads/feature/gc/baseline",
+        "commit": "2d1d63dae261a338888b91582c9b447e2b7445ad"
+      },
+      "producer": {
+        "definitionId": 895,
+        "buildId": 3079359,
+        "buildNumber": "20260917.4",
+        "manifestSha256": "688805ac6308ca6e0f6c333ccc50308725bd8b13d4eb501a4b116cab123269a7"
+      },
+      "hashes": {
+        "System.Private.CoreLib.dll": "864c85d344f7e9728f07d34cb28141bd59f1c3d14331e03c48d50f46d9b9163e",
+        "libcoreclr.so": "8249c48cd4fb79d876861f83b8eb54e019e99715cd37a0d557d8dfb2a254194b"
+      }
+    },
+    "win-x64-coreclr-release-runtime-pack": {
+      "status": "available",
+      "queueEligible": true,
+      "rid": "win-x64",
+      "os": "windows",
+      "architecture": "x64",
+      "runtimeFlavor": "coreclr",
+      "gcFlavor": "embedded-coreclr",
+      "configuration": "Release",
+      "packageKind": "shipping runtime-pack nupkg",
+      "package": {
+        "id": "Microsoft.NETCore.App.Runtime.win-x64",
+        "version": "12.0.0-gcbase.1.26467.4",
+        "feed": "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-experimental/nuget/v3/index.json",
+        "sha512": "05993d7596f2d45901d6058b9cd2d4ef78f18a0bfff8a461e0356c071ad7960065fba9945a2fb30fb80e84c5703b22bbbf63a2bd2aa60043c1cfb8fa94cdc6c9",
+        "pipelineArtifactName": "build_windows_x64_release_coreclr_Artifacts",
+        "pipelineArtifactPath": "packages/shipping/Microsoft.NETCore.App.Runtime.win-x64.12.0.0-gcbase.1.26467.4.nupkg"
+      },
+      "source": {
+        "repository": "dotnet/runtimelab",
+        "branch": "feature/gc/baseline",
+        "refName": "refs/heads/feature/gc/baseline",
+        "commit": "2d1d63dae261a338888b91582c9b447e2b7445ad"
+      },
+      "producer": {
+        "definitionId": 895,
+        "buildId": 3079359,
+        "buildNumber": "20260917.4",
+        "manifestSha256": "688805ac6308ca6e0f6c333ccc50308725bd8b13d4eb501a4b116cab123269a7"
+      },
+      "hashes": {
+        "System.Private.CoreLib.dll": "acc0276ffff1ae5b60ba2f6d331a20ebecd30fdda4f19244a30cd0fe6208b309",
+        "coreclr.dll": "aa2b44531d96e6303d3c8074095ebdf64165ef825fdc79e326a621580e39b209",
+        "clrgc.dll": "3954007a0f6c0d7fbe9fa8dc837a62ba362caeb6e86959a4bd29fefb4155852a"
+      }
+    },
+    "linux-arm64-coreclr-release-runtime-pack": {
+      "status": "absent",
+      "queueEligible": false,
+      "rid": "linux-arm64",
+      "os": "linux",
+      "architecture": "arm64",
+      "runtimeFlavor": "coreclr",
+      "gcFlavor": "embedded-coreclr",
+      "configuration": "Release",
+      "packageKind": "shipping runtime-pack nupkg",
+      "package": {
+        "id": "Microsoft.NETCore.App.Runtime.linux-arm64",
+        "version": "12.0.0-gcbase.1.26467.4",
+        "feed": "https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-experimental/nuget/v3/index.json",
+        "sha512": null,
+        "pipelineArtifactName": null,
+        "pipelineArtifactPath": null
+      },
+      "source": {
+        "repository": "dotnet/runtimelab",
+        "branch": "feature/gc/baseline",
+        "refName": "refs/heads/feature/gc/baseline",
+        "commit": "2d1d63dae261a338888b91582c9b447e2b7445ad"
+      },
+      "producer": {
+        "definitionId": 895,
+        "buildId": 3079359,
+        "buildNumber": "20260917.4",
+        "manifestSha256": "688805ac6308ca6e0f6c333ccc50308725bd8b13d4eb501a4b116cab123269a7"
+      },
+      "hashes": {
+        "System.Private.CoreLib.dll": null,
+        "libcoreclr.so": null
+      },
+      "blocker": "The exact version is absent from producer build 3079359; artifact name/path/package SHA-512 and runtime file SHA-256 values must come from a future official producer manifest and may not be inferred."
+    }
+  },
+  "rows": [
+    {
+      "rowId": "d1208--p-platform-linux-x64-gold-application-rid-linux-x6-4de02eb9655c--c-build-crank-app-publish-framework-net10-0-mode-s-a5c6920ecfff--s-json-minimal-apis-10-0-84958f71ecf7",
+      "definitionId": 1208,
+      "scalarToken": "r4662fbe31b8275fd",
+      "rowProjectionSha256": "15cd0e5d25d159cad41a9cf8a827af19b7c993faf2a40dbb5a5099ebcae2385d",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "standard",
+        "database": "absent"
+      },
+      "job": "Baselines_gold_lin",
+      "task": "Json Minimal Apis - 10.0",
+      "profiles": [
+        "gold-lin-app",
+        "gold-load-load"
+      ],
+      "profileId": "p04323cf7e6904f6e"
+    },
+    {
+      "rowId": "d1208--p-platform-linux-x64-gold-application-rid-linux-x6-4de02eb9655c--c-build-crank-app-publish-framework-net11-0-mode-s-0a677a0a389f--s-json-minimal-apis-11-0-3a44673fa62d",
+      "definitionId": 1208,
+      "scalarToken": "rd7ec9c687c0f93ff",
+      "rowProjectionSha256": "e83d8e22c6426061b52c66a853809565e8eff8f6fa1e326f3c66402953d146b3",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "standard",
+        "database": "absent"
+      },
+      "job": "Baselines_gold_lin",
+      "task": "Json Minimal Apis - 11.0",
+      "profiles": [
+        "gold-lin-app",
+        "gold-load-load"
+      ],
+      "profileId": "p713767adc36c53d7"
+    },
+    {
+      "rowId": "d1209--p-platform-linux-x64-gold-application-rid-linux-x6-4de02eb9655c--c-build-crank-app-publish-framework-net10-0-mode-s-4f6a8b2e03d1--s-database-fortunes-ef-10-0-0514f0f896d5",
+      "definitionId": 1209,
+      "scalarToken": "rcad187e45a720c32",
+      "rowProjectionSha256": "0866ceda232a945487068502569418f9f205959e63cca34d189df185e0f95342",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "standard",
+        "database": "standard"
+      },
+      "job": "Baselines_Database_gold_lin",
+      "task": "Database Fortunes EF - 10.0",
+      "profiles": [
+        "gold-lin-app",
+        "gold-load-load",
+        "gold-db-db"
+      ],
+      "profileId": "paf5cc1246b26a58c"
+    },
+    {
+      "rowId": "d1209--p-platform-linux-x64-gold-application-rid-linux-x6-4de02eb9655c--c-build-crank-app-publish-framework-net11-0-mode-s-712c9155fbdf--s-database-fortunes-ef-11-0-2c945c51ed28",
+      "definitionId": 1209,
+      "scalarToken": "r4f86c139e1622c6b",
+      "rowProjectionSha256": "fe6474d49b120208520af7c83940f6c8ec7a122b61c5ce57d02281a50ef6f03d",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "standard",
+        "database": "standard"
+      },
+      "job": "Baselines_Database_gold_lin",
+      "task": "Database Fortunes EF - 11.0",
+      "profiles": [
+        "gold-lin-app",
+        "gold-load-load",
+        "gold-db-db"
+      ],
+      "profileId": "pe58525f32ad78114"
+    },
+    {
+      "rowId": "d1209--p-platform-linux-x64-gold-rid-linux-x64-a6b245872662--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-29019b363b94--s-0gb-datas-8c7bf27c61a2",
+      "definitionId": 1209,
+      "scalarToken": "r3feee46846d3ca7e",
+      "rowProjectionSha256": "0efc649405665405acb7b2314c36ce8f3c148c375f74e7092ce997ea179c17d9",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_lin",
+      "task": "0gb DATAs",
+      "profiles": [
+        "gold-lin-app"
+      ],
+      "profileId": "p2121712232ead75d"
+    },
+    {
+      "rowId": "d1209--p-platform-linux-x64-gold-rid-linux-x64-a6b245872662--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-2389f7341b33--s-0gb-server-51c1b0cca2e9",
+      "definitionId": 1209,
+      "scalarToken": "r2983df695aeb621d",
+      "rowProjectionSha256": "24e26a104a1e1e99941dc2262cf93059ffef7fe57f5dd3f7d844b27038c46c5d",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_lin",
+      "task": "0gb Server",
+      "profiles": [
+        "gold-lin-app"
+      ],
+      "profileId": "p2121712232ead75d"
+    },
+    {
+      "rowId": "d1209--p-platform-linux-x64-gold-rid-linux-x64-a6b245872662--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-406de8cc2daf--s-0gb-workstation-cd010689dd8a",
+      "definitionId": 1209,
+      "scalarToken": "r9aebcb2d16053685",
+      "rowProjectionSha256": "f4b33f5a3d15c1fabc222e54ca197d3e029d5a4127d9c5da170ffa82144cf6b0",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_lin",
+      "task": "0gb Workstation",
+      "profiles": [
+        "gold-lin-app"
+      ],
+      "profileId": "p2121712232ead75d"
+    },
+    {
+      "rowId": "d1209--p-platform-linux-x64-gold-rid-linux-x64-a6b245872662--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-140e4a5e38a5--s-20gb-datas-114263750e57",
+      "definitionId": 1209,
+      "scalarToken": "r46c7ed1a9c55e8c9",
+      "rowProjectionSha256": "ef8ef1c2c126f31e246a4d72eac8524d22d9eb888c7f2016d258123d16b03ef0",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_lin",
+      "task": "20gb DATAs",
+      "profiles": [
+        "gold-lin-app"
+      ],
+      "profileId": "p2121712232ead75d"
+    },
+    {
+      "rowId": "d1209--p-platform-linux-x64-gold-rid-linux-x64-a6b245872662--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-ec350ffd2f50--s-20gb-server-cc8f797b1109",
+      "definitionId": 1209,
+      "scalarToken": "r1dd9e25c7bb1e3da",
+      "rowProjectionSha256": "4848519074291e92d21f8731f096af963b7e4764b053ee0850d54016343bc694",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_lin",
+      "task": "20gb Server",
+      "profiles": [
+        "gold-lin-app"
+      ],
+      "profileId": "p2121712232ead75d"
+    },
+    {
+      "rowId": "d1209--p-platform-linux-x64-gold-rid-linux-x64-a6b245872662--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-c31e4c6d5e9b--s-20gb-workstation-6d979eac7ddc",
+      "definitionId": 1209,
+      "scalarToken": "rb4088471fe68de58",
+      "rowProjectionSha256": "fd7cb828c736da0d06404d74249bfbeb06ea5a4eaff2816243e1741d3c4c0c1c",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_lin",
+      "task": "20gb Workstation",
+      "profiles": [
+        "gold-lin-app"
+      ],
+      "profileId": "p2121712232ead75d"
+    },
+    {
+      "rowId": "d1209--p-platform-linux-x64-gold-rid-linux-x64-a6b245872662--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-be74e92c214f--s-2gb-datas-9210414467f0",
+      "definitionId": 1209,
+      "scalarToken": "re1afed9824306c18",
+      "rowProjectionSha256": "6a0bb94617654159d9a6d4e28448f6e24a61532958e11c782f5c44651802dc08",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_lin",
+      "task": "2gb DATAs",
+      "profiles": [
+        "gold-lin-app"
+      ],
+      "profileId": "p2121712232ead75d"
+    },
+    {
+      "rowId": "d1209--p-platform-linux-x64-gold-rid-linux-x64-a6b245872662--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-f419ec47f911--s-2gb-pinning-datas-f4910a6809fb",
+      "definitionId": 1209,
+      "scalarToken": "r0614d2dd9919a968",
+      "rowProjectionSha256": "9a8bf8e71f71b1bb6cc5c6c3781ca4b2663266f89b39a31fd1f9bbd45fb12c3f",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_lin",
+      "task": "2gb Pinning DATAs",
+      "profiles": [
+        "gold-lin-app"
+      ],
+      "profileId": "p2121712232ead75d"
+    },
+    {
+      "rowId": "d1209--p-platform-linux-x64-gold-rid-linux-x64-a6b245872662--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-c39e363faa80--s-2gb-pinning-server-a54eee3bf95a",
+      "definitionId": 1209,
+      "scalarToken": "r3cf52da0f83db6ae",
+      "rowProjectionSha256": "2c1bef778028aa83f3a6c7078194f11d4acbbde1cb0769a1edf3261b92cd22de",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_lin",
+      "task": "2gb Pinning Server",
+      "profiles": [
+        "gold-lin-app"
+      ],
+      "profileId": "p2121712232ead75d"
+    },
+    {
+      "rowId": "d1209--p-platform-linux-x64-gold-rid-linux-x64-a6b245872662--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-26a19f300667--s-2gb-pinning-workstation-7ef442fe8064",
+      "definitionId": 1209,
+      "scalarToken": "r84a621cb40887f26",
+      "rowProjectionSha256": "0fcf31cb852b4cd982ad2f1e0105d3dced8aa3d6e3510137f52d0f6db7439bec",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_lin",
+      "task": "2gb Pinning Workstation",
+      "profiles": [
+        "gold-lin-app"
+      ],
+      "profileId": "p2121712232ead75d"
+    },
+    {
+      "rowId": "d1209--p-platform-linux-x64-gold-rid-linux-x64-a6b245872662--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-42669ad23401--s-2gb-server-eb2e508f1afc",
+      "definitionId": 1209,
+      "scalarToken": "r587d76c5e85e40ea",
+      "rowProjectionSha256": "c4b4966dc664739f9f0777988fb57867443b028c3287b72fc2d222a92be21c85",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_lin",
+      "task": "2gb Server",
+      "profiles": [
+        "gold-lin-app"
+      ],
+      "profileId": "p2121712232ead75d"
+    },
+    {
+      "rowId": "d1209--p-platform-linux-x64-gold-rid-linux-x64-a6b245872662--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-41581162e09e--s-2gb-workstation-56b9e5a17a3a",
+      "definitionId": 1209,
+      "scalarToken": "r7087d121f4bcc843",
+      "rowProjectionSha256": "67d2410932ab6d3049953c87adad12a89475cbde15311714310aa6db5d4bbdc0",
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_lin",
+      "task": "2gb Workstation",
+      "profiles": [
+        "gold-lin-app"
+      ],
+      "profileId": "p2121712232ead75d"
+    },
+    {
+      "rowId": "d1209--p-platform-windows-x64-gold-rid-win-x64-e9dd6037d92e--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-d4a0eca3ca1f--s-0gb-datas-8c7bf27c61a2",
+      "definitionId": 1209,
+      "scalarToken": "rdbde9a3993a5966b",
+      "rowProjectionSha256": "4f1a7ba1bcc336d4c26f7c8dcafe8c5a04e59bbae3be47e1028988188a649581",
+      "selectorId": "win-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_win",
+      "task": "0gb DATAs",
+      "profiles": [
+        "gold-win-app"
+      ],
+      "profileId": "p9aaffcf4d2e558d0"
+    },
+    {
+      "rowId": "d1209--p-platform-windows-x64-gold-rid-win-x64-e9dd6037d92e--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-bd0de63793b2--s-0gb-server-51c1b0cca2e9",
+      "definitionId": 1209,
+      "scalarToken": "rf9910ead89eabf35",
+      "rowProjectionSha256": "33372ea5f8db6d274417335e7228a6733aca8260b6d56a504f552c4190443d07",
+      "selectorId": "win-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_win",
+      "task": "0gb Server",
+      "profiles": [
+        "gold-win-app"
+      ],
+      "profileId": "p9aaffcf4d2e558d0"
+    },
+    {
+      "rowId": "d1209--p-platform-windows-x64-gold-rid-win-x64-e9dd6037d92e--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-05d0a7677d47--s-0gb-workstation-cd010689dd8a",
+      "definitionId": 1209,
+      "scalarToken": "rd7755821b6509e7c",
+      "rowProjectionSha256": "0019c346985aa77d881db7e61f40e2d3cc20e8e260fd2110d3d794ff46cf4aa5",
+      "selectorId": "win-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_win",
+      "task": "0gb Workstation",
+      "profiles": [
+        "gold-win-app"
+      ],
+      "profileId": "p9aaffcf4d2e558d0"
+    },
+    {
+      "rowId": "d1209--p-platform-windows-x64-gold-rid-win-x64-e9dd6037d92e--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-b9e0e1a3d55a--s-20gb-datas-114263750e57",
+      "definitionId": 1209,
+      "scalarToken": "rdca22d1be00638bb",
+      "rowProjectionSha256": "d7434ca01241f6b428f478390a62e62b4f921f2048db447c735afd166cfd722c",
+      "selectorId": "win-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_win",
+      "task": "20gb DATAs",
+      "profiles": [
+        "gold-win-app"
+      ],
+      "profileId": "p9aaffcf4d2e558d0"
+    },
+    {
+      "rowId": "d1209--p-platform-windows-x64-gold-rid-win-x64-e9dd6037d92e--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-76f7e961d305--s-20gb-server-cc8f797b1109",
+      "definitionId": 1209,
+      "scalarToken": "rdb01302413f552af",
+      "rowProjectionSha256": "bb43ad4cb96648131b59363ef4fceb1d32a915f5c1bb5328432488a43953f40c",
+      "selectorId": "win-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_win",
+      "task": "20gb Server",
+      "profiles": [
+        "gold-win-app"
+      ],
+      "profileId": "p9aaffcf4d2e558d0"
+    },
+    {
+      "rowId": "d1209--p-platform-windows-x64-gold-rid-win-x64-e9dd6037d92e--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-2dcc01d44efe--s-20gb-workstation-6d979eac7ddc",
+      "definitionId": 1209,
+      "scalarToken": "rd561c48880382aa8",
+      "rowProjectionSha256": "07c991f4e5b4c0ad2dcaf1d8728ed7d3ccbb0e4f9b73542bd185d2c1d520f1dd",
+      "selectorId": "win-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_win",
+      "task": "20gb Workstation",
+      "profiles": [
+        "gold-win-app"
+      ],
+      "profileId": "p9aaffcf4d2e558d0"
+    },
+    {
+      "rowId": "d1209--p-platform-windows-x64-gold-rid-win-x64-e9dd6037d92e--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-43e025f9d25f--s-2gb-datas-9210414467f0",
+      "definitionId": 1209,
+      "scalarToken": "rc84d026fb5f08677",
+      "rowProjectionSha256": "35b3a85214cc3a7e2bc1d14f57814f42c74ea06f19cd83980128a711ba698a62",
+      "selectorId": "win-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_win",
+      "task": "2gb DATAs",
+      "profiles": [
+        "gold-win-app"
+      ],
+      "profileId": "p9aaffcf4d2e558d0"
+    },
+    {
+      "rowId": "d1209--p-platform-windows-x64-gold-rid-win-x64-e9dd6037d92e--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-b82245970fae--s-2gb-pinning-datas-f4910a6809fb",
+      "definitionId": 1209,
+      "scalarToken": "r8e01adfece10bece",
+      "rowProjectionSha256": "6e3eb480401d18acb4d80c25bed9541044beb0e1f36ba5caf011fbe9d476cfb3",
+      "selectorId": "win-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_win",
+      "task": "2gb Pinning DATAs",
+      "profiles": [
+        "gold-win-app"
+      ],
+      "profileId": "p9aaffcf4d2e558d0"
+    },
+    {
+      "rowId": "d1209--p-platform-windows-x64-gold-rid-win-x64-e9dd6037d92e--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-fc54f7dfa058--s-2gb-pinning-server-a54eee3bf95a",
+      "definitionId": 1209,
+      "scalarToken": "r1bcd3ade5fdaf558",
+      "rowProjectionSha256": "b07bc2b8715a24a74b6f2d7ba88307f61a56d091c6cfe371a96ebfff41a7a0b9",
+      "selectorId": "win-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_win",
+      "task": "2gb Pinning Server",
+      "profiles": [
+        "gold-win-app"
+      ],
+      "profileId": "p9aaffcf4d2e558d0"
+    },
+    {
+      "rowId": "d1209--p-platform-windows-x64-gold-rid-win-x64-e9dd6037d92e--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-79837c522727--s-2gb-pinning-workstation-7ef442fe8064",
+      "definitionId": 1209,
+      "scalarToken": "rb2249a5dcab35fe4",
+      "rowProjectionSha256": "2a6f414b026a022a91b3a893fcafc7b66c3b75ce937925a385380df2a543f92f",
+      "selectorId": "win-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_win",
+      "task": "2gb Pinning Workstation",
+      "profiles": [
+        "gold-win-app"
+      ],
+      "profileId": "p9aaffcf4d2e558d0"
+    },
+    {
+      "rowId": "d1209--p-platform-windows-x64-gold-rid-win-x64-e9dd6037d92e--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-48d3933443a5--s-2gb-server-eb2e508f1afc",
+      "definitionId": 1209,
+      "scalarToken": "rfb91a83acada2057",
+      "rowProjectionSha256": "def196e1a0d30571b1e3022d63f18b16e3bc4ff9b4e62b7ddff0c667112d18cb",
+      "selectorId": "win-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_win",
+      "task": "2gb Server",
+      "profiles": [
+        "gold-win-app"
+      ],
+      "profileId": "p9aaffcf4d2e558d0"
+    },
+    {
+      "rowId": "d1209--p-platform-windows-x64-gold-rid-win-x64-e9dd6037d92e--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-0f27ccfb22bc--s-2gb-workstation-56b9e5a17a3a",
+      "definitionId": 1209,
+      "scalarToken": "reb75f1bb348be593",
+      "rowProjectionSha256": "3c57a5a6823c5543dce42efcb40d372176cf31d579366a3cb70c214a590d3105",
+      "selectorId": "win-x64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_gold_win",
+      "task": "2gb Workstation",
+      "profiles": [
+        "gold-win-app"
+      ],
+      "profileId": "p9aaffcf4d2e558d0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-rid-linux-arm-38949ac4bee0--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-4b625e979392--s-0gb-datas-8c7bf27c61a2",
+      "definitionId": 1505,
+      "scalarToken": "r90e6858c16e98fb5",
+      "rowProjectionSha256": "1f147a388748b71b840f9867a084394899ec4e0166d1aa807218f866dabf8a95",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin",
+      "task": "0gb DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-rid-linux-arm-38949ac4bee0--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-93fa923aae1a--s-0gb-server-51c1b0cca2e9",
+      "definitionId": 1505,
+      "scalarToken": "rc04ceb34cc0593c4",
+      "rowProjectionSha256": "6acc539922c126d1e8e1ccd31bc9cbcad2b1ec1265816843bb4f70b1c5bf030b",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin",
+      "task": "0gb Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-rid-linux-arm-38949ac4bee0--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-07df967d9050--s-0gb-workstation-cd010689dd8a",
+      "definitionId": 1505,
+      "scalarToken": "r377fa6fbd8b590d4",
+      "rowProjectionSha256": "d7737d7011ad59fe3ae21bcb10ef34adb64d8707a31852e4ab8b4e2c4a35b828",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin",
+      "task": "0gb Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-rid-linux-arm-38949ac4bee0--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-2b848321a329--s-20gb-datas-114263750e57",
+      "definitionId": 1505,
+      "scalarToken": "r7489adbc833f5bc5",
+      "rowProjectionSha256": "ae315499681b45b95930202244f11093a0bc701c5da192cda82ea604e5cd6565",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin",
+      "task": "20gb DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-rid-linux-arm-38949ac4bee0--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-022ea5f86d94--s-20gb-server-cc8f797b1109",
+      "definitionId": 1505,
+      "scalarToken": "r459399ef7a75f085",
+      "rowProjectionSha256": "b74df153364241f6a1049f9e94371619a06c89da5162310ea1024c6e6f163138",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin",
+      "task": "20gb Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-rid-linux-arm-38949ac4bee0--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-87de0995393e--s-20gb-workstation-6d979eac7ddc",
+      "definitionId": 1505,
+      "scalarToken": "rd898c6c3ae0b5fe9",
+      "rowProjectionSha256": "29221232a7a2db2df07e8449c46ad543721bc70813fe856326844fb6af0434f1",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin",
+      "task": "20gb Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-28-core-rid-l-80096f1d527a--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-f501d4b6309b--s-0gb-datas-8c7bf27c61a2",
+      "definitionId": 1505,
+      "scalarToken": "r2e16da66fc18bf60",
+      "rowProjectionSha256": "f235e76b18575821efa9c85b20e76b85c5e5900e1d2092f80e4ea9c0f036275d",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_28",
+      "task": "0gb DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-28-core-rid-l-80096f1d527a--c-dotnet-gcheapcount-26-dotnet-gcserver-1-build-cr-ba5c22f3c541--s-0gb-server-51c1b0cca2e9",
+      "definitionId": 1505,
+      "scalarToken": "r3cdde1f231242ad6",
+      "rowProjectionSha256": "31c1daa48f1403b487126a8451bfed2b070f6289bbcd67d1500912a1678603ed",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_28",
+      "task": "0gb Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-28-core-rid-l-80096f1d527a--c-dotnet-gcserver-0-build-crank-publish-cores-28-f-f20e24437fc4--s-0gb-workstation-cd010689dd8a",
+      "definitionId": 1505,
+      "scalarToken": "rd10ce545159e652d",
+      "rowProjectionSha256": "45fc3e5d570550d20007f58ab8eb3bd9856968fc26651fb3500abcde197be50f",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_28",
+      "task": "0gb Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-28-core-rid-l-80096f1d527a--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-a480fde2a71a--s-20gb-datas-114263750e57",
+      "definitionId": 1505,
+      "scalarToken": "rf1410a69d27eed2c",
+      "rowProjectionSha256": "560e103fafe15320cce10ec4e23b241d5602f2c6df29db240cd8b6e809ac77f2",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_28",
+      "task": "20gb DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-28-core-rid-l-80096f1d527a--c-dotnet-gcheapcount-26-dotnet-gcserver-1-build-cr-f02859248710--s-20gb-server-cc8f797b1109",
+      "definitionId": 1505,
+      "scalarToken": "rcafdb899fcf94c39",
+      "rowProjectionSha256": "ee3b75f797e90cb4d0447eadd554e91a5395c97fa0a97aef078aac67eb0b1c12",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_28",
+      "task": "20gb Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-28-core-rid-l-80096f1d527a--c-dotnet-gcserver-0-build-crank-publish-cores-28-f-7a4da1f8b017--s-20gb-workstation-6d979eac7ddc",
+      "definitionId": 1505,
+      "scalarToken": "r35f8e2b93b700677",
+      "rowProjectionSha256": "34f310784acb6420bf61ffb50059d93de77075c0b5736b3f2bd31d4613ac11f8",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_28",
+      "task": "20gb Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-28-core-rid-l-80096f1d527a--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-93c9907f774c--s-2gb-datas-9210414467f0",
+      "definitionId": 1505,
+      "scalarToken": "r31429d970de27fa9",
+      "rowProjectionSha256": "9f036ddcfcf2d9ca2644dac3d2d955bfb60aee8a285f7c9070a2265532258e23",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_28",
+      "task": "2gb DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-28-core-rid-l-80096f1d527a--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-718b3ad7a23a--s-2gb-pinning-datas-f4910a6809fb",
+      "definitionId": 1505,
+      "scalarToken": "rda545c73652f9ab6",
+      "rowProjectionSha256": "6981cc69eda72a29ee579cd60bb7471da9e7e93216cda95d3e3699704ef16d8f",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_28",
+      "task": "2gb Pinning DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-28-core-rid-l-80096f1d527a--c-dotnet-gcheapcount-26-dotnet-gcserver-1-build-cr-d1444bb70ca9--s-2gb-pinning-server-a54eee3bf95a",
+      "definitionId": 1505,
+      "scalarToken": "r90ddd7ee29f1457f",
+      "rowProjectionSha256": "c52043f24f1c9498b982d1ebb7e3b8ba8fda5c8a81da786c1ce4b05bd72e2aa7",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_28",
+      "task": "2gb Pinning Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-28-core-rid-l-80096f1d527a--c-dotnet-gcserver-0-build-crank-publish-cores-28-f-553b188f2701--s-2gb-pinning-workstation-7ef442fe8064",
+      "definitionId": 1505,
+      "scalarToken": "r426bf2f79a13f710",
+      "rowProjectionSha256": "1c25db3e3158f5c3cfdb39b1937bf65fd4cf67bb603c504e805c8a417c6b9afb",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_28",
+      "task": "2gb Pinning Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-28-core-rid-l-80096f1d527a--c-dotnet-gcheapcount-26-dotnet-gcserver-1-build-cr-28b579832078--s-2gb-server-eb2e508f1afc",
+      "definitionId": 1505,
+      "scalarToken": "rb9d4022453d5d7d9",
+      "rowProjectionSha256": "33c2297bd33ab1df90713579270c63c722d17844aeff63aa2eefb7addee2de06",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_28",
+      "task": "2gb Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-28-core-rid-l-80096f1d527a--c-dotnet-gcserver-0-build-crank-publish-cores-28-f-5c47b5eb854a--s-2gb-workstation-56b9e5a17a3a",
+      "definitionId": 1505,
+      "scalarToken": "r53ff83e9255a953c",
+      "rowProjectionSha256": "358e6515b4525b059bdf5393d43d0ce8e21b25b38a8ab62d417cd960d15c052e",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_28",
+      "task": "2gb Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-rid-linux-arm-38949ac4bee0--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-1be8d2cac86d--s-2gb-datas-9210414467f0",
+      "definitionId": 1505,
+      "scalarToken": "r52e866fe3d035f2b",
+      "rowProjectionSha256": "8230036df579ac60b3f27e3f4a71c98a0955151d948d85088e83eab14bb3edfe",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin",
+      "task": "2gb DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-rid-linux-arm-38949ac4bee0--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-17303071a7ed--s-2gb-pinning-datas-f4910a6809fb",
+      "definitionId": 1505,
+      "scalarToken": "rc653baf2ba235341",
+      "rowProjectionSha256": "ce683142308885222639c31e1da7240e734aa8023da97950a72756e2bc799159",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin",
+      "task": "2gb Pinning DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-rid-linux-arm-38949ac4bee0--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-0ed8cd662b0a--s-2gb-pinning-server-a54eee3bf95a",
+      "definitionId": 1505,
+      "scalarToken": "r4e6dfa2853327128",
+      "rowProjectionSha256": "95d5ee286fac871ffedf206055b292019945c71cbe79d5397e0000808baf96b5",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin",
+      "task": "2gb Pinning Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-rid-linux-arm-38949ac4bee0--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-04a13032e0f9--s-2gb-pinning-workstation-7ef442fe8064",
+      "definitionId": 1505,
+      "scalarToken": "r835e893622922601",
+      "rowProjectionSha256": "3f61134a06a1fe0a104cebd2730fd53fe58d41f8af1da7dbafc150bfc4f41869",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin",
+      "task": "2gb Pinning Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-rid-linux-arm-38949ac4bee0--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-42e13d027b03--s-2gb-server-eb2e508f1afc",
+      "definitionId": 1505,
+      "scalarToken": "r1aad3d87914f5c1a",
+      "rowProjectionSha256": "d34e97acb3e8a3bbddfbd18d3615a3f2e350fe8326bcf371ecbc5c31c7afc72f",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin",
+      "task": "2gb Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-ubuntu-22-04-arm64-cobalt-rid-linux-arm-38949ac4bee0--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-062aea4c44b0--s-2gb-workstation-56b9e5a17a3a",
+      "definitionId": 1505,
+      "scalarToken": "r6954f25939a5ef9e",
+      "rowProjectionSha256": "55cb5c62fe4b63fc514478ccb64956264ff299021d2ca3fa881550812758b0a2",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin",
+      "task": "2gb Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-rid-linux-ar-d6ad259f0138--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-ce12f6feda8f--s-0gb-datas-8c7bf27c61a2",
+      "definitionId": 1505,
+      "scalarToken": "r1b4ca9722357dc77",
+      "rowProjectionSha256": "f3290d3b3c1dd99957a865661e1b13e53cf9b44cd720a9b0786d565ac0540ab0",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3",
+      "task": "0gb DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-rid-linux-ar-d6ad259f0138--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-45c8d176ba8f--s-0gb-server-51c1b0cca2e9",
+      "definitionId": 1505,
+      "scalarToken": "r55ad8bf74a460b22",
+      "rowProjectionSha256": "8176f8b063024af86dddea734607e2b313cc33a98ca5f3ca56deea3501b49196",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3",
+      "task": "0gb Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-rid-linux-ar-d6ad259f0138--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-c92ac966f9c1--s-0gb-workstation-cd010689dd8a",
+      "definitionId": 1505,
+      "scalarToken": "rb977e76c62be2bab",
+      "rowProjectionSha256": "6b1057ee79ea01e3410cfca398f98519f6eed59fbde7b3357dd25dd6a183e35c",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3",
+      "task": "0gb Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-rid-linux-ar-d6ad259f0138--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-2f9553615005--s-20gb-datas-114263750e57",
+      "definitionId": 1505,
+      "scalarToken": "rd990af990921077a",
+      "rowProjectionSha256": "eacfdd4b5e9baeb4587df1fff73964ce6b4557e5a0eadeb1069a908265bb7b55",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3",
+      "task": "20gb DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-rid-linux-ar-d6ad259f0138--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-305f4149a648--s-20gb-server-cc8f797b1109",
+      "definitionId": 1505,
+      "scalarToken": "ra749ca437791fcac",
+      "rowProjectionSha256": "d28055994c30fc38edf00b7b792df7ffbe356a30ae96576ee530fcadb85cc44a",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3",
+      "task": "20gb Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-rid-linux-ar-d6ad259f0138--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-497e9f131a78--s-20gb-workstation-6d979eac7ddc",
+      "definitionId": 1505,
+      "scalarToken": "re3a362b2c1bd436f",
+      "rowProjectionSha256": "08e3696b65f5c1a4c8a8a8eac202528e035d477ad2c10b6739453df7cc8b9774",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3",
+      "task": "20gb Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-28-core-rid-ac081cff7d7c--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-e41e411fd284--s-0gb-datas-8c7bf27c61a2",
+      "definitionId": 1505,
+      "scalarToken": "r1b6a7a270fae02b5",
+      "rowProjectionSha256": "7d674a060f98e69d98fb445e71b2f0482f77d95ab69dac5187f4f9bb184ee1c7",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3_28",
+      "task": "0gb DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-28-core-rid-ac081cff7d7c--c-dotnet-gcheapcount-26-dotnet-gcserver-1-build-cr-5c9a22965a1b--s-0gb-server-51c1b0cca2e9",
+      "definitionId": 1505,
+      "scalarToken": "r39079a6fd633046d",
+      "rowProjectionSha256": "7be8382f143ceab17cd8fb8ead783cd3ed81b6decf8fbf3dcbf52b8fbd92f753",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3_28",
+      "task": "0gb Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-28-core-rid-ac081cff7d7c--c-dotnet-gcserver-0-build-crank-publish-cores-28-f-3bf0f22a92fb--s-0gb-workstation-cd010689dd8a",
+      "definitionId": 1505,
+      "scalarToken": "r6efa8dabad142178",
+      "rowProjectionSha256": "f9416259b7fb13d253aa8fd374bebf94f7b21b7c6721dbd88a3b2fbabd827de9",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3_28",
+      "task": "0gb Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-28-core-rid-ac081cff7d7c--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-c1bbda28d0ec--s-20gb-datas-114263750e57",
+      "definitionId": 1505,
+      "scalarToken": "rfe68547729196d5d",
+      "rowProjectionSha256": "d56f672efe32a28abc4c6c89ee9f3c997209c4054420193dd5b516eb13e88da2",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3_28",
+      "task": "20gb DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-28-core-rid-ac081cff7d7c--c-dotnet-gcheapcount-26-dotnet-gcserver-1-build-cr-19c05f5835cb--s-20gb-server-cc8f797b1109",
+      "definitionId": 1505,
+      "scalarToken": "r941fa1e0c6fce22b",
+      "rowProjectionSha256": "f85086355894c018d34fa645258905ca987c1633e61eff5b3d57571104b8514d",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3_28",
+      "task": "20gb Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-28-core-rid-ac081cff7d7c--c-dotnet-gcserver-0-build-crank-publish-cores-28-f-fe6fd5861344--s-20gb-workstation-6d979eac7ddc",
+      "definitionId": 1505,
+      "scalarToken": "re206d0044bfeb27f",
+      "rowProjectionSha256": "26373558d93a8c766d76775dfff954dbc4d81aad86d318f8046c812569618d97",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3_28",
+      "task": "20gb Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-28-core-rid-ac081cff7d7c--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-3bf874620bda--s-2gb-datas-9210414467f0",
+      "definitionId": 1505,
+      "scalarToken": "r8e1d6d2c3ea9cb89",
+      "rowProjectionSha256": "8ca1cc64749be0077af366afbc4b541bcc12fe96277bdbd3cf6796d03f55eac7",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3_28",
+      "task": "2gb DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-28-core-rid-ac081cff7d7c--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-1ca65b625fad--s-2gb-pinning-datas-f4910a6809fb",
+      "definitionId": 1505,
+      "scalarToken": "r5cd2db932864e7fe",
+      "rowProjectionSha256": "a7f6daa17f03afe4f0f9cc339f43236c0b97c27468b09ca2de1a9c4fb9c41845",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3_28",
+      "task": "2gb Pinning DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-28-core-rid-ac081cff7d7c--c-dotnet-gcheapcount-26-dotnet-gcserver-1-build-cr-ea74c1eb7303--s-2gb-pinning-server-a54eee3bf95a",
+      "definitionId": 1505,
+      "scalarToken": "r66246d160595b20f",
+      "rowProjectionSha256": "a8ecb677e5c8f4843537a0130598f89488c134373aaf8eb5cee2ea8e89b58dd2",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3_28",
+      "task": "2gb Pinning Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-28-core-rid-ac081cff7d7c--c-dotnet-gcserver-0-build-crank-publish-cores-28-f-f69414576506--s-2gb-pinning-workstation-7ef442fe8064",
+      "definitionId": 1505,
+      "scalarToken": "r56264aea0243cfbe",
+      "rowProjectionSha256": "b48a7acddee45b20126101a6d4633a9c5321abc48e863f78b66952a9af65c7e1",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3_28",
+      "task": "2gb Pinning Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-28-core-rid-ac081cff7d7c--c-dotnet-gcheapcount-26-dotnet-gcserver-1-build-cr-ac15eeaa6d94--s-2gb-server-eb2e508f1afc",
+      "definitionId": 1505,
+      "scalarToken": "rbfa057f752c1d8ac",
+      "rowProjectionSha256": "906025510a04e27de25cccea840dc297d8bffccaf3c756ca30aa11eed7fc69ed",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3_28",
+      "task": "2gb Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-28-core-rid-ac081cff7d7c--c-dotnet-gcserver-0-build-crank-publish-cores-28-f-6a4fdae5df03--s-2gb-workstation-56b9e5a17a3a",
+      "definitionId": 1505,
+      "scalarToken": "r6b7b034b2418de95",
+      "rowProjectionSha256": "d25bd37c4418a2cf87841e6c4f9de02dd7d60e77b6e76229562cecc4635fc588",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3_28",
+      "task": "2gb Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-28-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-rid-linux-ar-d6ad259f0138--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-906fed62d425--s-2gb-datas-9210414467f0",
+      "definitionId": 1505,
+      "scalarToken": "re6c37641be2ca399",
+      "rowProjectionSha256": "e80a6829af160c290aa5806f90eaf3e0cab761073785c9c0cbf67aecb89b2ab3",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3",
+      "task": "2gb DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-rid-linux-ar-d6ad259f0138--c-dotnet-gcdynamicadaptationmode-1-dotnet-gcserver-bcebc50bdd90--s-2gb-pinning-datas-f4910a6809fb",
+      "definitionId": 1505,
+      "scalarToken": "rcb75b65f08bfe995",
+      "rowProjectionSha256": "697c04a3d1379415b26a217a889c9eba92c11c305cd0cb504fbc1f971bdb783d",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3",
+      "task": "2gb Pinning DATAs",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-rid-linux-ar-d6ad259f0138--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-c0da596756e1--s-2gb-pinning-server-a54eee3bf95a",
+      "definitionId": 1505,
+      "scalarToken": "rbf7a6b3766f408ca",
+      "rowProjectionSha256": "4d296fce3be1824e37ca84c51b1be09beaeb5aef49f7c0254ba332499afd87dc",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3",
+      "task": "2gb Pinning Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-rid-linux-ar-d6ad259f0138--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-2e7fa87fbf3f--s-2gb-pinning-workstation-7ef442fe8064",
+      "definitionId": 1505,
+      "scalarToken": "r7a5b60d45bd0bd32",
+      "rowProjectionSha256": "29c6ee33aa353dea7924b31284fa050f3e38e732cfc2c342fe65f0bc0d866c55",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3",
+      "task": "2gb Pinning Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-rid-linux-ar-d6ad259f0138--c-dotnet-gcheapcount-54-dotnet-gcserver-1-build-cr-e3a8c7a7a117--s-2gb-server-eb2e508f1afc",
+      "definitionId": 1505,
+      "scalarToken": "re1d8def66122f791",
+      "rowProjectionSha256": "ade1b8d309b79e4ebc7ef0d770629352fbf04f12900523d33199e0486053abca",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3",
+      "task": "2gb Server",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    },
+    {
+      "rowId": "d1505--p-platform-azure-linux-3-arm64-cobalt-rid-linux-ar-d6ad259f0138--c-dotnet-gcserver-0-build-crank-publish-cores-56-f-310018e07bf8--s-2gb-workstation-56b9e5a17a3a",
+      "definitionId": 1505,
+      "scalarToken": "rfb7240566b0acdb2",
+      "rowProjectionSha256": "82bbd41848d60127a66c2a47850685c61a0a6077a6b2d5e5a3ab53baf97c493f",
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      },
+      "job": "GC_cobalt_hosted_lin_azl3",
+      "task": "2gb Workstation",
+      "profiles": [
+        "cobalt-hosted-lin-server-azure-linux3-app"
+      ],
+      "profileId": "paee1edb774756aa0"
+    }
+  ],
+  "transportProfiles": {
+    "p04323cf7e6904f6e": {
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "projectPath": "src/BenchmarksApps/TechEmpower/Minimal/Minimal.csproj",
+      "framework": "net10.0",
+      "roles": {
+        "application": "experiment",
+        "load": "standard",
+        "database": "absent"
+      }
+    },
+    "p713767adc36c53d7": {
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "projectPath": "src/BenchmarksApps/TechEmpower/Minimal/Minimal.csproj",
+      "framework": "net11.0",
+      "roles": {
+        "application": "experiment",
+        "load": "standard",
+        "database": "absent"
+      }
+    },
+    "paf5cc1246b26a58c": {
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "projectPath": "src/Benchmarks/Benchmarks.csproj",
+      "framework": "net10.0",
+      "roles": {
+        "application": "experiment",
+        "load": "standard",
+        "database": "standard"
+      }
+    },
+    "pe58525f32ad78114": {
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "projectPath": "src/Benchmarks/Benchmarks.csproj",
+      "framework": "net11.0",
+      "roles": {
+        "application": "experiment",
+        "load": "standard",
+        "database": "standard"
+      }
+    },
+    "p2121712232ead75d": {
+      "selectorId": "linux-x64-coreclr-release-runtime-pack",
+      "projectPath": "src/benchmarks/gc/GCPerfSim/GCPerfSim.csproj",
+      "framework": "net11.0",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      }
+    },
+    "p9aaffcf4d2e558d0": {
+      "selectorId": "win-x64-coreclr-release-runtime-pack",
+      "projectPath": "src/benchmarks/gc/GCPerfSim/GCPerfSim.csproj",
+      "framework": "net11.0",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      }
+    },
+    "paee1edb774756aa0": {
+      "selectorId": "linux-arm64-coreclr-release-runtime-pack",
+      "projectPath": "src/benchmarks/gc/GCPerfSim/GCPerfSim.csproj",
+      "framework": "net11.0",
+      "roles": {
+        "application": "experiment",
+        "load": "absent",
+        "database": "absent"
+      }
+    }
+  },
+  "scalarTokenMapSha256": "c7875c7efc0d48336336dd8027b808c97dfb5726d913d02422cef707fad90efe"
+}

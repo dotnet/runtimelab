@@ -16,6 +16,19 @@ SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 REQUIREMENTS_FILE_SHA256 = (
     "19e0e75e2cd09421696b9167cdeb1b7c48c8a299d083b6adcb596d2042f800da"
 )
+ASPNET_BINDING_REPORTED_FILE_SHA256 = (
+    "8e13df1a77f3797e67d601ad87fa58c3e3ff5f8d925c84284d576161fc08e746"
+)
+ASPNET_BINDING_CANONICAL_SHA256 = (
+    "20e5f054b149bb2f6b69a371322e5063ba4c024f2f8e34f070919998efd7e7f5"
+)
+ASPNET_BINDING_ROW_IDS_SHA256 = (
+    "6c8b97a75234d2e2ba73e1c1898dcf789dbb306352ded1e03647a9468c2d85c6"
+)
+ASPNET_BINDING_TOKEN_MAP_SHA256 = (
+    "c7875c7efc0d48336336dd8027b808c97dfb5726d913d02422cef707fad90efe"
+)
+ASPNET_BINDING_SOURCE_COMMIT = "40545f37bf4d3d5c81d79b8c33ce8381080c8b07"
 
 
 def _canonical_bytes(value: object) -> bytes:
@@ -198,11 +211,72 @@ def _validate_identity(args: argparse.Namespace) -> None:
         uuid.UUID(args.campaign_id)
     except ValueError as error:
         raise ValueError("campaign identity must be a UUID") from error
-    if args.aspnet_validation_binding:
-        raise ValueError(
-            "ASP.NET validation binding is intentionally unbound until its authoritative "
-            "76-row schema is supplied"
-        )
+
+
+def _validate_aspnet_binding(path: Path) -> Dict:
+    binding = json.loads(path.read_text(encoding="utf-8"))
+    if _canonical_sha256(binding) != ASPNET_BINDING_CANONICAL_SHA256:
+        raise ValueError("ASP.NET validation binding authority hash does not match")
+    if binding.get("schemaVersion") != 1:
+        raise ValueError("ASP.NET validation binding schema must be version 1")
+    if binding.get("coverageRowsSha256") != (
+        "e49b7ec1f45de576ae709ca25ef7715012ec25fdd425ef93633dce5b2d29245f"
+    ):
+        raise ValueError("ASP.NET validation binding coverage identity does not match")
+
+    rows = binding.get("rows")
+    if not isinstance(rows, list) or len(rows) != 76:
+        raise ValueError("ASP.NET validation binding must contain exactly 76 rows")
+    row_ids = [row.get("rowId") for row in rows]
+    if len(set(row_ids)) != 76 or _canonical_sha256(sorted(row_ids)) != (
+        ASPNET_BINDING_ROW_IDS_SHA256
+    ):
+        raise ValueError("ASP.NET validation binding row identity does not match")
+    definition_counts = {
+        definition_id: sum(row.get("definitionId") == definition_id for row in rows)
+        for definition_id in (1208, 1209, 1505)
+    }
+    if definition_counts != {1208: 2, 1209: 26, 1505: 48}:
+        raise ValueError("ASP.NET validation binding definition row counts do not match")
+
+    token_map = {row.get("scalarToken"): row.get("rowId") for row in rows}
+    if len(token_map) != 76 or _canonical_sha256(token_map) != (
+        ASPNET_BINDING_TOKEN_MAP_SHA256
+    ):
+        raise ValueError("ASP.NET validation binding scalar token map does not match")
+    for row in rows:
+        row_id = row["rowId"]
+        if row["scalarToken"] != "r" + hashlib.sha256(row_id.encode()).hexdigest()[:16]:
+            raise ValueError(f"ASP.NET validation binding scalar token mismatch: {row_id}")
+        for field in ("rowProjectionSha256", "selectorId", "profileId"):
+            if not row.get(field):
+                raise ValueError(f"ASP.NET validation binding row is missing {field}: {row_id}")
+
+    selectors = binding.get("selectors")
+    if not isinstance(selectors, dict) or set(selectors) != {
+        "linux-x64-coreclr-release-runtime-pack",
+        "win-x64-coreclr-release-runtime-pack",
+        "linux-arm64-coreclr-release-runtime-pack",
+    }:
+        raise ValueError("ASP.NET validation binding selector identities do not match")
+    profiles = binding.get("transportProfiles")
+    if not isinstance(profiles, dict) or len(profiles) != 7:
+        raise ValueError("ASP.NET validation binding must contain exactly seven profiles")
+    if {row["profileId"] for row in rows} != set(profiles):
+        raise ValueError("ASP.NET validation binding profile row mapping does not match")
+    for profile_id, scope in profiles.items():
+        if profile_id != "p" + _canonical_sha256(scope)[:16]:
+            raise ValueError(f"ASP.NET validation binding profile identity mismatch: {profile_id}")
+    return {
+        "reportedFileSha256": ASPNET_BINDING_REPORTED_FILE_SHA256,
+        "canonicalSha256": ASPNET_BINDING_CANONICAL_SHA256,
+        "sourceCommit": ASPNET_BINDING_SOURCE_COMMIT,
+        "rowCount": 76,
+        "rowIdsSha256": ASPNET_BINDING_ROW_IDS_SHA256,
+        "scalarTokenMapSha256": ASPNET_BINDING_TOKEN_MAP_SHA256,
+        "profileCount": 7,
+        "definitionRowCounts": {str(key): value for key, value in definition_counts.items()},
+    }
 
 
 def _validate_requirements(requirements: Dict) -> None:
@@ -353,6 +427,25 @@ def generate(args: argparse.Namespace) -> Tuple[Dict, Dict, List[str]]:
     _validate_requirements(requirements)
 
     evidence, errors = _collect_artifacts(requirements, args.artifact_root)
+    aspnet_validation = {
+        "status": "blocked-unbound",
+        "reason": "authoritative ExternalRuntimeAspNetValidation binding not supplied",
+    }
+    if args.aspnet_validation_binding:
+        binding = _validate_aspnet_binding(args.aspnet_validation_binding)
+        aspnet_validation = {
+            "status": "blocked-missing-transport-payloads",
+            "binding": binding,
+            "reason": (
+                "the finalized binding freezes rows and profile scopes but does not contain "
+                "the seven candidateRuntimeArgumentsBase/candidateFilesBase payloads required "
+                "to generate consumer-verifiable profile and row proof sidecars"
+            ),
+        }
+        errors.append(
+            "ExternalRuntimeAspNetValidation: finalized binding is valid, but authoritative "
+            "transport payload bases are not supplied"
+        )
     identity = {
         "sourceRepository": args.source_repository,
         "sourceBranch": args.source_branch,
@@ -374,10 +467,7 @@ def generate(args: argparse.Namespace) -> Tuple[Dict, Dict, List[str]]:
         "identity": identity,
         "artifacts": {key: evidence[key] for key in sorted(evidence)},
         "rows": _row_statuses(requirements, evidence, args.source_commit),
-        "aspNetValidation": {
-            "status": "blocked-unbound",
-            "reason": "authoritative ExternalRuntimeAspNetValidation binding not supplied",
-        },
+        "aspNetValidation": aspnet_validation,
         "errors": errors,
     }
     manifest_sha256 = _write_json(args.output_root / "standard-gc-cohort-manifest.json", manifest)
