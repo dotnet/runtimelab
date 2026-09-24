@@ -75,7 +75,10 @@ def _normalize_default_graph(value):
                 key = next(iter(item))
                 if (
                     key.startswith("${{ if ")
-                    and "standardGcArtifactProducer" in key
+                    and (
+                        "standardGcArtifactProducer" in key
+                        or "standardGcPerformanceCoordination" in key
+                    )
                 ):
                     continue
             normalized = _normalize_default_graph(item)
@@ -85,7 +88,10 @@ def _normalize_default_graph(value):
     if isinstance(value, dict):
         result = {}
         for key, item in value.items():
-            if key.startswith("${{ if ") and "standardGcArtifactProducer" in key:
+            if key.startswith("${{ if ") and (
+                "standardGcArtifactProducer" in key
+                or "standardGcPerformanceCoordination" in key
+            ):
                 continue
             normalized = _normalize_default_graph(item)
             if key == "templateContext" and normalized == {"outputs": []}:
@@ -156,6 +162,8 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
             "standardGcCampaignId",
             "standardGcCohortId",
             "externalRuntimeAspNetValidationBinding",
+            "standardGcPerformanceCoordination",
+            "standardGcApprovedIdentityPosture",
         }
         current["parameters"] = [
             item for item in current["parameters"] if item["name"] not in producer_parameters

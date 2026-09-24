@@ -22,6 +22,18 @@ parameters:
   displayName: Authoritative ASP.NET validation binding path
   type: string
   default: ''
+- name: standardGcPerformanceCoordination
+  displayName: Standard-GC performance coordination mode
+  type: string
+  default: none
+  values:
+  - none
+  - materialize
+  - queue
+- name: standardGcApprovedIdentityPosture
+  displayName: Approved standard-GC identity posture path
+  type: string
+  default: ''
 
 trigger: none
 pr: none
@@ -47,6 +59,10 @@ extends:
       - standardGcArtifactProducerRequiresCampaignId: error
     - ${{ if and(eq(parameters.standardGcArtifactProducer, 'full'), eq(parameters.standardGcCohortId, '')) }}:
       - standardGcArtifactProducerRequiresCohortId: error
+    - ${{ if and(ne(parameters.standardGcPerformanceCoordination, 'none'), ne(parameters.standardGcArtifactProducer, 'full')) }}:
+      - standardGcPerformanceCoordinationRequiresProducer: error
+    - ${{ if and(eq(parameters.standardGcPerformanceCoordination, 'queue'), eq(parameters.standardGcApprovedIdentityPosture, '')) }}:
+      - standardGcPerformanceCoordinationRequiresApprovedIdentityPosture: error
 
     - stage: Build
       jobs:
@@ -154,6 +170,17 @@ extends:
             campaignId: ${{ parameters.standardGcCampaignId }}
             cohortId: ${{ parameters.standardGcCohortId }}
             aspNetValidationBinding: ${{ parameters.externalRuntimeAspNetValidationBinding }}
+
+    - ${{ if ne(parameters.standardGcPerformanceCoordination, 'none') }}:
+      - stage: StandardGcPerformanceCoordination
+        displayName: Standard-GC performance coordination
+        dependsOn: StandardGcArtifactManifest
+        condition: succeeded()
+        jobs:
+        - template: /eng/pipelines/runtimelab/standard-gc-performance-coordination-job.yml
+          parameters:
+            queueConsumers: ${{ eq(parameters.standardGcPerformanceCoordination, 'queue') }}
+            identityPosture: ${{ parameters.standardGcApprovedIdentityPosture }}
 
     - ${{ if parameters.publishToExperimentalFeed }}:
       - stage: RegisterAssets

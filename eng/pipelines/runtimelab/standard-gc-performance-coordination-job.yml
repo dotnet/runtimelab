@@ -1,0 +1,53 @@
+parameters:
+  queueConsumers: false
+  identityPosture: ''
+
+jobs:
+- template: /eng/common/templates-official/job/job.yml
+  parameters:
+    name: CoordinateStandardGcPerformance
+    displayName: Coordinate standard-GC performance consumers
+    pool:
+      name: $(DncEngInternalBuildPool)
+      os: linux
+      demands: ImageOverride -equals build.azurelinux.3.amd64
+    templateContext:
+      outputs:
+      - output: pipelineArtifact
+        displayName: Publish standard-GC coordination receipt
+        targetPath: $(Build.StagingDirectory)/standard-gc-performance-coordination
+        artifactName: StandardGCPerformanceCoordination
+        condition: always()
+    steps:
+    - checkout: self
+      clean: true
+      fetchDepth: 1
+      fetchTags: false
+
+    - task: DownloadPipelineArtifact@2
+      displayName: Download producer manifest
+      inputs:
+        buildType: current
+        artifactName: StandardGCArtifactManifest
+        targetPath: $(Pipeline.Workspace)/standard-gc-manifest
+
+    - bash: |
+        set -euo pipefail
+        args=(
+          --contract '$(Build.SourcesDirectory)/eng/pipelines/runtimelab/standard-gc-performance-consumers-v1.json'
+          --requirements '$(Build.SourcesDirectory)/eng/pipelines/runtimelab/standard-gc-artifact-requirements-v2.json'
+          --manifest '$(Pipeline.Workspace)/standard-gc-manifest/standard-gc-cohort-manifest.json'
+          --definition306-validation '$(Pipeline.Workspace)/standard-gc-manifest/ExternalRuntime306Validation/external-runtime-306-validation.json'
+          --output-directory '$(Build.StagingDirectory)/standard-gc-performance-coordination'
+          --controller-build-id '$(Build.BuildId)'
+        )
+        if [ '${{ parameters.queueConsumers }}' = 'True' ]; then
+          args+=(--queue)
+        fi
+        if [ -n '${{ parameters.identityPosture }}' ]; then
+          args+=(--identity-posture '${{ parameters.identityPosture }}')
+        fi
+        python3 '$(Build.SourcesDirectory)/eng/pipelines/runtimelab/orchestrate_standard_gc_performance.py' "${args[@]}"
+      displayName: Materialize and coordinate exact consumer requests
+      env:
+        SYSTEM_ACCESSTOKEN: $(System.AccessToken)

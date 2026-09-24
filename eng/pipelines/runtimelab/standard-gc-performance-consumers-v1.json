@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "contractId": "dnceng.internal.definition-895.standard-gc-performance-consumers",
+  "coverageRowsSha256": "e49b7ec1f45de576ae709ca25ef7715012ec25fdd425ef93633dce5b2d29245f",
+  "producerContract": {
+    "fileSha256": "d65c179aacba063fea6a7bf1d62c1ff7499320f979bb161dad09c25da0442aba",
+    "requirementsFileSha256": "19e0e75e2cd09421696b9167cdeb1b7c48c8a299d083b6adcb596d2042f800da"
+  },
+  "permissionDecision": {
+    "fileSha256": "051444d94f32d2200d3b766a82478683704b7ed484541ce380f31889171d1359",
+    "ownerDecisionCanonicalSha256": "d519d6feb0645747584c32812dc45306ceb237542c91e13f594674b425a8eaf7",
+    "approvedChoices": [
+      "accept-current-broad",
+      "accept-shared-project",
+      "dedicated-identity"
+    ],
+    "approvedPostureFileSha256": []
+  },
+  "consumers": {
+    "702": {
+      "contractFileSha256": "05ddec6583bb76930e70004efae61f1331444fcf6be6f84960abdaa422d39fd8",
+      "rowCount": 19,
+      "repositories": {
+        "self": {
+          "refName": "refs/heads/davidnguyen-tech-runtime-gc-perf-consumer",
+          "version": "997b04a143bf9ca7355d26671171d630f380b9db"
+        },
+        "performance": {
+          "refName": "refs/heads/davidnguyen-tech-consume-runtimelab-gc-experiment",
+          "version": "3dac235590d2ad8a2e4eede35ff0ac7900788836"
+        }
+      },
+      "existingParameters": {
+        "onlySanityCheck": false
+      }
+    },
+    "1012": {
+      "contractFileSha256": "05ddec6583bb76930e70004efae61f1331444fcf6be6f84960abdaa422d39fd8",
+      "rowCount": 2,
+      "repositories": {
+        "self": {
+          "refName": "refs/heads/davidnguyen-tech-runtime-gc-perf-consumer",
+          "version": "997b04a143bf9ca7355d26671171d630f380b9db"
+        },
+        "performance": {
+          "refName": "refs/heads/davidnguyen-tech-consume-runtimelab-gc-experiment",
+          "version": "3dac235590d2ad8a2e4eede35ff0ac7900788836"
+        }
+      },
+      "existingParameters": {
+        "runPrivateJobs": true,
+        "runScheduledJobs": true,
+        "onlySanityCheck": false
+      }
+    },
+    "306": {
+      "contractFileSha256": "2452ffb440d10fbccf6c7db75eb1e0c1b23e70930b3356a5ae400464045cc07b",
+      "rowCount": 15,
+      "repositories": {
+        "self": {
+          "refName": "refs/heads/davidnguyen-tech-consume-runtimelab-gc-experiment",
+          "version": "047fe368e5c0052cc30c21d87cd87b99151e82e7"
+        }
+      },
+      "existingParameters": {
+        "runPublicJobs": true,
+        "runPrivateJobs": true,
+        "runScheduledPrivateJobs": true,
+        "onlySanityCheck": false
+      }
+    }
+  },
+  "aspNetBoundary": {
+    "contractFileSha256": "da875e8bc7d0d3c8af05955a719d57ec043fe145bca4cbb97c2c63c1c75afadf",
+    "definitionIds": [
+      1208,
+      1209,
+      1505
+    ],
+    "requiredProfileCount": 7,
+    "requiredRowCount": 76,
+    "approvedBindingFileSha256": [],
+    "status": "blocked-awaiting-final-scalar-binding"
+  }
+}
