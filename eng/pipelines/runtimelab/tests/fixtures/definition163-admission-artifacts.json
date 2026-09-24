@@ -1,0 +1,22 @@
+{
+  "count": 1,
+  "value": [
+    {
+      "id": 48590470,
+      "name": "GCValidationAdmission_1000",
+      "source": "6f1019c2-8724-53e2-23d1-81bb32b7e0cf",
+      "resource": {
+        "type": "PipelineArtifact",
+        "data": "3142B69C7A3164220DC39C0BD119498CEB64205607BF685A41CFEF5744BAD12601",
+        "properties": {
+          "RootId": "7BB42E417CB3203DAD6E8E850C2A6FA216B94111D00E92D6508F831D1CA024E302",
+          "artifactsize": "1024",
+          "HashType": "DEDUPNODEORCHUNK",
+          "DomainId": "0"
+        },
+        "url": "https://dev.azure.com/dnceng-public/cbb18261-c48f-4abb-8651-8cdcb5474649/_apis/build/builds/1000/artifacts?artifactName=GCValidationAdmission_1000&api-version=7.1",
+        "downloadUrl": "https://artprodcus3.artifacts.visualstudio.com/example/content?format=zip"
+      }
+    }
+  ]
+}

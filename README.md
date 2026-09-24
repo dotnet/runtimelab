@@ -47,12 +47,23 @@ The same campaign, parent, root, mode, and attempt identity is persisted in
 non-secret run variables because the Azure Runs List/Get responses do not
 return submitted template parameters. The controller hydrates List entries
 with individual Get responses before matching the exact source ref and commit.
+Those caller-supplied variables are discovery hints, not trusted child
+evidence.
 When concurrent parents create duplicate children, the lowest matching run ID
 is canonical, even after it reaches a terminal state. Every shard first runs
 `GCValidationAdmission`, observes exact matching children for 60 seconds, and
 permits only the active canonical run to enter the unchanged authoritative root
 stage. A duplicate fails before any standard build or Helix job and publishes
 `GCValidationAdmission_<child build ID>/gc-validation-admission.json`.
+The parent accepts a terminal child only after its native Azure timeline shows
+the `GCValidationAdmission` stage and job succeeded and the authoritative
+`Build` stage is present, terminal, non-skipped, and succeeded. It also lists
+and downloads the exact admission artifact, then validates the receipt's
+campaign, parent, root, attempt, source ref and commit, current and canonical
+run IDs, admitted status, and canonical SHA-256. A baseline run, skipped Build,
+missing artifact, or mismatched receipt is recorded as a rejected candidate and
+does not prevent the parent from queueing or adopting a genuine shard. The
+overall pipeline result alone is never accepted as proof of shard success.
 
 The parent uses only `System.AccessToken` and checks its effective
 `QueueBuilds` permission on definition 163 before submitting a child. It
@@ -62,10 +73,12 @@ terminal results and failure classifications, plus
 `gc-validation-children.json`. The parent succeeds only when that receipt
 contains all five terminal child receipts and every final child result
 succeeded. The receipt also distinguishes submitted queue requests from
-confirmed new runs and records transient monitoring API errors.
+confirmed new runs, records rejected candidates and their native evidence, and
+records transient monitoring API errors.
 An attempt 2 run is accepted only when the canonical attempt 1 is freshly
-confirmed terminal and unsuccessful and its timeline contains only proven
-transient agent-loss evidence. A successful POST whose response cannot be read
-or decoded is treated as ambiguous and adopted by identity without repeating
-the POST. A returned ID is trusted only when it is a positive JSON integer; all
-other response shapes use the same adoption-only path.
+confirmed by the same native evidence as terminal and unsuccessful and its
+timeline contains only proven transient agent-loss evidence. A successful POST
+whose response cannot be read or decoded is treated as ambiguous and adopted
+by identity without repeating the POST. A returned ID is trusted only when it
+is a positive JSON integer; all other response shapes use the same
+adoption-only path.

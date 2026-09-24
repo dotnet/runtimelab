@@ -4,9 +4,10 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 import http.client
+import io
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import ssl
 import sys
@@ -15,6 +16,7 @@ from typing import Callable
 import urllib.error
 import urllib.parse
 import urllib.request
+import zipfile
 
 
 ROOTS = (
@@ -38,6 +40,13 @@ RUN_IDENTITY_VARIABLE_NAMES = (
     RUN_VARIABLE_ROOT,
     RUN_VARIABLE_ATTEMPT,
 )
+ADMISSION_STAGE_IDENTIFIER = "gcvalidationadmission"
+ADMISSION_JOB_IDENTIFIER = "admitcanonicalgcvalidationshard"
+BUILD_STAGE_IDENTIFIER = "build"
+ADMISSION_ARTIFACT_PREFIX = "GCValidationAdmission_"
+ADMISSION_RECEIPT_NAME = "gc-validation-admission.json"
+MAX_ADMISSION_ARTIFACT_BYTES = 1024 * 1024
+MAX_ADMISSION_RECEIPT_BYTES = 256 * 1024
 TRANSIENT_INFRASTRUCTURE_PATTERNS = (
     re.compile(r"\bwe stopped hearing from agent\b", re.IGNORECASE),
     re.compile(r"\bagent\b.*\blost communication\b", re.IGNORECASE),
@@ -63,6 +72,10 @@ class PermissionPreflightError(OrchestrationError):
 
 
 class AmbiguousQueueResponse(OrchestrationError):
+    pass
+
+
+class EvidenceValidationError(OrchestrationError):
     pass
 
 
@@ -174,11 +187,263 @@ def run_matches(
 
 def collect_timeline_errors(timeline: dict) -> list[str]:
     messages = []
-    for record in timeline.get("records", []):
+    for record in timeline_records(timeline):
         for issue in record.get("issues", []):
             if issue.get("type", "").lower() == "error" and issue.get("message"):
                 messages.append(issue["message"])
     return messages
+
+
+def timeline_record_snapshot(record: dict) -> dict:
+    return {
+        key: record.get(key)
+        for key in (
+            "id",
+            "parentId",
+            "type",
+            "name",
+            "identifier",
+            "state",
+            "result",
+            "order",
+        )
+    }
+
+
+def timeline_records(timeline: dict) -> list[dict]:
+    records = timeline.get("records")
+    return records if isinstance(records, list) else []
+
+
+def timeline_record_identifier(record: dict) -> str:
+    identifier = str(record.get("identifier", ""))
+    return identifier.rsplit(".", 1)[-1].casefold()
+
+
+def find_timeline_record(
+    timeline: dict, record_type: str, identifier: str
+) -> tuple[dict | None, str | None]:
+    matches = [
+        record
+        for record in timeline_records(timeline)
+        if str(record.get("type", "")).casefold() == record_type.casefold()
+        and timeline_record_identifier(record) == identifier.casefold()
+    ]
+    if len(matches) != 1:
+        return (
+            None,
+            f"expected one {record_type} timeline record for {identifier}, "
+            f"found {len(matches)}",
+        )
+    return matches[0], None
+
+
+def active_admission_evidence(timeline: dict) -> dict:
+    errors = []
+    stage, stage_error = find_timeline_record(
+        timeline, "Stage", ADMISSION_STAGE_IDENTIFIER
+    )
+    job, job_error = find_timeline_record(
+        timeline, "Job", ADMISSION_JOB_IDENTIFIER
+    )
+    stage_or_job_records = [
+        record
+        for record in timeline_records(timeline)
+        if str(record.get("type", "")).casefold() in ("stage", "job")
+    ]
+    pending = (
+        stage is None
+        and job is None
+        and not stage_or_job_records
+    ) or (stage is not None and job is None)
+    if not pending:
+        errors.extend(error for error in (stage_error, job_error) if error)
+    for label, record in (("admission stage", stage), ("admission job", job)):
+        if record is not None and record.get("result") not in (None, "succeeded"):
+            errors.append(
+                f"{label} has disqualifying result {record.get('result')!r}"
+            )
+            pending = False
+    valid = not pending and not errors
+    return {
+        "valid": valid,
+        "pending": pending,
+        "terminal": False,
+        "status": (
+            "admissionObserved"
+            if valid
+            else "pending"
+            if pending
+            else "invalid"
+        ),
+        "errors": errors,
+        "admissionStage": timeline_record_snapshot(stage) if stage else None,
+        "admissionJob": timeline_record_snapshot(job) if job else None,
+    }
+
+
+def terminal_timeline_evidence(timeline: dict) -> dict:
+    errors = []
+    stage, stage_error = find_timeline_record(
+        timeline, "Stage", ADMISSION_STAGE_IDENTIFIER
+    )
+    job, job_error = find_timeline_record(
+        timeline, "Job", ADMISSION_JOB_IDENTIFIER
+    )
+    build, build_error = find_timeline_record(
+        timeline, "Stage", BUILD_STAGE_IDENTIFIER
+    )
+    stage_or_job_records = [
+        record
+        for record in timeline_records(timeline)
+        if str(record.get("type", "")).casefold() in ("stage", "job")
+    ]
+    pending = (
+        not stage_or_job_records
+        or (stage is not None and job is None)
+        or (stage is not None and job is not None and build is None)
+    )
+    if not pending:
+        errors.extend(
+            error for error in (stage_error, job_error, build_error) if error
+        )
+    for label, record in (("admission stage", stage), ("admission job", job)):
+        if record is None:
+            continue
+        if record.get("result") not in (None, "succeeded"):
+            errors.append(
+                f"{label} has disqualifying terminal state "
+                f"({record.get('state')!r}, {record.get('result')!r})"
+            )
+            pending = False
+        elif (
+            record.get("state") != "completed"
+            or record.get("result") != "succeeded"
+        ):
+            pending = True
+    build_result = build.get("result") if build else None
+    if build is not None and build_result == "skipped":
+        errors.append(
+            "Build stage is skipped "
+            f"({build.get('state')!r}, {build_result!r})"
+        )
+        pending = False
+    elif build is not None and (
+        build.get("state") != "completed" or not build_result
+    ):
+        pending = True
+    if errors:
+        pending = False
+    valid = not pending and not errors
+    return {
+        "valid": valid,
+        "pending": pending,
+        "terminal": True,
+        "status": "valid" if valid else "pending" if pending else "invalid",
+        "errors": errors,
+        "buildResult": build_result,
+        "succeeded": valid and build_result == "succeeded",
+        "admissionStage": timeline_record_snapshot(stage) if stage else None,
+        "admissionJob": timeline_record_snapshot(job) if job else None,
+        "buildStage": timeline_record_snapshot(build) if build else None,
+    }
+
+
+def validate_admission_receipt(
+    receipt: object,
+    *,
+    definition_id: int,
+    campaign_id: str,
+    parent_build_id: str,
+    root: str,
+    attempt: int,
+    source_ref: str,
+    source_version: str,
+    run_id: int,
+) -> dict:
+    if not isinstance(receipt, dict):
+        return {
+            "valid": False,
+            "errors": ["admission receipt is not a JSON object"],
+        }
+    errors = []
+    expected = {
+        "schemaVersion": 1,
+        "definitionId": definition_id,
+        "campaignId": campaign_id,
+        "parentBuildId": parent_build_id,
+        "root": root,
+        "attempt": attempt,
+        "sourceRef": source_ref,
+        "sourceVersion": source_version,
+        "currentRunId": run_id,
+        "canonicalRunId": run_id,
+        "status": "admitted",
+        "admitted": True,
+    }
+    for name, value in expected.items():
+        actual = receipt.get(name)
+        if type(actual) is not type(value) or actual != value:
+            errors.append(
+                f"{name} is {actual!r}, expected {value!r}"
+            )
+    for name in ("matchingRunIds", "activeRunIds"):
+        values = receipt.get(name)
+        if not isinstance(values, list) or run_id not in values:
+            errors.append(f"{name} does not contain current run {run_id}")
+    claimed_hash = receipt.get("canonicalSha256")
+    canonical = dict(receipt)
+    canonical.pop("canonicalSha256", None)
+    actual_hash = sha256_bytes(canonical_json_bytes(canonical))
+    if claimed_hash != actual_hash:
+        errors.append(
+            f"canonicalSha256 is {claimed_hash!r}, expected {actual_hash}"
+        )
+    return {
+        "valid": not errors,
+        "errors": errors,
+        "claimedCanonicalSha256": claimed_hash,
+        "actualCanonicalSha256": actual_hash,
+    }
+
+
+def extract_admission_receipt(content: bytes) -> tuple[dict, dict]:
+    if len(content) > MAX_ADMISSION_ARTIFACT_BYTES:
+        raise EvidenceValidationError(
+            "Admission artifact exceeds the maximum allowed size."
+        )
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            files = [entry for entry in archive.infolist() if not entry.is_dir()]
+            if (
+                len(files) != 1
+                or PurePosixPath(files[0].filename).name
+                != ADMISSION_RECEIPT_NAME
+            ):
+                raise EvidenceValidationError(
+                    "Admission artifact must contain exactly "
+                    f"{ADMISSION_RECEIPT_NAME}."
+                )
+            if files[0].file_size > MAX_ADMISSION_RECEIPT_BYTES:
+                raise EvidenceValidationError(
+                    "Admission receipt exceeds the maximum allowed size."
+                )
+            receipt_bytes = archive.read(files[0])
+    except (OSError, zipfile.BadZipFile) as error:
+        raise EvidenceValidationError(
+            f"Admission artifact is not a valid ZIP file: {error}"
+        ) from error
+    try:
+        receipt = json.loads(receipt_bytes)
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise EvidenceValidationError(
+            f"Admission receipt is not valid UTF-8 JSON: {error}"
+        ) from error
+    return receipt, {
+        "artifactSha256": sha256_bytes(content),
+        "receiptSha256": sha256_bytes(receipt_bytes),
+        "receiptPath": files[0].filename,
+    }
 
 
 def classify_transient_infrastructure_failure(timeline: dict) -> dict:
@@ -258,13 +523,15 @@ class AzureDevOpsClient:
         self.pipeline_id = pipeline_id
         self.access_token = access_token
 
-    def request_json(
+    def request_content(
         self,
         method: str,
         url: str,
         body: dict | None = None,
         timeout_seconds: int = 60,
-    ) -> dict:
+        max_bytes: int | None = None,
+        accept: str = "application/json",
+    ) -> bytes:
         data = canonical_json_bytes(body) if body is not None else None
         authorization_header = " ".join(("Bearer", self.access_token))
         request = urllib.request.Request(
@@ -273,14 +540,22 @@ class AzureDevOpsClient:
             method=method,
             headers={
                 "Authorization": authorization_header,
-                "Accept": "application/json",
+                "Accept": accept,
                 "Content-Type": "application/json",
             },
         )
         try:
             with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-                content = response.read()
-                return json.loads(content) if content else {}
+                content = (
+                    response.read(max_bytes + 1)
+                    if max_bytes is not None
+                    else response.read()
+                )
+                if max_bytes is not None and len(content) > max_bytes:
+                    raise EvidenceValidationError(
+                        f"Response from {url} exceeds {max_bytes} bytes."
+                    )
+                return content
         except urllib.error.HTTPError as error:
             try:
                 detail = error.read().decode("utf-8", errors="replace")
@@ -315,14 +590,46 @@ class AzureDevOpsClient:
             http.client.HTTPException,
             ssl.SSLError,
             OSError,
-            json.JSONDecodeError,
-            UnicodeDecodeError,
         ) as error:
             if method == "POST":
                 raise AmbiguousQueueResponse(
                     f"Queue response was ambiguous: {error}"
                 ) from error
             raise ApiRequestError(method, url, None, str(error)) from error
+
+    def request_json(
+        self,
+        method: str,
+        url: str,
+        body: dict | None = None,
+        timeout_seconds: int = 60,
+    ) -> dict:
+        content = self.request_content(method, url, body, timeout_seconds)
+        if not content:
+            return {}
+        try:
+            return json.loads(content)
+        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+            if method == "POST":
+                raise AmbiguousQueueResponse(
+                    f"Queue response was ambiguous: {error}"
+                ) from error
+            raise ApiRequestError(method, url, None, str(error)) from error
+
+    def request_bytes(
+        self,
+        url: str,
+        *,
+        max_bytes: int,
+        timeout_seconds: int = 60,
+    ) -> bytes:
+        return self.request_content(
+            "GET",
+            url,
+            timeout_seconds=timeout_seconds,
+            max_bytes=max_bytes,
+            accept="application/zip",
+        )
 
     @property
     def runs_url(self) -> str:
@@ -398,6 +705,157 @@ class AzureDevOpsClient:
             f"{run_id}/timeline?api-version=7.1"
         )
         return self.request_json("GET", url)
+
+    def list_artifacts(self, run_id: int) -> list[dict]:
+        url = (
+            f"{self.collection_uri}{self.project_id}/_apis/build/builds/"
+            f"{run_id}/artifacts?api-version=7.1"
+        )
+        response = self.request_json("GET", url)
+        return response.get("value", [])
+
+    def download_artifact(self, artifact: dict) -> bytes:
+        resource = artifact.get("resource") or {}
+        if resource.get("type") != "PipelineArtifact":
+            raise EvidenceValidationError(
+                f"Artifact {artifact.get('name')!r} is not a PipelineArtifact."
+            )
+        artifact_size = (resource.get("properties") or {}).get("artifactsize")
+        try:
+            if (
+                artifact_size is not None
+                and int(artifact_size) > MAX_ADMISSION_ARTIFACT_BYTES
+            ):
+                raise EvidenceValidationError(
+                    f"Artifact {artifact.get('name')!r} exceeds the "
+                    "maximum allowed size."
+                )
+        except (TypeError, ValueError) as error:
+            raise EvidenceValidationError(
+                f"Artifact {artifact.get('name')!r} has invalid size "
+                f"{artifact_size!r}."
+            ) from error
+        download_url = resource.get("downloadUrl")
+        if not isinstance(download_url, str) or not download_url.startswith(
+            "https://"
+        ):
+            raise EvidenceValidationError(
+                f"Artifact {artifact.get('name')!r} has no HTTPS download URL."
+            )
+        return self.request_bytes(
+            download_url,
+            max_bytes=MAX_ADMISSION_ARTIFACT_BYTES,
+        )
+
+
+def active_candidate_evidence(
+    client: AzureDevOpsClient,
+    run_id: int,
+) -> dict:
+    timeline = client.get_timeline(run_id)
+    evidence = active_admission_evidence(timeline)
+    evidence["runId"] = run_id
+    return evidence
+
+
+def terminal_candidate_evidence(
+    client: AzureDevOpsClient,
+    *,
+    run_id: int,
+    campaign_id: str,
+    parent_build_id: str,
+    root: str,
+    attempt: int,
+    source_ref: str,
+    source_version: str,
+) -> tuple[dict, dict]:
+    timeline = client.get_timeline(run_id)
+    timeline_evidence = terminal_timeline_evidence(timeline)
+    artifact_evidence = {
+        "valid": False,
+        "pending": False,
+        "errors": ["timeline evidence is invalid"],
+    }
+    if timeline_evidence.get("pending") is True:
+        artifact_evidence = {
+            "valid": False,
+            "pending": True,
+            "errors": ["timeline evidence is not complete"],
+        }
+    elif timeline_evidence["valid"]:
+        try:
+            expected_name = f"{ADMISSION_ARTIFACT_PREFIX}{run_id}"
+            artifacts = client.list_artifacts(run_id)
+            if not artifacts:
+                artifact_evidence = {
+                    "valid": False,
+                    "pending": True,
+                    "errors": [
+                        f"{expected_name} artifact is not visible yet."
+                    ],
+                }
+            else:
+                matches = [
+                    artifact
+                    for artifact in artifacts
+                    if artifact.get("name") == expected_name
+                ]
+                if len(matches) != 1:
+                    raise EvidenceValidationError(
+                        f"Expected one {expected_name} artifact, found "
+                        f"{len(matches)}."
+                    )
+                artifact = matches[0]
+                receipt, content_evidence = extract_admission_receipt(
+                    client.download_artifact(artifact)
+                )
+                receipt_evidence = validate_admission_receipt(
+                    receipt,
+                    definition_id=client.pipeline_id,
+                    campaign_id=campaign_id,
+                    parent_build_id=parent_build_id,
+                    root=root,
+                    attempt=attempt,
+                    source_ref=source_ref,
+                    source_version=source_version,
+                    run_id=run_id,
+                )
+                resource = artifact.get("resource") or {}
+                artifact_evidence = {
+                    **receipt_evidence,
+                    **content_evidence,
+                    "artifactId": artifact.get("id"),
+                    "artifactName": artifact.get("name"),
+                    "artifactSource": artifact.get("source"),
+                    "artifactType": resource.get("type"),
+                    "artifactData": resource.get("data"),
+                    "artifactSize": (resource.get("properties") or {}).get(
+                        "artifactsize"
+                    ),
+                }
+        except EvidenceValidationError as error:
+            artifact_evidence = {
+                "valid": False,
+                "pending": False,
+                "errors": [str(error)],
+            }
+    valid = timeline_evidence["valid"] and artifact_evidence["valid"]
+    pending = (
+        timeline_evidence.get("pending") is True
+        or artifact_evidence.get("pending") is True
+    )
+    evidence = {
+        "valid": valid,
+        "pending": pending,
+        "terminal": True,
+        "status": "valid" if valid else "pending" if pending else "invalid",
+        "runId": run_id,
+        "buildResult": timeline_evidence.get("buildResult"),
+        "succeeded": valid and timeline_evidence["succeeded"],
+        "timeline": timeline_evidence,
+        "admissionArtifact": artifact_evidence,
+    }
+    return evidence, timeline
 
 
 def hydrated_matching_runs(
@@ -485,6 +943,7 @@ class GcValidationOrchestrator:
         self.adoption_timeout_seconds = adoption_timeout_seconds
         self.sleep = sleep
         self.monotonic = monotonic
+        self.terminal_evidence_cache: dict[int, tuple[dict, dict]] = {}
         self.receipt = {
             "schemaVersion": 1,
             "definitionId": client.pipeline_id,
@@ -562,6 +1021,70 @@ class GcValidationOrchestrator:
             source_version=self.source_version,
         )
 
+    def get_terminal_evidence(
+        self,
+        root: str,
+        run: dict,
+        *,
+        force_refresh: bool = False,
+    ) -> tuple[dict, dict]:
+        run_id = int(run["id"])
+        if not force_refresh and run_id in self.terminal_evidence_cache:
+            return self.terminal_evidence_cache[run_id]
+        result = terminal_candidate_evidence(
+            self.client,
+            run_id=run_id,
+            campaign_id=self.campaign_id,
+            parent_build_id=self.parent_build_id,
+            root=root,
+            attempt=run_attempt(run),
+            source_ref=self.source_ref,
+            source_version=self.source_version,
+        )
+        if result[0]["valid"]:
+            self.terminal_evidence_cache[run_id] = result
+        else:
+            self.terminal_evidence_cache.pop(run_id, None)
+        return result
+
+    def candidate_evidence(self, root: str, run: dict) -> dict:
+        if run.get("state") == "completed":
+            evidence, _ = self.get_terminal_evidence(root, run)
+            return evidence
+        return active_candidate_evidence(self.client, int(run["id"]))
+
+    def record_rejected_candidate(
+        self,
+        root: str,
+        run: dict,
+        evidence: dict,
+    ) -> None:
+        child = self.receipt["children"].setdefault(
+            root,
+            {
+                "root": root,
+                "attempts": [],
+                "terminalReceiptPresent": False,
+                "succeeded": False,
+            },
+        )
+        rejected = {
+            "runId": int(run["id"]),
+            "attempt": run_attempt(run),
+            "state": run.get("state"),
+            "result": run.get("result"),
+            "nativeEvidence": evidence,
+        }
+        child["rejectedCandidates"] = [
+            candidate
+            for candidate in child.get("rejectedCandidates", [])
+            if candidate["runId"] != rejected["runId"]
+        ]
+        child["rejectedCandidates"].append(rejected)
+        child["rejectedCandidates"].sort(
+            key=lambda candidate: candidate["runId"]
+        )
+
     def validate_attempt_one_for_retry(self, root: str, run: dict) -> dict:
         fresh = dict(run)
         fresh.update(self.client.get_run(int(run["id"])))
@@ -581,24 +1104,40 @@ class GcValidationOrchestrator:
             raise OrchestrationError(
                 f"{root} attempt 2 is invalid because attempt 1 is not terminal."
             )
-        if not fresh.get("result") or fresh.get("result") == "succeeded":
+        evidence, timeline = self.get_terminal_evidence(
+            root, fresh, force_refresh=True
+        )
+        if not evidence["valid"]:
+            raise OrchestrationError(
+                f"{root} attempt 1 lacks valid native child evidence."
+            )
+        if evidence["buildResult"] == "succeeded":
             raise OrchestrationError(
                 f"{root} attempt 2 is invalid because attempt 1 did not "
                 "finish unsuccessfully."
             )
         classification = classify_transient_infrastructure_failure(
-            self.client.get_timeline(int(fresh["id"]))
+            timeline
         )
         if not classification["isTransientInfrastructureFailure"]:
             raise OrchestrationError(
                 f"{root} attempt 2 is invalid because attempt 1 is not a "
                 "proven transient infrastructure failure."
             )
+        fresh["_nativeEvidence"] = evidence
         fresh["_failureClassification"] = classification
         return fresh
 
     def validated_matching_runs(self, root: str) -> list[dict]:
-        matches = self.matching_runs(root)
+        matches = []
+        for run in self.matching_runs(root):
+            evidence = self.candidate_evidence(root, run)
+            run = dict(run)
+            run["_nativeEvidence"] = evidence
+            if evidence["valid"] or evidence.get("pending") is True:
+                matches.append(run)
+            else:
+                self.record_rejected_candidate(root, run, evidence)
         by_attempt = {}
         for run in matches:
             by_attempt.setdefault(run_attempt(run), []).append(run)
@@ -670,6 +1209,8 @@ class GcValidationOrchestrator:
             attempt_receipt["returnedRunId"] = returned_run_id
         if run.get("_duplicateRunIds"):
             attempt_receipt["duplicateRunIds"] = run["_duplicateRunIds"]
+        if run.get("_nativeEvidence") is not None:
+            attempt_receipt["nativeEvidence"] = run["_nativeEvidence"]
         if run.get("_failureClassification") is not None:
             attempt_receipt["failureClassification"] = run[
                 "_failureClassification"
@@ -835,13 +1376,44 @@ class GcValidationOrchestrator:
         attempt_receipt["state"] = run.get("state", "unknown")
         attempt_receipt["result"] = run.get("result")
         attempt_receipt["terminal"] = run.get("state") == "completed"
-        if attempt_receipt["terminal"] and run.get("result") != "succeeded":
+        if attempt_receipt["terminal"]:
+            evidence, timeline = self.get_terminal_evidence(
+                root, run, force_refresh=True
+            )
+            attempt_receipt["nativeEvidence"] = evidence
+        else:
+            attempt_receipt["nativeEvidence"] = active_candidate_evidence(
+                self.client, int(run["id"])
+            )
+        if (
+            attempt_receipt["terminal"]
+            and attempt_receipt["nativeEvidence"]["valid"]
+            and not attempt_receipt["nativeEvidence"]["succeeded"]
+        ):
             classification = classify_transient_infrastructure_failure(
-                self.client.get_timeline(attempt_receipt["runId"])
+                timeline
             )
             attempt_receipt["failureClassification"] = classification
         self.write_receipt()
         return run
+
+    def refresh_terminal_attempt_evidence(
+        self,
+        root: str,
+        run: dict,
+        attempt_receipt: dict,
+    ) -> tuple[dict, dict]:
+        evidence, timeline = self.get_terminal_evidence(
+            root, run, force_refresh=True
+        )
+        attempt_receipt["nativeEvidence"] = evidence
+        attempt_receipt.pop("failureClassification", None)
+        if evidence["valid"] and not evidence["succeeded"]:
+            attempt_receipt["failureClassification"] = (
+                classify_transient_infrastructure_failure(timeline)
+            )
+        self.write_receipt()
+        return evidence, timeline
 
     def current_attempt_receipt(self, root: str) -> dict:
         child = self.receipt["children"][root]
@@ -855,10 +1427,12 @@ class GcValidationOrchestrator:
         child["terminalReceiptPresent"] = bool(attempt_receipt["terminal"])
         child["finalRunId"] = attempt_receipt["runId"]
         child["finalAttempt"] = attempt_receipt["attempt"]
-        child["finalResult"] = attempt_receipt["result"]
+        evidence = attempt_receipt.get("nativeEvidence") or {}
+        child["finalResult"] = evidence.get("buildResult")
         child["succeeded"] = (
             attempt_receipt["terminal"]
-            and attempt_receipt["result"] == "succeeded"
+            and evidence.get("valid") is True
+            and evidence.get("succeeded") is True
         )
         self.write_receipt()
 
@@ -925,12 +1499,35 @@ class GcValidationOrchestrator:
                     unfinished.append(root)
                     continue
                 if run.get("state") != "completed":
+                    evidence = attempt_receipt["nativeEvidence"]
+                    if (
+                        not evidence["valid"]
+                        and evidence.get("pending") is not True
+                    ):
+                        self.record_rejected_candidate(root, run, evidence)
+                        attempt_receipt["rejected"] = True
+                        self.write_receipt()
+                        self.ensure_run(root, attempt_receipt["attempt"])
+                    unfinished.append(root)
+                    continue
+
+                evidence, _ = self.refresh_terminal_attempt_evidence(
+                    root, run, attempt_receipt
+                )
+                if evidence.get("pending") is True:
+                    unfinished.append(root)
+                    continue
+                if not evidence["valid"]:
+                    self.record_rejected_candidate(root, run, evidence)
+                    attempt_receipt["rejected"] = True
+                    self.write_receipt()
+                    self.ensure_run(root, attempt_receipt["attempt"])
                     unfinished.append(root)
                     continue
 
                 classification = attempt_receipt.get("failureClassification", {})
                 if (
-                    run.get("result") != "succeeded"
+                    not evidence["succeeded"]
                     and attempt_receipt["attempt"] == 1
                     and classification.get("isTransientInfrastructureFailure")
                 ):
@@ -998,6 +1595,7 @@ class GcValidationAdmission:
         self.poll_seconds = poll_seconds
         self.sleep = sleep
         self.monotonic = monotonic
+        self.terminal_evidence_cache: dict[int, tuple[dict, dict]] = {}
         self.receipt = {
             "schemaVersion": 1,
             "definitionId": client.pipeline_id,
@@ -1035,24 +1633,70 @@ class GcValidationAdmission:
                 source_version=self.source_version,
                 attempt=self.attempt,
             )
+            eligible = []
+            rejected = []
+            evidence_by_run_id = {}
+            for run in matches:
+                run_id = int(run["id"])
+                if run.get("state") == "completed":
+                    cached = self.terminal_evidence_cache.get(run_id)
+                    if cached is None or not cached[0]["valid"]:
+                        evidence_result = terminal_candidate_evidence(
+                            self.client,
+                            run_id=run_id,
+                            campaign_id=self.campaign_id,
+                            parent_build_id=self.parent_build_id,
+                            root=self.root,
+                            attempt=self.attempt,
+                            source_ref=self.source_ref,
+                            source_version=self.source_version,
+                        )
+                        if evidence_result[0]["valid"]:
+                            self.terminal_evidence_cache[run_id] = (
+                                evidence_result
+                            )
+                        evidence = evidence_result[0]
+                    else:
+                        evidence = cached[0]
+                else:
+                    evidence = active_candidate_evidence(
+                        self.client, run_id
+                    )
+                evidence_by_run_id[run_id] = evidence
+                if evidence["valid"] or evidence.get("pending") is True:
+                    eligible.append(run)
+                else:
+                    rejected.append(
+                        {
+                            "runId": run_id,
+                            "state": run.get("state"),
+                            "result": run.get("result"),
+                            "nativeEvidence": evidence,
+                        }
+                    )
             active = [
-                run for run in matches if run.get("state") != "completed"
+                run for run in eligible if run.get("state") != "completed"
             ]
             matching_ids = sorted(int(run["id"]) for run in matches)
+            eligible_ids = sorted(int(run["id"]) for run in eligible)
             active_ids = sorted(int(run["id"]) for run in active)
             self.receipt["matchingRunIds"] = matching_ids
+            self.receipt["eligibleRunIds"] = eligible_ids
             self.receipt["activeRunIds"] = active_ids
-            if self.current_run_id in matching_ids:
-                canonical_run_id = matching_ids[0]
+            self.receipt["rejectedCandidates"] = rejected
+            if self.current_run_id in eligible_ids:
+                canonical_run_id = eligible_ids[0]
                 self.receipt["canonicalRunId"] = canonical_run_id
                 if self.current_run_id != canonical_run_id:
                     self.receipt["status"] = "rejectedDuplicate"
                     self.receipt["finishedAt"] = utc_now()
                     self.write_receipt()
                     return False
+                deadline_reached = self.monotonic() >= deadline
                 if (
                     self.current_run_id in active_ids
-                    and self.monotonic() >= deadline
+                    and evidence_by_run_id[self.current_run_id]["valid"]
+                    and deadline_reached
                 ):
                     self.receipt["status"] = "admitted"
                     self.receipt["admitted"] = True
@@ -1060,11 +1704,15 @@ class GcValidationAdmission:
                     self.write_receipt()
                     return True
                 if (
-                    self.current_run_id not in active_ids
-                    and self.monotonic() >= deadline
+                    deadline_reached
+                    and (
+                        self.current_run_id not in active_ids
+                        or not evidence_by_run_id[self.current_run_id]["valid"]
+                    )
                 ):
                     raise OrchestrationError(
-                        f"Current run {self.current_run_id} is not active."
+                        f"Current run {self.current_run_id} did not provide "
+                        "valid active admission evidence."
                     )
             elif self.monotonic() >= deadline:
                 raise OrchestrationError(

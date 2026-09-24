@@ -2,6 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 import copy
 import hashlib
 import http.client
+import io
 import json
 from pathlib import Path
 import ssl
@@ -10,6 +11,7 @@ import tempfile
 import threading
 import unittest
 import urllib.error
+import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -56,6 +58,8 @@ class FakeClient:
         self.queue_calls = []
         self.get_calls = []
         self.timeline_calls = []
+        self.artifact_list_calls = []
+        self.artifact_download_calls = []
         self.next_id = 1000
 
     def preflight_queue_permission(self) -> dict:
@@ -92,6 +96,8 @@ class FakeClient:
             "resources": copy.deepcopy(request["resources"]),
             "templateParameters": {},
             "variables": copy.deepcopy(request["variables"]),
+            "nativeScenario": "genuine",
+            "buildResult": None,
         }
         self.next_id += 1
         self.runs.append(run)
@@ -108,6 +114,8 @@ class FakeClient:
         if self.complete_on_get:
             run["state"] = "completed"
             run["result"] = self.results.get((root, attempt), "succeeded")
+            if run["buildResult"] is None:
+                run["buildResult"] = run["result"]
         return copy.deepcopy(run)
 
     def get_timeline(self, run_id: int) -> dict:
@@ -115,16 +123,126 @@ class FakeClient:
         run = next(run for run in self.runs if run["id"] == run_id)
         root = run["variables"]["GC_VALIDATION_ROOT"]["value"]
         attempt = int(run["variables"]["GC_VALIDATION_ATTEMPT"]["value"])
-        return {
-            "records": [
-                {
-                    "issues": [
-                        {"type": "error", "message": message}
-                        for message in self.timeline_messages.get((root, attempt), [])
-                    ]
-                }
+        timeline = json.loads(
+            (FIXTURES / "definition163-child-timeline.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        scenario = run["nativeScenario"]
+        if scenario == "timeline-pending" and run["state"] != "completed":
+            return {"records": []}
+        if scenario == "timeline-null" and run["state"] != "completed":
+            return {"records": None}
+        if scenario == "baseline-forgery":
+            timeline["records"] = [
+                record
+                for record in timeline["records"]
+                if record["identifier"] == "build"
             ]
+        admission_state = (
+            "completed" if run["state"] == "completed" else "inProgress"
+        )
+        for record in timeline["records"]:
+            if record["identifier"] in (
+                "gcvalidationadmission",
+                "gcvalidationadmission.AdmitCanonicalGcValidationShard",
+            ):
+                record["state"] = admission_state
+                record["result"] = (
+                    "succeeded" if admission_state == "completed" else None
+                )
+            if record["identifier"] == "build":
+                record["state"] = (
+                    "completed" if run["state"] == "completed" else "pending"
+                )
+                if scenario == "skipped-build":
+                    record["result"] = "skipped"
+                elif run["state"] == "completed":
+                    record["result"] = run["buildResult"] or run["result"]
+                else:
+                    record["result"] = None
+                if (
+                    scenario == "terminal-timeline-pending"
+                    and run["state"] == "completed"
+                ):
+                    record["state"] = "inProgress"
+                    record["result"] = None
+                record["issues"] = [
+                    {"type": "error", "message": message}
+                    for message in self.timeline_messages.get((root, attempt), [])
+                ]
+        return timeline
+
+    def list_artifacts(self, run_id: int) -> list[dict]:
+        self.artifact_list_calls.append(run_id)
+        run = next(run for run in self.runs if run["id"] == run_id)
+        if run["nativeScenario"] in (
+            "baseline-forgery",
+            "artifact-pending",
+        ):
+            return []
+        response = json.loads(
+            (FIXTURES / "definition163-admission-artifacts.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        artifact = response["value"][0]
+        artifact["name"] = f"GCValidationAdmission_{run_id}"
+        if run["nativeScenario"] == "artifact-wrong-name":
+            artifact["name"] = "GCValidationAdmission_9999"
+        artifact["resource"]["url"] = (
+            f"https://example.test/builds/{run_id}/artifacts"
+        )
+        artifact["resource"]["downloadUrl"] = (
+            f"https://example.test/artifacts/{run_id}.zip"
+        )
+        return response["value"]
+
+    def download_artifact(self, artifact: dict) -> bytes:
+        self.artifact_download_calls.append(artifact["name"])
+        run_id = int(artifact["name"].rsplit("_", 1)[1])
+        run = next(run for run in self.runs if run["id"] == run_id)
+        receipt = {
+            "schemaVersion": 1,
+            "definitionId": self.pipeline_id,
+            "campaignId": run_variable_value(
+                run, "GC_VALIDATION_CAMPAIGN_ID"
+            ),
+            "parentBuildId": run_variable_value(
+                run, "GC_VALIDATION_PARENT_BUILD_ID"
+            ),
+            "root": run_variable_value(run, "GC_VALIDATION_ROOT"),
+            "attempt": int(run_variable_value(run, "GC_VALIDATION_ATTEMPT")),
+            "sourceRef": run["resources"]["repositories"]["self"]["refName"],
+            "sourceVersion": run["resources"]["repositories"]["self"]["version"],
+            "currentRunId": run_id,
+            "matchingRunIds": [run_id],
+            "activeRunIds": [run_id],
+            "canonicalRunId": run_id,
+            "status": "admitted",
+            "admitted": True,
+            "startedAt": "2026-09-24T19:44:00Z",
+            "updatedAt": "2026-09-24T19:45:00Z",
+            "finishedAt": "2026-09-24T19:45:00Z",
         }
+        if run["nativeScenario"] == "artifact-mismatch":
+            receipt["root"] = ROOTS[1]
+        receipt["canonicalSha256"] = hashlib.sha256(
+            canonical_json_bytes(receipt)
+        ).hexdigest()
+        if run["nativeScenario"] == "artifact-hash-mismatch":
+            receipt["canonicalSha256"] = "0" * 64
+        stream = io.BytesIO()
+        with zipfile.ZipFile(stream, "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr(
+                "gc-validation-admission.json",
+                canonical_json_bytes(receipt) + b"\n",
+            )
+        return stream.getvalue()
+
+
+def run_variable_value(run: dict, name: str) -> str:
+    return str(run["variables"][name]["value"])
 
 
 def create_orchestrator(
@@ -142,6 +260,26 @@ def create_orchestrator(
         adoption_timeout_seconds=1,
         sleep=lambda _: None,
     )
+
+
+def seed_run(
+    client: FakeClient,
+    orchestrator: GcValidationOrchestrator,
+    *,
+    scenario: str,
+    run_id: int,
+    state: str = "completed",
+    result: str | None = "succeeded",
+    build_result: str | None = None,
+) -> dict:
+    client.queue_run(orchestrator.build_request(ROOTS[0], 1))
+    run = client.runs[-1]
+    run["id"] = run_id
+    run["state"] = state
+    run["result"] = result
+    run["buildResult"] = build_result or result
+    run["nativeScenario"] = scenario
+    return run
 
 
 class GcValidationOrchestrationTests(unittest.TestCase):
@@ -275,6 +413,50 @@ class GcValidationOrchestrationTests(unittest.TestCase):
             namespace, connection, permission, "project/163"
         )
         self.assertFalse(result["allowed"])
+
+    def test_api_client_lists_and_downloads_exact_pipeline_artifact(self) -> None:
+        client = AzureDevOpsClient(
+            "https://dev.azure.com/example",
+            "project",
+            163,
+            "runtime-token",
+        )
+        response = json.loads(
+            (FIXTURES / "definition163-admission-artifacts.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        requested = {}
+
+        def request_json(method, url, body=None, timeout_seconds=60):
+            requested["list"] = (method, url)
+            return copy.deepcopy(response)
+
+        def request_bytes(url, *, max_bytes, timeout_seconds=60):
+            requested["download"] = (url, max_bytes)
+            return b"artifact"
+
+        client.request_json = request_json
+        client.request_bytes = request_bytes
+        artifacts = client.list_artifacts(1000)
+        content = client.download_artifact(artifacts[0])
+
+        self.assertEqual(
+            (
+                "GET",
+                "https://dev.azure.com/example/project/_apis/build/builds/"
+                "1000/artifacts?api-version=7.1",
+            ),
+            requested["list"],
+        )
+        self.assertEqual(
+            (
+                response["value"][0]["resource"]["downloadUrl"],
+                1024 * 1024,
+            ),
+            requested["download"],
+        )
+        self.assertEqual(b"artifact", content)
 
     def test_permission_preflight_fails_before_queue_when_permission_is_missing(
         self,
@@ -516,6 +698,296 @@ class GcValidationOrchestrationTests(unittest.TestCase):
         self.assertEqual(457, attempt["runId"])
         self.assertEqual([458], attempt["duplicateRunIds"])
 
+    def test_baseline_forgery_is_rejected_and_genuine_shard_is_queued(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            client = FakeClient()
+            orchestrator = create_orchestrator(client, Path(directory))
+            seed_run(
+                client,
+                orchestrator,
+                scenario="baseline-forgery",
+                run_id=1000,
+            )
+            client.queue_calls.clear()
+
+            attempt = orchestrator.ensure_run(ROOTS[0], 1)
+            receipt = json.loads(
+                orchestrator.receipt_path.read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(1, len(client.queue_calls))
+        self.assertEqual(1001, attempt["runId"])
+        self.assertTrue(attempt["nativeEvidence"]["valid"])
+        self.assertEqual(
+            [1000],
+            [
+                candidate["runId"]
+                for candidate in receipt["children"][ROOTS[0]][
+                    "rejectedCandidates"
+                ]
+            ],
+        )
+
+    def test_active_baseline_forgery_is_rejected_without_duplicate_trust(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            client = FakeClient(complete_on_get=False)
+            orchestrator = create_orchestrator(client, Path(directory))
+            seed_run(
+                client,
+                orchestrator,
+                scenario="baseline-forgery",
+                run_id=1000,
+                state="inProgress",
+                result=None,
+            )
+            client.queue_calls.clear()
+
+            attempt = orchestrator.ensure_run(ROOTS[0], 1)
+
+        self.assertEqual(1, len(client.queue_calls))
+        self.assertEqual(1001, attempt["runId"])
+        self.assertEqual("admissionObserved", attempt["nativeEvidence"]["status"])
+
+    def test_empty_active_timeline_is_provisionally_adopted(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            client = FakeClient(complete_on_get=False)
+            orchestrator = create_orchestrator(client, Path(directory))
+            seed_run(
+                client,
+                orchestrator,
+                scenario="timeline-pending",
+                run_id=1000,
+                state="inProgress",
+                result=None,
+            )
+            client.queue_calls.clear()
+
+            attempt = orchestrator.ensure_run(ROOTS[0], 1)
+
+        self.assertEqual([], client.queue_calls)
+        self.assertEqual(1000, attempt["runId"])
+        self.assertEqual("pending", attempt["nativeEvidence"]["status"])
+
+    def test_null_active_timeline_is_provisionally_adopted(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            client = FakeClient(complete_on_get=False)
+            orchestrator = create_orchestrator(client, Path(directory))
+            seed_run(
+                client,
+                orchestrator,
+                scenario="timeline-null",
+                run_id=1000,
+                state="inProgress",
+                result=None,
+            )
+            client.queue_calls.clear()
+
+            attempt = orchestrator.ensure_run(ROOTS[0], 1)
+
+        self.assertEqual([], client.queue_calls)
+        self.assertEqual(1000, attempt["runId"])
+        self.assertEqual("pending", attempt["nativeEvidence"]["status"])
+
+    def test_adopted_pending_forgery_is_rejected_when_graph_appears(
+        self,
+    ) -> None:
+        client = FakeClient(complete_on_get=False)
+        with tempfile.TemporaryDirectory() as directory:
+            orchestrator = create_orchestrator(client, Path(directory))
+            seed_run(
+                client,
+                orchestrator,
+                scenario="timeline-pending",
+                run_id=1000,
+                state="inProgress",
+                result=None,
+            )
+            client.queue_calls.clear()
+            attempt = orchestrator.ensure_run(ROOTS[0], 1)
+            client.runs[0]["nativeScenario"] = "baseline-forgery"
+
+            run = orchestrator.refresh_attempt(ROOTS[0], attempt)
+            evidence = attempt["nativeEvidence"]
+            orchestrator.record_rejected_candidate(ROOTS[0], run, evidence)
+            replacement = orchestrator.ensure_run(ROOTS[0], 1)
+
+        self.assertFalse(evidence["valid"])
+        self.assertFalse(evidence["pending"])
+        self.assertEqual(1, len(client.queue_calls))
+        self.assertEqual(1001, replacement["runId"])
+
+    def test_current_child_with_pending_timeline_fails_closed(self) -> None:
+        client = FakeClient(complete_on_get=False)
+        with tempfile.TemporaryDirectory() as directory:
+            orchestrator = create_orchestrator(client, Path(directory))
+            seed_run(
+                client,
+                orchestrator,
+                scenario="timeline-pending",
+                run_id=1000,
+                state="inProgress",
+                result=None,
+            )
+            admission = GcValidationAdmission(
+                client,
+                Path(directory) / "pending-admission",
+                CAMPAIGN_ID,
+                PARENT_BUILD_ID,
+                ROOTS[0],
+                1,
+                SOURCE_REF,
+                SOURCE_VERSION,
+                1000,
+                observation_seconds=0,
+                poll_seconds=1,
+            )
+
+            with self.assertRaisesRegex(
+                OrchestrationError,
+                "did not provide valid active admission evidence",
+            ):
+                admission.run()
+
+    def test_skipped_build_is_rejected_despite_succeeded_overall_result(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            client = FakeClient()
+            orchestrator = create_orchestrator(client, Path(directory))
+            seed_run(
+                client,
+                orchestrator,
+                scenario="skipped-build",
+                run_id=1000,
+                result="succeeded",
+                build_result="skipped",
+            )
+            client.queue_calls.clear()
+
+            attempt = orchestrator.ensure_run(ROOTS[0], 1)
+
+        self.assertEqual(1, len(client.queue_calls))
+        self.assertEqual(1001, attempt["runId"])
+        self.assertTrue(attempt["nativeEvidence"]["succeeded"])
+
+    def test_forged_admission_artifact_is_rejected(self) -> None:
+        for scenario in (
+            "artifact-wrong-name",
+            "artifact-mismatch",
+            "artifact-hash-mismatch",
+        ):
+            with self.subTest(scenario=scenario):
+                with tempfile.TemporaryDirectory() as directory:
+                    client = FakeClient()
+                    orchestrator = create_orchestrator(client, Path(directory))
+                    seed_run(
+                        client,
+                        orchestrator,
+                        scenario=scenario,
+                        run_id=1000,
+                    )
+                    client.queue_calls.clear()
+
+                    attempt = orchestrator.ensure_run(ROOTS[0], 1)
+
+                self.assertEqual(1, len(client.queue_calls))
+                self.assertEqual(1001, attempt["runId"])
+
+    def test_incomplete_terminal_evidence_is_not_cached(self) -> None:
+        for scenario in (
+            "terminal-timeline-pending",
+            "artifact-pending",
+        ):
+            with self.subTest(scenario=scenario):
+                with tempfile.TemporaryDirectory() as directory:
+                    client = FakeClient(complete_on_get=False)
+                    orchestrator = create_orchestrator(client, Path(directory))
+                    run = seed_run(
+                        client,
+                        orchestrator,
+                        scenario=scenario,
+                        run_id=1000,
+                    )
+
+                    first, _ = orchestrator.get_terminal_evidence(
+                        ROOTS[0], run
+                    )
+                    run["nativeScenario"] = "genuine"
+                    second, _ = orchestrator.get_terminal_evidence(
+                        ROOTS[0], run
+                    )
+
+                self.assertTrue(first["pending"])
+                self.assertFalse(first["valid"])
+                self.assertTrue(second["valid"])
+                self.assertEqual([1000, 1000], client.timeline_calls)
+
+    def test_valid_genuine_shard_uses_native_evidence_not_overall_result(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            client = FakeClient()
+            orchestrator = create_orchestrator(client, Path(directory))
+            seed_run(
+                client,
+                orchestrator,
+                scenario="genuine",
+                run_id=1000,
+                result="failed",
+                build_result="succeeded",
+            )
+            client.queue_calls.clear()
+
+            attempt = orchestrator.ensure_run(ROOTS[0], 1)
+
+        self.assertEqual([], client.queue_calls)
+        self.assertEqual(1000, attempt["runId"])
+        self.assertTrue(attempt["nativeEvidence"]["valid"])
+        self.assertTrue(attempt["nativeEvidence"]["succeeded"])
+        self.assertEqual("succeeded", attempt["nativeEvidence"]["buildResult"])
+
+    def test_duplicate_canonical_selection_uses_only_native_candidates(
+        self,
+    ) -> None:
+        scenarios = (
+            ("baseline-forgery", "genuine", 1001, None),
+            ("genuine", "genuine", 1000, [1001]),
+        )
+        for lower_scenario, higher_scenario, expected_id, duplicates in scenarios:
+            with self.subTest(
+                lower=lower_scenario,
+                higher=higher_scenario,
+            ):
+                with tempfile.TemporaryDirectory() as directory:
+                    client = FakeClient()
+                    orchestrator = create_orchestrator(client, Path(directory))
+                    seed_run(
+                        client,
+                        orchestrator,
+                        scenario=lower_scenario,
+                        run_id=1000,
+                    )
+                    seed_run(
+                        client,
+                        orchestrator,
+                        scenario=higher_scenario,
+                        run_id=1001,
+                    )
+                    client.queue_calls.clear()
+
+                    attempt = orchestrator.ensure_run(ROOTS[0], 1)
+
+                self.assertEqual([], client.queue_calls)
+                self.assertEqual(expected_id, attempt["runId"])
+                self.assertEqual(
+                    duplicates,
+                    attempt.get("duplicateRunIds"),
+                )
+
     def test_two_concurrent_parents_adopt_same_canonical_run(self) -> None:
         class ConcurrentClient(FakeClient):
             def __init__(self):
@@ -719,10 +1191,15 @@ class GcValidationOrchestrationTests(unittest.TestCase):
 
     def test_attempt_two_requires_terminal_unsuccessful_attempt_one(self) -> None:
         scenarios = (
-            ("inProgress", None, "is not terminal"),
-            ("completed", "succeeded", "did not finish unsuccessfully"),
+            ("inProgress", None, "is not terminal", [1000, 1001]),
+            (
+                "completed",
+                "succeeded",
+                "did not finish unsuccessfully",
+                [1000, 1001, 1000],
+            ),
         )
-        for state, result, expected in scenarios:
+        for state, result, expected, timeline_calls in scenarios:
             with self.subTest(state=state, result=result):
                 with tempfile.TemporaryDirectory() as directory:
                     client = FakeClient(complete_on_get=False)
@@ -739,7 +1216,7 @@ class GcValidationOrchestrationTests(unittest.TestCase):
                         orchestrator.ensure_run(ROOTS[0], 2)
 
                 self.assertEqual([], client.queue_calls)
-                self.assertEqual([], client.timeline_calls)
+                self.assertEqual(timeline_calls, client.timeline_calls)
 
     def test_deterministic_attempt_one_rejects_existing_attempt_two(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -761,7 +1238,7 @@ class GcValidationOrchestrationTests(unittest.TestCase):
                 orchestrator.ensure_run(ROOTS[0], 2)
 
         self.assertEqual([], client.queue_calls)
-        self.assertEqual([1000], client.timeline_calls)
+        self.assertEqual([1000, 1001, 1000], client.timeline_calls)
 
     def test_only_proven_infrastructure_failure_is_transient(self) -> None:
         transient = classify_transient_infrastructure_failure(
