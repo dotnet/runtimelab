@@ -1,0 +1,38 @@
+{
+  "id": "d1fbb2db-680c-47ed-93c9-d7057e5bcf88",
+  "changeId": 18,
+  "lastChangedBy": "00000002-0000-8888-8000-000000000000",
+  "lastChangedOn": "2026-09-24T19:45:00.000Z",
+  "records": [
+    {
+      "id": "01234567-89ab-cdef-0123-456789abcdef",
+      "parentId": null,
+      "type": "Stage",
+      "name": "Admit canonical GC validation shard",
+      "identifier": "gcvalidationadmission",
+      "state": "completed",
+      "result": "succeeded",
+      "order": 1
+    },
+    {
+      "id": "12345678-9abc-def0-1234-56789abcdef0",
+      "parentId": "01234567-89ab-cdef-0123-456789abcdef",
+      "type": "Job",
+      "name": "Admit canonical GC validation shard",
+      "identifier": "gcvalidationadmission.AdmitCanonicalGcValidationShard",
+      "state": "completed",
+      "result": "succeeded",
+      "order": 1
+    },
+    {
+      "id": "23456789-abcd-ef01-2345-6789abcdef01",
+      "parentId": null,
+      "type": "Stage",
+      "name": "Build",
+      "identifier": "build",
+      "state": "completed",
+      "result": "succeeded",
+      "order": 2
+    }
+  ]
+}
