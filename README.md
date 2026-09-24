@@ -43,6 +43,10 @@ explicit campaign; when empty, the parent derives `gc-validation-<build ID>`.
 `gcValidationParentBuildId` is likewise optional for the parent and is always
 populated in child template parameters. `gcValidationAttempt` is restricted to
 1 or 2 and is used only for the single permitted infrastructure retry.
+The same campaign, parent, root, mode, and attempt identity is persisted in
+non-secret run variables because the Azure Runs List/Get responses do not
+return submitted template parameters. The controller hydrates List entries
+with individual Get responses before matching the exact source ref and commit.
 
 The parent uses only `System.AccessToken` and checks its effective
 `QueueBuilds` permission on definition 163 before submitting a child. It
@@ -53,3 +57,7 @@ terminal results and failure classifications, plus
 contains all five terminal child receipts and every final child result
 succeeded. The receipt also distinguishes submitted queue requests from
 confirmed new runs and records transient monitoring API errors.
+An attempt 2 run is accepted only when a unique attempt 1 is freshly confirmed
+terminal and unsuccessful and its timeline contains only proven transient
+agent-loss evidence. A successful POST whose response cannot be read or decoded
+is treated as ambiguous and adopted by identity without repeating the POST.

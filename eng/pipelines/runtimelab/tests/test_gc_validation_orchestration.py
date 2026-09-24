@@ -1,5 +1,6 @@
 import copy
 import hashlib
+import http.client
 import json
 from pathlib import Path
 import sys
@@ -12,6 +13,7 @@ import orchestrate_gc_validation
 
 from orchestrate_gc_validation import (
     AmbiguousQueueResponse,
+    ApiRequestError,
     AzureDevOpsClient,
     GcValidationOrchestrator,
     OrchestrationError,
@@ -28,6 +30,7 @@ SOURCE_REF = "refs/heads/feature/gc/baseline"
 SOURCE_VERSION = "1" * 40
 CAMPAIGN_ID = "campaign-123"
 PARENT_BUILD_ID = "456"
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 
 class FakeClient:
@@ -38,12 +41,16 @@ class FakeClient:
         results: dict[tuple[str, int], str] | None = None,
         timeline_messages: dict[tuple[str, int], list[str]] | None = None,
         ambiguous_root: str | None = None,
+        complete_on_get: bool = True,
     ):
         self.results = results or {}
         self.timeline_messages = timeline_messages or {}
         self.ambiguous_root = ambiguous_root
+        self.complete_on_get = complete_on_get
         self.runs = []
         self.queue_calls = []
+        self.get_calls = []
+        self.timeline_calls = []
         self.next_id = 1000
 
     def preflight_queue_permission(self) -> dict:
@@ -57,7 +64,15 @@ class FakeClient:
         }
 
     def list_runs(self) -> list[dict]:
-        return copy.deepcopy(self.runs)
+        return [
+            {
+                key: copy.deepcopy(value)
+                for key, value in run.items()
+                if key != "resources"
+            }
+            | {"templateParameters": {}}
+            for run in self.runs
+        ]
 
     def queue_run(self, request: dict) -> dict:
         self.queue_calls.append(copy.deepcopy(request))
@@ -70,7 +85,8 @@ class FakeClient:
             "state": "inProgress",
             "result": None,
             "resources": copy.deepcopy(request["resources"]),
-            "templateParameters": copy.deepcopy(request["templateParameters"]),
+            "templateParameters": {},
+            "variables": copy.deepcopy(request["variables"]),
         }
         self.next_id += 1
         self.runs.append(run)
@@ -80,17 +96,20 @@ class FakeClient:
         return copy.deepcopy(run)
 
     def get_run(self, run_id: int) -> dict:
+        self.get_calls.append(run_id)
         run = next(run for run in self.runs if run["id"] == run_id)
-        root = run["templateParameters"]["gcValidationRoot"]
-        attempt = int(run["templateParameters"]["gcValidationAttempt"])
-        run["state"] = "completed"
-        run["result"] = self.results.get((root, attempt), "succeeded")
+        root = run["variables"]["GC_VALIDATION_ROOT"]["value"]
+        attempt = int(run["variables"]["GC_VALIDATION_ATTEMPT"]["value"])
+        if self.complete_on_get:
+            run["state"] = "completed"
+            run["result"] = self.results.get((root, attempt), "succeeded")
         return copy.deepcopy(run)
 
     def get_timeline(self, run_id: int) -> dict:
+        self.timeline_calls.append(run_id)
         run = next(run for run in self.runs if run["id"] == run_id)
-        root = run["templateParameters"]["gcValidationRoot"]
-        attempt = int(run["templateParameters"]["gcValidationAttempt"])
+        root = run["variables"]["GC_VALIDATION_ROOT"]["value"]
+        attempt = int(run["variables"]["GC_VALIDATION_ATTEMPT"]["value"])
         return {
             "records": [
                 {
@@ -154,6 +173,59 @@ class GcValidationOrchestrationTests(unittest.TestCase):
 
         self.assertEqual("Bearer runtime-token", captured["authorization"])
         self.assertEqual(60, captured["timeout"])
+
+    def test_successful_post_protocol_and_decode_failures_are_ambiguous(
+        self,
+    ) -> None:
+        client = AzureDevOpsClient(
+            "https://dev.azure.com/example",
+            "project",
+            163,
+            "runtime-token",
+        )
+
+        class Response:
+            def __init__(self, value):
+                self.value = value
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+            def read(self) -> bytes:
+                if isinstance(self.value, Exception):
+                    raise self.value
+                return self.value
+
+        failures = (
+            Response(http.client.IncompleteRead(b'{"id":', 1)),
+            http.client.BadStatusLine("invalid status"),
+            Response(b"{"),
+            Response(b"\xff"),
+        )
+        original_urlopen = orchestrate_gc_validation.urllib.request.urlopen
+        try:
+            for failure in failures:
+                with self.subTest(failure=type(failure).__name__):
+
+                    def open_request(*_args, **_kwargs):
+                        if isinstance(failure, Exception):
+                            raise failure
+                        return failure
+
+                    orchestrate_gc_validation.urllib.request.urlopen = open_request
+                    with self.assertRaises(AmbiguousQueueResponse):
+                        client.request_json(
+                            "POST",
+                            "https://example.test/runs",
+                            {"previewRun": False},
+                        )
+                    with self.assertRaises(ApiRequestError):
+                        client.request_json("GET", "https://example.test/runs")
+        finally:
+            orchestrate_gc_validation.urllib.request.urlopen = original_urlopen
 
     def test_queue_permission_requires_effective_allow_without_deny(self) -> None:
         namespace = {
@@ -252,6 +324,31 @@ class GcValidationOrchestrationTests(unittest.TestCase):
             },
             request["templateParameters"],
         )
+        self.assertEqual(
+            {
+                "GC_VALIDATION_MODE": {
+                    "value": "correctness-shard",
+                    "isSecret": False,
+                },
+                "GC_VALIDATION_CAMPAIGN_ID": {
+                    "value": CAMPAIGN_ID,
+                    "isSecret": False,
+                },
+                "GC_VALIDATION_PARENT_BUILD_ID": {
+                    "value": PARENT_BUILD_ID,
+                    "isSecret": False,
+                },
+                "GC_VALIDATION_ROOT": {
+                    "value": ROOTS[0],
+                    "isSecret": False,
+                },
+                "GC_VALIDATION_ATTEMPT": {
+                    "value": "1",
+                    "isSecret": False,
+                },
+            },
+            request["variables"],
+        )
 
     def test_run_match_includes_campaign_root_parent_and_source(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -262,7 +359,8 @@ class GcValidationOrchestrationTests(unittest.TestCase):
         run = {
             "id": 123,
             "resources": request["resources"],
-            "templateParameters": request["templateParameters"],
+            "templateParameters": {},
+            "variables": request["variables"],
         }
         self.assertTrue(
             run_matches(
@@ -299,6 +397,43 @@ class GcValidationOrchestrationTests(unittest.TestCase):
             )
         )
 
+    def test_matching_runs_hydrates_captured_list_shape_with_get(self) -> None:
+        listing = json.loads(
+            (FIXTURES / "definition163-runs-list.json").read_text(encoding="utf-8")
+        )
+        detail = json.loads(
+            (FIXTURES / "definition163-run-get.json").read_text(encoding="utf-8")
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            client = FakeClient()
+            orchestrator = create_orchestrator(client, Path(directory))
+            request = orchestrator.build_request(ROOTS[0], 1)
+            returned_variables = {
+                name.lower(): copy.deepcopy(value)
+                for name, value in request["variables"].items()
+            }
+            detail["variables"] = copy.deepcopy(returned_variables)
+            detail["resources"] = copy.deepcopy(request["resources"])
+            get_calls = []
+            client.list_runs = lambda: copy.deepcopy(listing["value"])
+
+            def get_run(run_id):
+                get_calls.append(run_id)
+                return copy.deepcopy(detail)
+
+            client.get_run = get_run
+
+            matches = orchestrator.matching_runs(ROOTS[0])
+
+        self.assertEqual([1607407], [run["id"] for run in matches])
+        self.assertEqual([1607407], get_calls)
+        self.assertNotIn("resources", listing["value"][0])
+        self.assertEqual({}, matches[0]["templateParameters"])
+        self.assertEqual(
+            SOURCE_VERSION,
+            matches[0]["resources"]["repositories"]["self"]["version"],
+        )
+
     def test_ambiguous_queue_response_adopts_matching_run_without_requeue(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             client = FakeClient(ambiguous_root=ROOTS[0])
@@ -316,28 +451,102 @@ class GcValidationOrchestrationTests(unittest.TestCase):
             1000, receipt["children"][ROOTS[0]]["currentRunId"]
         )
 
-    def test_multiple_active_matching_runs_fail_before_queue(self) -> None:
+    def test_invalid_successful_post_shape_is_adopted_without_requeue(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             client = FakeClient()
+            queue_run = client.queue_run
+
+            def queue_without_run_shape(request):
+                queue_run(request)
+                return []
+
+            client.queue_run = queue_without_run_shape
             orchestrator = create_orchestrator(client, Path(directory))
-            request = orchestrator.build_request(ROOTS[0], 1)
-            for run_id in (1, 2):
-                client.runs.append(
-                    {
-                        "id": run_id,
-                        "state": "inProgress",
-                        "resources": copy.deepcopy(request["resources"]),
-                        "templateParameters": copy.deepcopy(
-                            request["templateParameters"]
-                        ),
-                    }
-                )
+            attempt = orchestrator.ensure_run(ROOTS[0], 1)
+
+        self.assertEqual(1, len(client.queue_calls))
+        self.assertTrue(attempt["adopted"])
+        self.assertTrue(attempt["ambiguousQueueResponse"])
+        self.assertEqual(1000, attempt["runId"])
+
+    def test_duplicate_matching_attempts_fail_before_queue(self) -> None:
+        for attempt in (1, 2):
+            with self.subTest(attempt=attempt):
+                with tempfile.TemporaryDirectory() as directory:
+                    client = FakeClient(complete_on_get=False)
+                    orchestrator = create_orchestrator(client, Path(directory))
+                    request = orchestrator.build_request(ROOTS[0], attempt)
+                    for run_id in (1, 2):
+                        client.queue_run(request)
+                        client.runs[-1]["id"] = run_id
+                    client.queue_calls.clear()
+                    with self.assertRaisesRegex(
+                        OrchestrationError,
+                        f"duplicate attempt {attempt} runs",
+                    ):
+                        orchestrator.ensure_run(ROOTS[0], attempt)
+
+                self.assertEqual([], client.queue_calls)
+
+    def test_attempt_two_without_attempt_one_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            client = FakeClient(complete_on_get=False)
+            orchestrator = create_orchestrator(client, Path(directory))
+            client.queue_run(orchestrator.build_request(ROOTS[0], 2))
+            client.queue_calls.clear()
+
             with self.assertRaisesRegex(
-                OrchestrationError, "multiple active matching runs"
+                OrchestrationError, "attempt 2 exists without attempt 1"
             ):
-                orchestrator.ensure_run(ROOTS[0], 1)
+                orchestrator.ensure_run(ROOTS[0], 2)
 
         self.assertEqual([], client.queue_calls)
+
+    def test_attempt_two_requires_terminal_unsuccessful_attempt_one(self) -> None:
+        scenarios = (
+            ("inProgress", None, "is not terminal"),
+            ("completed", "succeeded", "did not finish unsuccessfully"),
+        )
+        for state, result, expected in scenarios:
+            with self.subTest(state=state, result=result):
+                with tempfile.TemporaryDirectory() as directory:
+                    client = FakeClient(complete_on_get=False)
+                    orchestrator = create_orchestrator(client, Path(directory))
+                    for attempt in (1, 2):
+                        client.queue_run(
+                            orchestrator.build_request(ROOTS[0], attempt)
+                        )
+                    client.queue_calls.clear()
+                    client.runs[0]["state"] = state
+                    client.runs[0]["result"] = result
+
+                    with self.assertRaisesRegex(OrchestrationError, expected):
+                        orchestrator.ensure_run(ROOTS[0], 2)
+
+                self.assertEqual([], client.queue_calls)
+                self.assertEqual([], client.timeline_calls)
+
+    def test_deterministic_attempt_one_rejects_existing_attempt_two(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            client = FakeClient(
+                timeline_messages={(ROOTS[0], 1): ["GCStress test failed."]},
+                complete_on_get=False,
+            )
+            orchestrator = create_orchestrator(client, Path(directory))
+            for attempt in (1, 2):
+                client.queue_run(orchestrator.build_request(ROOTS[0], attempt))
+                client.runs[-1]["state"] = "completed"
+                client.runs[-1]["result"] = "failed"
+            client.queue_calls.clear()
+
+            with self.assertRaisesRegex(
+                OrchestrationError,
+                "not a proven transient infrastructure failure",
+            ):
+                orchestrator.ensure_run(ROOTS[0], 2)
+
+        self.assertEqual([], client.queue_calls)
+        self.assertEqual([1000], client.timeline_calls)
 
     def test_only_proven_infrastructure_failure_is_transient(self) -> None:
         transient = classify_transient_infrastructure_failure(

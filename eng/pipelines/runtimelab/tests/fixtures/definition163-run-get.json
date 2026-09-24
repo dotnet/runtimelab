@@ -1,0 +1,29 @@
+{
+  "templateParameters": {},
+  "pipeline": {
+    "id": 163,
+    "revision": 3,
+    "name": "runtimelab",
+    "folder": "\\dotnet\\runtimelab"
+  },
+  "state": "completed",
+  "result": "succeeded",
+  "createdDate": "2026-09-22T16:24:28.4236449Z",
+  "finishedDate": "2026-09-22T16:39:39.4543364Z",
+  "url": "https://dev.azure.com/dnceng-public/cbb18261-c48f-4abb-8651-8cdcb5474649/_apis/pipelines/163/runs/1607407",
+  "resources": {
+    "repositories": {
+      "self": {
+        "repository": {
+          "fullName": "dotnet/runtimelab",
+          "type": "gitHub"
+        },
+        "refName": "refs/heads/feature/ZeroGC",
+        "version": "5ce56abca3a0e2f80daa447cb1b460e9d12ac33f"
+      }
+    }
+  },
+  "tags": [],
+  "id": 1607407,
+  "name": "20260922.8"
+}

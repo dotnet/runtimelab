@@ -3,6 +3,7 @@
 import argparse
 from datetime import datetime, timezone
 import hashlib
+import http.client
 import json
 import os
 from pathlib import Path
@@ -24,6 +25,18 @@ ROOTS = (
 )
 EXPECTED_DEFINITION_ID = 163
 BUILD_SECURITY_NAMESPACE_ID = "33344d9c-fc72-4d6f-aba5-fa317101a7e9"
+RUN_VARIABLE_MODE = "GC_VALIDATION_MODE"
+RUN_VARIABLE_CAMPAIGN_ID = "GC_VALIDATION_CAMPAIGN_ID"
+RUN_VARIABLE_PARENT_BUILD_ID = "GC_VALIDATION_PARENT_BUILD_ID"
+RUN_VARIABLE_ROOT = "GC_VALIDATION_ROOT"
+RUN_VARIABLE_ATTEMPT = "GC_VALIDATION_ATTEMPT"
+RUN_IDENTITY_VARIABLE_NAMES = (
+    RUN_VARIABLE_MODE,
+    RUN_VARIABLE_CAMPAIGN_ID,
+    RUN_VARIABLE_PARENT_BUILD_ID,
+    RUN_VARIABLE_ROOT,
+    RUN_VARIABLE_ATTEMPT,
+)
 TRANSIENT_INFRASTRUCTURE_PATTERNS = (
     re.compile(r"\bwe stopped hearing from agent\b", re.IGNORECASE),
     re.compile(r"\bagent\b.*\blost communication\b", re.IGNORECASE),
@@ -80,18 +93,50 @@ def atomic_write_json(path: Path, value: object) -> None:
 
 
 def variable_value(value: object) -> str:
+    if value is None:
+        return ""
     if isinstance(value, dict):
         value = value.get("value", "")
     return str(value)
 
 
 def repository_resource(run: dict) -> dict:
-    return run.get("resources", {}).get("repositories", {}).get("self", {})
+    resources = run.get("resources") or {}
+    repositories = resources.get("repositories") or {}
+    return repositories.get("self") or {}
+
+
+def run_variables(run: dict) -> dict[str, object]:
+    variables = run.get("variables") or {}
+    return {str(name).casefold(): value for name, value in variables.items()}
+
+
+def run_variable(run: dict, name: str) -> str:
+    return variable_value(run_variables(run).get(name.casefold()))
 
 
 def run_attempt(run: dict) -> int:
-    value = run.get("templateParameters", {}).get("gcValidationAttempt", 1)
-    return int(variable_value(value))
+    return int(run_variable(run, RUN_VARIABLE_ATTEMPT))
+
+
+def run_identity_matches(
+    run: dict,
+    *,
+    campaign_id: str,
+    parent_build_id: str,
+    root: str,
+) -> bool:
+    try:
+        run_id = int(run.get("id", 0))
+    except (TypeError, ValueError):
+        return False
+    return (
+        run_id > 0
+        and run_variable(run, RUN_VARIABLE_MODE) == "correctness-shard"
+        and run_variable(run, RUN_VARIABLE_CAMPAIGN_ID) == campaign_id
+        and run_variable(run, RUN_VARIABLE_PARENT_BUILD_ID) == parent_build_id
+        and run_variable(run, RUN_VARIABLE_ROOT) == root
+    )
 
 
 def run_matches(
@@ -104,20 +149,26 @@ def run_matches(
     source_version: str,
     attempt: int | None = None,
 ) -> bool:
-    parameters = run.get("templateParameters", {})
     repository = repository_resource(run)
+    if not run_identity_matches(
+        run,
+        campaign_id=campaign_id,
+        parent_build_id=parent_build_id,
+        root=root,
+    ):
+        return False
     if (
-        int(run.get("id", 0)) <= 0
-        or variable_value(parameters.get("gcValidationMode")) != "correctness-shard"
-        or variable_value(parameters.get("gcValidationCampaignId")) != campaign_id
-        or variable_value(parameters.get("gcValidationParentBuildId"))
-        != parent_build_id
-        or variable_value(parameters.get("gcValidationRoot")) != root
-        or repository.get("refName") != source_ref
+        repository.get("refName") != source_ref
         or repository.get("version") != source_version
     ):
         return False
-    return attempt is None or run_attempt(run) == attempt
+    try:
+        actual_attempt = run_attempt(run)
+    except (TypeError, ValueError):
+        return False
+    if actual_attempt not in (1, 2):
+        return False
+    return attempt is None or actual_attempt == attempt
 
 
 def collect_timeline_errors(timeline: dict) -> list[str]:
@@ -238,7 +289,14 @@ class AzureDevOpsClient:
                     f"Queue response was ambiguous after HTTP {error.code}: {detail}"
                 ) from error
             raise ApiRequestError(method, url, error.code, detail) from error
-        except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
+        except (
+            urllib.error.URLError,
+            TimeoutError,
+            ConnectionError,
+            http.client.HTTPException,
+            json.JSONDecodeError,
+            UnicodeDecodeError,
+        ) as error:
             if method == "POST":
                 raise AmbiguousQueueResponse(
                     f"Queue response was ambiguous: {error}"
@@ -384,6 +442,28 @@ class GcValidationOrchestrator:
                     }
                 }
             },
+            "variables": {
+                RUN_VARIABLE_MODE: {
+                    "value": "correctness-shard",
+                    "isSecret": False,
+                },
+                RUN_VARIABLE_CAMPAIGN_ID: {
+                    "value": self.campaign_id,
+                    "isSecret": False,
+                },
+                RUN_VARIABLE_PARENT_BUILD_ID: {
+                    "value": self.parent_build_id,
+                    "isSecret": False,
+                },
+                RUN_VARIABLE_ROOT: {
+                    "value": root,
+                    "isSecret": False,
+                },
+                RUN_VARIABLE_ATTEMPT: {
+                    "value": str(attempt),
+                    "isSecret": False,
+                },
+            },
             "templateParameters": {
                 "gcValidationMode": "correctness-shard",
                 "gcValidationRoot": root,
@@ -393,10 +473,30 @@ class GcValidationOrchestrator:
             },
         }
 
-    def matching_runs(self, root: str, attempt: int | None = None) -> list[dict]:
-        matches = [
-            run
-            for run in self.client.list_runs()
+    def matching_runs(self, root: str) -> list[dict]:
+        matches = []
+        for summary in self.client.list_runs():
+            try:
+                run_id = int(summary.get("id", 0))
+            except (TypeError, ValueError):
+                continue
+            if run_id <= 0:
+                continue
+            variables = run_variables(summary)
+            if all(
+                name.casefold() in variables
+                for name in RUN_IDENTITY_VARIABLE_NAMES
+            ):
+                if not run_identity_matches(
+                    summary,
+                    campaign_id=self.campaign_id,
+                    parent_build_id=self.parent_build_id,
+                    root=root,
+                ):
+                    continue
+            detail = self.client.get_run(run_id)
+            run = dict(summary)
+            run.update(detail)
             if run_matches(
                 run,
                 campaign_id=self.campaign_id,
@@ -404,9 +504,72 @@ class GcValidationOrchestrator:
                 root=root,
                 source_ref=self.source_ref,
                 source_version=self.source_version,
-                attempt=attempt,
+            ):
+                matches.append(run)
+        return sorted(
+            matches,
+            key=lambda run: (run_attempt(run), int(run["id"])),
+            reverse=True,
+        )
+
+    def validate_attempt_one_for_retry(self, root: str, run: dict) -> dict:
+        fresh = dict(run)
+        fresh.update(self.client.get_run(int(run["id"])))
+        if not run_matches(
+            fresh,
+            campaign_id=self.campaign_id,
+            parent_build_id=self.parent_build_id,
+            root=root,
+            source_ref=self.source_ref,
+            source_version=self.source_version,
+            attempt=1,
+        ):
+            raise OrchestrationError(
+                f"{root} attempt 1 changed identity while validating retry state."
             )
-        ]
+        if fresh.get("state") != "completed":
+            raise OrchestrationError(
+                f"{root} attempt 2 is invalid because attempt 1 is not terminal."
+            )
+        if not fresh.get("result") or fresh.get("result") == "succeeded":
+            raise OrchestrationError(
+                f"{root} attempt 2 is invalid because attempt 1 did not "
+                "finish unsuccessfully."
+            )
+        classification = classify_transient_infrastructure_failure(
+            self.client.get_timeline(int(fresh["id"]))
+        )
+        if not classification["isTransientInfrastructureFailure"]:
+            raise OrchestrationError(
+                f"{root} attempt 2 is invalid because attempt 1 is not a "
+                "proven transient infrastructure failure."
+            )
+        fresh["_failureClassification"] = classification
+        return fresh
+
+    def validated_matching_runs(self, root: str) -> list[dict]:
+        matches = self.matching_runs(root)
+        by_attempt = {}
+        for run in matches:
+            by_attempt.setdefault(run_attempt(run), []).append(run)
+        for attempt, runs in by_attempt.items():
+            if len(runs) > 1:
+                raise OrchestrationError(
+                    f"{root} has duplicate attempt {attempt} runs: "
+                    + ", ".join(str(run["id"]) for run in runs)
+                )
+        if 2 in by_attempt:
+            if 1 not in by_attempt:
+                raise OrchestrationError(
+                    f"{root} attempt 2 exists without attempt 1."
+                )
+            validated_attempt_one = self.validate_attempt_one_for_retry(
+                root, by_attempt[1][0]
+            )
+            matches = [
+                validated_attempt_one if run_attempt(run) == 1 else run
+                for run in matches
+            ]
         return sorted(
             matches,
             key=lambda run: (run_attempt(run), int(run["id"])),
@@ -444,6 +607,10 @@ class GcValidationOrchestrator:
             "result": run.get("result"),
             "terminal": run.get("state") == "completed",
         }
+        if run.get("_failureClassification") is not None:
+            attempt_receipt["failureClassification"] = run[
+                "_failureClassification"
+            ]
         child = self.receipt["children"].setdefault(
             root,
             {
@@ -472,7 +639,11 @@ class GcValidationOrchestrator:
         last_read_error = None
         while True:
             try:
-                matches = self.matching_runs(root, attempt)
+                matches = [
+                    run
+                    for run in self.validated_matching_runs(root)
+                    if run_attempt(run) == attempt
+                ]
                 last_read_error = None
             except ApiRequestError as error:
                 matches = []
@@ -501,7 +672,7 @@ class GcValidationOrchestrator:
             self.sleep(min(self.poll_seconds, 5))
 
     def ensure_run(self, root: str, attempt: int) -> dict:
-        all_matches = self.matching_runs(root)
+        all_matches = self.validated_matching_runs(root)
         active = [run for run in all_matches if run.get("state") != "completed"]
         if len(active) > 1:
             raise OrchestrationError(
@@ -510,6 +681,11 @@ class GcValidationOrchestrator:
             )
         if active:
             active_attempt = run_attempt(active[0])
+            if active_attempt != attempt:
+                raise OrchestrationError(
+                    f"{root} cannot start attempt {attempt} while attempt "
+                    f"{active_attempt} is active."
+                )
             request = self.build_request(root, active_attempt)
             return self.persist_attempt(
                 root,
@@ -531,6 +707,16 @@ class GcValidationOrchestrator:
                 adopted=True,
                 ambiguous_response=False,
             )
+
+        if attempt == 2:
+            attempt_one = [
+                run for run in all_matches if run_attempt(run) == 1
+            ]
+            if not attempt_one:
+                raise OrchestrationError(
+                    f"{root} cannot start attempt 2 without attempt 1."
+                )
+            self.validate_attempt_one_for_retry(root, attempt_one[0])
 
         request = self.build_request(root, attempt)
         request_path = self.output_directory / f"{root}-attempt{attempt}-request.json"
@@ -556,7 +742,7 @@ class GcValidationOrchestrator:
         ambiguous_response = False
         try:
             run = self.client.queue_run(request)
-            if "id" not in run:
+            if not isinstance(run, dict) or "id" not in run:
                 ambiguous_response = True
                 run = self.adopt_after_ambiguous_response(root, attempt)
         except AmbiguousQueueResponse:
@@ -614,7 +800,7 @@ class GcValidationOrchestrator:
         self.write_receipt()
 
         for root in ROOTS:
-            matches = self.matching_runs(root)
+            matches = self.validated_matching_runs(root)
             active = [run for run in matches if run.get("state") != "completed"]
             if len(active) > 1:
                 raise OrchestrationError(
