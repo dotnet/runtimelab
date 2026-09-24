@@ -18,6 +18,21 @@ parameters:
   - gc-longrunning
   - gc-simulator
   - gc-standalone
+- name: gcValidationCampaignId
+  displayName: GC validation campaign ID
+  type: string
+  default: ''
+- name: gcValidationParentBuildId
+  displayName: GC validation parent build ID
+  type: string
+  default: ''
+- name: gcValidationAttempt
+  displayName: GC validation shard attempt
+  type: number
+  default: 1
+  values:
+  - 1
+  - 2
 
 trigger: none
 pr: none
@@ -128,7 +143,64 @@ extends:
         parameters:
           enableHelixJobMonitor: ${{ variables.enableHelixJobMonitor }}
 
-    # Definition 163's project-scoped build identity does not currently have
-    # Queue builds permission, so parent orchestration must fail closed.
     - ${{ if eq(parameters.gcValidationMode, 'correctness-stress') }}:
-      - gcValidationCorrectnessStressRequiresQueueBuildPermission: error
+      - stage: GCValidationCorrectnessStress
+        displayName: GC correctness and stress validation
+        jobs:
+        - job: QueueAndMonitorGcValidationShards
+          displayName: Queue and monitor GC validation shards
+          timeoutInMinutes: 1440
+          pool:
+            name: $(DncEngPublicBuildPool)
+            os: linux
+            demands: ImageOverride -equals build.azurelinux.3.amd64.open
+          steps:
+          - checkout: self
+            fetchDepth: 1
+
+          - bash: |
+              set -uo pipefail
+
+              receiptDirectory='$(Build.ArtifactStagingDirectory)/gc-validation-children'
+              mkdir -p "$receiptDirectory"
+              python3 '$(Build.SourcesDirectory)/eng/pipelines/runtimelab/orchestrate_gc_validation.py' \
+                --output-directory "$receiptDirectory" \
+                --campaign-id "$GC_VALIDATION_CAMPAIGN_ID" \
+                --parent-build-id "$GC_VALIDATION_PARENT_BUILD_ID" \
+                --monitor-timeout-minutes 1380
+              orchestrationStatus=$?
+              printf '%s\n' "$orchestrationStatus" > "$receiptDirectory/orchestration-exit-code.txt"
+              exit 0
+            displayName: Queue and monitor child runs
+            env:
+              GC_VALIDATION_CAMPAIGN_ID: ${{ parameters.gcValidationCampaignId }}
+              GC_VALIDATION_PARENT_BUILD_ID: ${{ parameters.gcValidationParentBuildId }}
+              SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish GC validation child receipts
+            condition: always()
+            inputs:
+              targetPath: $(Build.ArtifactStagingDirectory)/gc-validation-children
+              artifactName: GCValidationChildren_$(Build.BuildId)
+
+          - bash: |
+              receiptDirectory='$(Build.ArtifactStagingDirectory)/gc-validation-children'
+              statusFile="$receiptDirectory/orchestration-exit-code.txt"
+              receiptFile="$receiptDirectory/gc-validation-children.json"
+              if [ ! -f "$statusFile" ] || [ ! -f "$receiptFile" ]; then
+                echo "GC validation orchestration did not produce its required status and receipt files."
+                exit 1
+              fi
+
+              orchestrationStatus="$(cat "$statusFile")"
+              if ! [[ "$orchestrationStatus" =~ ^[0-9]+$ ]] || [ "$orchestrationStatus" -ne 0 ]; then
+                echo "GC validation child orchestration failed. See the published child receipt artifact."
+                exit 1
+              fi
+
+              python3 -c \
+                "import json,sys; receipt=json.load(open(sys.argv[1], encoding='utf-8')); valid=receipt.get('allTerminalReceipts') is True and receipt.get('succeeded') is True and len(receipt.get('children', {})) == 5; sys.exit(0 if valid else 1)" \
+                "$receiptFile"
+            displayName: Require successful child receipts
+            condition: always()

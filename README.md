@@ -27,3 +27,29 @@ approval.
 
 See [Create an experiment](https://github.com/dotnet/runtimelab/blob/docs/CreateAnExperiment.md)
 for the standard runtimelab conventions.
+
+## GC correctness and stress validation
+
+Definition 163 exposes three `gcValidationMode` values:
+
+- `baseline` preserves the reviewed baseline graph.
+- `correctness-shard` imports one of the five closed `gcValidationRoot` graphs.
+- `correctness-stress` queues and monitors all five shard roots as child runs of
+  definition 163.
+
+The parent passes its exact source ref and 40-character source version to every
+child without a YAML override. `gcValidationCampaignId` can identify an
+explicit campaign; when empty, the parent derives `gc-validation-<build ID>`.
+`gcValidationParentBuildId` is likewise optional for the parent and is always
+populated in child template parameters. `gcValidationAttempt` is restricted to
+1 or 2 and is used only for the single permitted infrastructure retry.
+
+The parent uses only `System.AccessToken` and checks its effective
+`QueueBuilds` permission on definition 163 before submitting a child. It
+publishes `GCValidationChildren_<parent build ID>`, containing each canonical
+queue request, its SHA-256 hash, the adopted or returned child build ID,
+terminal results and failure classifications, plus
+`gc-validation-children.json`. The parent succeeds only when that receipt
+contains all five terminal child receipts and every final child result
+succeeded. The receipt also distinguishes submitted queue requests from
+confirmed new runs and records transient monitoring API errors.

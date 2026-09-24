@@ -2,12 +2,16 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 
 import yaml
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from compare_gc_validation_previews import compare_previews, normalize_inert_metadata
+from orchestrate_gc_validation import ROOTS as ORCHESTRATION_ROOTS
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -166,10 +170,20 @@ class GcValidationArchitectureTests(unittest.TestCase):
         )
         self.assertEqual("baseline", self.parameters["gcValidationMode"]["default"])
         self.assertEqual(list(ROOTS), self.parameters["gcValidationRoot"]["values"])
+        self.assertEqual(tuple(ROOTS), ORCHESTRATION_ROOTS)
         self.assertEqual(
             "gcstress0x3-gcstress0xc",
             self.parameters["gcValidationRoot"]["default"],
         )
+        self.assertEqual("string", self.parameters["gcValidationCampaignId"]["type"])
+        self.assertEqual("", self.parameters["gcValidationCampaignId"]["default"])
+        self.assertEqual(
+            "string", self.parameters["gcValidationParentBuildId"]["type"]
+        )
+        self.assertEqual("", self.parameters["gcValidationParentBuildId"]["default"])
+        self.assertEqual("number", self.parameters["gcValidationAttempt"]["type"])
+        self.assertEqual(1, self.parameters["gcValidationAttempt"]["default"])
+        self.assertEqual([1, 2], self.parameters["gcValidationAttempt"]["values"])
 
     def test_baseline_authored_structure_is_exact(self) -> None:
         baseline = copy.deepcopy(self.pipeline)
@@ -205,14 +219,53 @@ class GcValidationArchitectureTests(unittest.TestCase):
         }
         self.assertEqual(expected_conditions, actual_conditions)
 
-    def test_parent_orchestration_fails_closed_without_queue_permission(self) -> None:
+    def test_parent_orchestration_queues_only_closed_shards(self) -> None:
+        stress_stages = self.conditions[STRESS_CONDITION]
+        self.assertEqual(1, len(stress_stages))
         self.assertEqual(
-            [{"gcValidationCorrectnessStressRequiresQueueBuildPermission": "error"}],
-            self.conditions[STRESS_CONDITION],
+            "GCValidationCorrectnessStress", stress_stages[0]["stage"]
         )
+        jobs = stress_stages[0]["jobs"]
+        self.assertEqual(1, len(jobs))
+        self.assertEqual(
+            "QueueAndMonitorGcValidationShards", jobs[0]["job"]
+        )
+        steps = jobs[0]["steps"]
+        orchestration_step = next(
+            step
+            for step in steps
+            if step.get("displayName") == "Queue and monitor child runs"
+        )
+        self.assertIn("orchestrate_gc_validation.py", orchestration_step["bash"])
+        self.assertEqual(
+            "$(System.AccessToken)",
+            orchestration_step["env"]["SYSTEM_ACCESSTOKEN"],
+        )
+        self.assertEqual(
+            "${{ parameters.gcValidationCampaignId }}",
+            orchestration_step["env"]["GC_VALIDATION_CAMPAIGN_ID"],
+        )
+        self.assertEqual(
+            "${{ parameters.gcValidationParentBuildId }}",
+            orchestration_step["env"]["GC_VALIDATION_PARENT_BUILD_ID"],
+        )
+        publish_step = next(
+            step for step in steps if step.get("task") == "PublishPipelineArtifact@1"
+        )
+        self.assertEqual("always()", publish_step["condition"])
+        receipt_gate = next(
+            step
+            for step in steps
+            if step.get("displayName") == "Require successful child receipts"
+        )
+        self.assertIn("allTerminalReceipts", receipt_gate["bash"])
+        self.assertIn("len(receipt.get('children', {})) == 5", receipt_gate["bash"])
         pipeline_text = RUNTIMELAB_PIPELINE_PATH.read_text(encoding="utf-8")
-        self.assertNotIn("System.AccessToken", pipeline_text)
-        self.assertNotIn("_apis/build/builds", pipeline_text)
+        self.assertNotIn("yamlOverride", pipeline_text)
+        self.assertNotIn(
+            "gcValidationCorrectnessStressRequiresQueueBuildPermission",
+            pipeline_text,
+        )
 
     def test_real_preview_comparator_checks_baseline_roots_and_shards(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
