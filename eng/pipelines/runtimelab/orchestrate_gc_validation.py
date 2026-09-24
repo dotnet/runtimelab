@@ -274,7 +274,10 @@ def timeline_records(timeline: dict) -> list[dict]:
 
 def timeline_record_identifier(record: dict) -> str:
     identifier = str(record.get("identifier", ""))
-    return identifier.rsplit(".", 1)[-1].casefold()
+    parts = identifier.split(".")
+    if parts and parts[-1].casefold() == "__default":
+        parts.pop()
+    return (parts[-1] if parts else "").casefold()
 
 
 def find_timeline_record(
