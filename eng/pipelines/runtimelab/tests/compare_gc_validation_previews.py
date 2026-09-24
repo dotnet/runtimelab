@@ -25,7 +25,19 @@ def parse_named_paths(values: list[str]) -> dict[str, Path]:
 def baseline_execution_contract(preview: dict) -> dict:
     preview = dict(preview)
     preview.pop("parameters", None)
-    return preview
+    return normalize_inert_metadata(preview)
+
+
+def normalize_inert_metadata(value: object) -> object:
+    if isinstance(value, dict):
+        return {
+            key: normalize_inert_metadata(item)
+            for key, item in value.items()
+            if not (key == "templateContext" and item == {})
+        }
+    if isinstance(value, list):
+        return [normalize_inert_metadata(item) for item in value]
+    return value
 
 
 def compare_previews(
@@ -45,9 +57,9 @@ def compare_previews(
         raise AssertionError("root preview sets do not match")
 
     for name in sorted(expected_roots):
-        before = load_final_yaml(root_before[name])
-        after = load_final_yaml(root_after[name])
-        shard = load_final_yaml(shards[name])
+        before = normalize_inert_metadata(load_final_yaml(root_before[name]))
+        after = normalize_inert_metadata(load_final_yaml(root_after[name]))
+        shard = normalize_inert_metadata(load_final_yaml(shards[name]))
         if before != after:
             raise AssertionError(f"{name} standard root preview changed")
         if before["stages"] != shard["stages"]:

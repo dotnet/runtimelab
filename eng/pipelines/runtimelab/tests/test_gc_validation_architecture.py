@@ -7,7 +7,7 @@ import unittest
 
 import yaml
 
-from compare_gc_validation_previews import compare_previews
+from compare_gc_validation_previews import compare_previews, normalize_inert_metadata
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -47,6 +47,13 @@ BASELINE_PIPELINE_HASH = (
 )
 BASELINE_CONDITION = "${{ if eq(parameters.gcValidationMode, 'baseline') }}"
 STRESS_CONDITION = "${{ if eq(parameters.gcValidationMode, 'correctness-stress') }}"
+MONITOR_ARGUMENT = "${{ eq(variables['enableHelixJobMonitor'], true) }}"
+MONITOR_PARAMETER_CONDITION = (
+    "${{ if eq(parameters.enableHelixJobMonitor, true) }}"
+)
+MONITOR_VARIABLE_CONDITION = (
+    "${{ if eq(variables['enableHelixJobMonitor'], true) }}"
+)
 
 
 def load_yaml(path: Path) -> dict:
@@ -87,6 +94,23 @@ def stage_condition_map(pipeline: dict) -> dict:
     }
 
 
+def authoritative_graph(value: object) -> object:
+    if isinstance(value, dict):
+        return {
+            (
+                MONITOR_VARIABLE_CONDITION
+                if key == MONITOR_PARAMETER_CONDITION
+                else key
+            ): authoritative_graph(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [authoritative_graph(item) for item in value]
+    if value == "${{ parameters.enableHelixJobMonitor }}":
+        return "${{ variables.enableHelixJobMonitor }}"
+    return value
+
+
 class GcValidationArchitectureTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -105,7 +129,16 @@ class GcValidationArchitectureTests(unittest.TestCase):
                 ).read_text(encoding="utf-8")
                 template_path = TEMPLATE_ROOT / f"{name}-stages.yml"
                 self.assertEqual(
-                    [{"template": f"/{template_path.relative_to(REPO_ROOT).as_posix()}"}],
+                    [
+                        {
+                            "template": (
+                                f"/{template_path.relative_to(REPO_ROOT).as_posix()}"
+                            ),
+                            "parameters": {
+                                "enableHelixJobMonitor": MONITOR_ARGUMENT,
+                            },
+                        }
+                    ],
                     root["extends"]["parameters"]["stages"],
                 )
                 self.assertEqual(
@@ -117,7 +150,13 @@ class GcValidationArchitectureTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     expected["graph_hash"],
-                    canonical_hash(load_yaml(template_path)["stages"]),
+                    canonical_hash(
+                        authoritative_graph(load_yaml(template_path)["stages"])
+                    ),
+                )
+                self.assertEqual(
+                    [{"name": "enableHelixJobMonitor", "type": "boolean"}],
+                    load_yaml(template_path)["parameters"],
                 )
 
     def test_validation_parameters_are_closed_and_default_off(self) -> None:
@@ -150,7 +189,14 @@ class GcValidationArchitectureTests(unittest.TestCase):
             template = (
                 f"/eng/pipelines/coreclr/templates/gc-validation/{name}-stages.yml"
             )
-            expected_conditions[condition] = [{"template": template}]
+            expected_conditions[condition] = [
+                {
+                    "template": template,
+                    "parameters": {
+                        "enableHelixJobMonitor": MONITOR_ARGUMENT,
+                    },
+                }
+            ]
 
         actual_conditions = {
             condition: value
@@ -184,9 +230,19 @@ class GcValidationArchitectureTests(unittest.TestCase):
                 "baseline-after",
                 "parameters:\n- name: AddedSelector\nstages:\n- stage: Baseline\n",
             )
-            root_before = write("root-before", "stages:\n- stage: Shared\n")
-            root_after = write("root-after", "stages:\n- stage: Shared\n")
-            shard = write("shard", "stages:\n- stage: Shared\n")
+            root_before = write(
+                "root-before",
+                "stages:\n- stage: Shared\n  jobs:\n  - job: Build\n",
+            )
+            root_after = write(
+                "root-after",
+                "stages:\n- stage: Shared\n  jobs:\n  - job: Build\n",
+            )
+            shard = write(
+                "shard",
+                "stages:\n- stage: Shared\n  jobs:\n  - job: Build\n"
+                "    templateContext: {}\n",
+            )
 
             compare_previews(
                 baseline_before,
@@ -195,6 +251,16 @@ class GcValidationArchitectureTests(unittest.TestCase):
                 {"sample": root_after},
                 {"sample": shard},
             )
+
+    def test_only_empty_template_context_is_normalized(self) -> None:
+        self.assertEqual(
+            {"job": "Build"},
+            normalize_inert_metadata({"job": "Build", "templateContext": {}}),
+        )
+        self.assertEqual(
+            {"templateContext": {"outputs": []}},
+            normalize_inert_metadata({"templateContext": {"outputs": []}}),
+        )
 
 
 if __name__ == "__main__":
