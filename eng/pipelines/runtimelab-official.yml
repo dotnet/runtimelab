@@ -9,6 +9,7 @@ parameters:
   default: none
   values:
   - none
+  - x64
   - full
 - name: standardGcCampaignId
   displayName: Standard-GC campaign identity
@@ -41,11 +42,11 @@ extends:
   parameters:
     isOfficialBuild: true
     stages:
-    - ${{ if and(eq(parameters.standardGcArtifactProducer, 'full'), or(ne(variables['Build.Reason'], 'Manual'), ne(variables['System.TeamProject'], 'internal'))) }}:
+    - ${{ if and(ne(parameters.standardGcArtifactProducer, 'none'), or(ne(variables['Build.Reason'], 'Manual'), ne(variables['System.TeamProject'], 'internal'))) }}:
       - standardGcArtifactProducerRequiresManualInternal: error
-    - ${{ if and(eq(parameters.standardGcArtifactProducer, 'full'), eq(parameters.standardGcCampaignId, '')) }}:
+    - ${{ if and(ne(parameters.standardGcArtifactProducer, 'none'), eq(parameters.standardGcCampaignId, '')) }}:
       - standardGcArtifactProducerRequiresCampaignId: error
-    - ${{ if and(eq(parameters.standardGcArtifactProducer, 'full'), eq(parameters.standardGcCohortId, '')) }}:
+    - ${{ if and(ne(parameters.standardGcArtifactProducer, 'none'), eq(parameters.standardGcCohortId, '')) }}:
       - standardGcArtifactProducerRequiresCohortId: error
 
     - stage: Build
@@ -76,11 +77,12 @@ extends:
               publishingVersion: 4
               templateContext:
                 outputs:
-                - ${{ if eq(parameters.standardGcArtifactProducer, 'full') }}:
+                - ${{ if ne(parameters.standardGcArtifactProducer, 'none') }}:
                   - output: pipelineArtifact
                     displayName: Publish standard CoreCLR archive
                     targetPath: $(Build.StagingDirectory)/BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr$(archiveExtension)
                     artifactName: BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(_BuildConfig)_coreclr
+                - ${{ if eq(parameters.standardGcArtifactProducer, 'full') }}:
                   - output: pipelineArtifact
                     displayName: Publish Windows x64 dotnet layout
                     targetPath: $(Build.StagingDirectory)/ExternalDotnetLayout_windows_x64_Release_coreclr.zip
@@ -93,7 +95,7 @@ extends:
                     condition: and(succeeded(), eq(variables['osGroup'], 'windows'), eq(variables['archType'], 'arm64'))
               buildArgs: -s clr+libs+host+packs -c $(_BuildConfig) -restore -build -publish /p:PublishingVersion=4
               postBuildSteps:
-              - ${{ if eq(parameters.standardGcArtifactProducer, 'full') }}:
+              - ${{ if ne(parameters.standardGcArtifactProducer, 'none') }}:
                 - template: /eng/pipelines/common/upload-artifact-step.yml
                   parameters:
                     rootFolder: $(Build.SourcesDirectory)/artifacts/bin
@@ -105,6 +107,7 @@ extends:
                     displayName: Standard CoreCLR build assets
                     isOfficialBuild: true
                     publishArtifact: false
+              - ${{ if eq(parameters.standardGcArtifactProducer, 'full') }}:
                 - template: /eng/pipelines/runtimelab/create-dotnet-layout-step.yml
                   parameters:
                     rid: win-x64
@@ -143,7 +146,7 @@ extends:
               cohortId: ${{ parameters.standardGcCohortId }}
               aspNetValidationBinding: ${{ parameters.externalRuntimeAspNetValidationBinding }}
 
-    - ${{ if eq(parameters.standardGcArtifactProducer, 'full') }}:
+    - ${{ if ne(parameters.standardGcArtifactProducer, 'none') }}:
       - stage: StandardGcArtifactManifest
         displayName: Standard-GC artifact manifest
         dependsOn: Build
@@ -153,6 +156,7 @@ extends:
           parameters:
             campaignId: ${{ parameters.standardGcCampaignId }}
             cohortId: ${{ parameters.standardGcCohortId }}
+            producerScope: ${{ parameters.standardGcArtifactProducer }}
             aspNetValidationBinding: ${{ parameters.externalRuntimeAspNetValidationBinding }}
 
     - ${{ if parameters.publishToExperimentalFeed }}:

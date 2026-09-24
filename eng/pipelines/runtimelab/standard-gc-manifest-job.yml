@@ -1,6 +1,7 @@
 parameters:
   campaignId: ''
   cohortId: ''
+  producerScope: ''
   aspNetValidationBinding: ''
 
 jobs:
@@ -23,7 +24,7 @@ jobs:
         displayName: Publish definition 306 validation
         targetPath: $(Build.StagingDirectory)/standard-gc-manifest/ExternalRuntime306Validation
         artifactName: ExternalRuntime306Validation
-        condition: always()
+        condition: and(always(), eq('${{ parameters.producerScope }}', 'full'))
     steps:
     - checkout: self
       clean: true
@@ -43,7 +44,7 @@ jobs:
         output='$(Build.StagingDirectory)/standard-gc-manifest'
         mkdir -p "$output"
         args=(
-          --requirements '$(Build.SourcesDirectory)/eng/pipelines/runtimelab/standard-gc-artifact-requirements-v2.json'
+          --requirements '$(Build.SourcesDirectory)/eng/pipelines/runtimelab/standard-gc-artifact-producer-contract-v5.json'
           --artifact-root '$(Pipeline.Workspace)/standard-gc-artifacts'
           --output-root "$output"
           --source-repository 'dotnet/runtimelab'
@@ -53,7 +54,8 @@ jobs:
           --producer-build-id '$(Build.BuildId)'
           --campaign-id '${{ parameters.campaignId }}'
           --cohort-id '${{ parameters.cohortId }}'
-          --coverage-rows-sha256 'e49b7ec1f45de576ae709ca25ef7715012ec25fdd425ef93633dce5b2d29245f'
+          --coverage-rows-sha256 'e28b4af9427a487eca794752b70d349cd560b6b18aa825bea8077bc8644da15d'
+          --producer-scope '${{ parameters.producerScope }}'
         )
         if [ -n '${{ parameters.aspNetValidationBinding }}' ]; then
           args+=(--aspnet-validation-binding '${{ parameters.aspNetValidationBinding }}')
@@ -68,7 +70,9 @@ jobs:
     - bash: |
         output='$(Build.StagingDirectory)/standard-gc-manifest'
         test -f "$output/standard-gc-cohort-manifest.json"
-        test -f "$output/ExternalRuntime306Validation/external-runtime-306-validation.json"
+        if [ '${{ parameters.producerScope }}' = full ]; then
+          test -f "$output/ExternalRuntime306Validation/external-runtime-306-validation.json"
+        fi
         test "$(cat "$output/generation-exit-code.txt")" = 0
       displayName: Enforce complete producer cohort
       condition: always()

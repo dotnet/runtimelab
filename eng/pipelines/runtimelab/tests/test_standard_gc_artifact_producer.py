@@ -29,7 +29,7 @@ REQUIREMENTS_PATH = (
     / "eng"
     / "pipelines"
     / "runtimelab"
-    / "standard-gc-artifact-requirements-v2.json"
+    / "standard-gc-artifact-producer-contract-v5.json"
 )
 ASPNET_BINDING_PATH = (
     REPO_ROOT
@@ -49,6 +49,7 @@ LAYOUT_GENERATOR_PATH = (
     REPO_ROOT / "eng" / "pipelines" / "runtimelab" / "create_dotnet_layout.py"
 )
 BASE_SHA = "5ffec89f0944c7ca7001bd3c57713f4fa0fe9492"
+FINAL_BASELINE_SHA = "d93e03a189638ce6ac9c032f77c884290857ce54"
 
 
 def _load_module(path: Path, name: str):
@@ -173,7 +174,8 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
         parameters = _parameters(self.pipeline)
         self.assertEqual("none", parameters["standardGcArtifactProducer"]["default"])
         self.assertEqual(
-            ["none", "full"], parameters["standardGcArtifactProducer"]["values"]
+            ["none", "x64", "full"],
+            parameters["standardGcArtifactProducer"]["values"],
         )
         self.assertEqual("", parameters["standardGcCampaignId"]["default"])
         self.assertEqual("", parameters["standardGcCohortId"]["default"])
@@ -182,20 +184,20 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
         self.assertIn("standardGcArtifactProducerRequiresCampaignId", pipeline_text)
         self.assertIn("standardGcArtifactProducerRequiresCohortId", pipeline_text)
 
-    def test_frozen_requirements_cover_exact_v2_contract(self):
-        self.assertEqual(197, self.requirements["requiredRowCount"])
-        self.assertEqual(197, len(self.requirements["downstreamRowMappings"]))
+    def test_frozen_requirements_cover_exact_v5_contract(self):
+        self.assertEqual(258, self.requirements["requiredRowCount"])
+        self.assertEqual(258, len(self.requirements["downstreamRowMappings"]))
         self.assertEqual(
-            "d65c179aacba063fea6a7bf1d62c1ff7499320f979bb161dad09c25da0442aba",
-            self.requirements["contractFileSha256"],
+            "4f02e4fe805e09878fa0b01bf2a4593b57a3969ed0797fffaf6d637c3dfe02f2",
+            self.requirements["coverageAuthority"]["fileSha256"],
         )
         self.assertEqual(
-            "52fe6234b9d3223ed51da4ad107a58ed55c27fa837f11e6d17ef8554625b6f7b",
-            self.requirements["contractCanonicalPayloadSha256"],
+            "edbadcd8744100b489229aa30e7dc5dd7fb81b471b868bb9808cbf2a138fc343",
+            self.requirements["coverageAuthority"]["canonicalPayloadSha256"],
         )
         self.assertEqual(
-            "e49b7ec1f45de576ae709ca25ef7715012ec25fdd425ef93633dce5b2d29245f",
-            self.requirements["coverageRowsSha256"],
+            "e28b4af9427a487eca794752b70d349cd560b6b18aa825bea8077bc8644da15d",
+            self.requirements["coverageAuthority"]["contractRowsSha256"],
         )
         self.assertEqual(
             manifest_generator.REQUIREMENTS_FILE_SHA256,
@@ -224,6 +226,35 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
                     "definition306DotnetLayouts"
                 ]
             ),
+        )
+        self.assertEqual(
+            14,
+            len(
+                self.requirements["producerRequirements"][
+                    "sourceBuildRequirements"
+                ]
+            ),
+        )
+        self.assertEqual(
+            {129: 21, 141: 40},
+            {
+                definition_id: sum(
+                    row["definitionId"] == definition_id
+                    for row in self.requirements["downstreamRowMappings"]
+                )
+                for definition_id in (129, 141)
+            },
+        )
+        self.assertEqual(
+            [
+                "runtime-package:linux-x64",
+                "runtime-package:win-x64",
+                "pipeline-archive:BuildArtifacts_linux_x64_Release_coreclr",
+                "pipeline-archive:BuildArtifacts_windows_x64_Release_coreclr",
+            ],
+            self.requirements["producerScopes"]["x64"][
+                "requiredArtifactRequirementIds"
+            ],
         )
 
     def test_finalized_aspnet_binding_is_exact_and_strictly_validated(self):
@@ -273,7 +304,7 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
 
     def test_definition163_orchestration_is_not_changed(self):
         changed = subprocess.run(
-            ["git", "diff", "--name-only", BASE_SHA, "--"],
+            ["git", "diff", "--name-only", FINAL_BASELINE_SHA, "--"],
             cwd=REPO_ROOT,
             check=True,
             capture_output=True,
@@ -331,7 +362,10 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
             producer_build_id=12345,
             campaign_id=str(uuid.UUID("daeaf7a1-2d3c-59e7-a1bc-1d5c0630fd4a")),
             cohort_id="cohort",
-            coverage_rows_sha256=self.requirements["coverageRowsSha256"],
+            coverage_rows_sha256=self.requirements["coverageAuthority"][
+                "contractRowsSha256"
+            ],
+            producer_scope="full",
             aspnet_validation_binding=None,
         )
 
@@ -346,10 +380,11 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
             )
 
             self.assertEqual([], errors)
-            self.assertEqual(197, len(manifest["rows"]))
+            self.assertEqual(258, len(manifest["rows"]))
             self.assertEqual(
                 {"a" * 40}, {row["sourceCommit"] for row in manifest["rows"]}
             )
+            self.assertIsNotNone(receipt)
             self.assertEqual(15, receipt["rowCount"])
             self.assertEqual(15, len(receipt["rows"]))
             self.assertEqual(
@@ -371,7 +406,7 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
                 receipt["cohortManifestSha256"],
             )
             self.assertEqual(
-                85,
+                146,
                 sum(row["status"] == "blocked" for row in manifest["rows"]),
             )
 
@@ -392,11 +427,65 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
                     encoding="utf-8"
                 )
             )
-            self.assertEqual(197, len(manifest["rows"]))
+            self.assertEqual(258, len(manifest["rows"]))
             self.assertTrue(manifest["errors"])
             self.assertTrue(
                 any(
                     requirement["status"] == "blocked-missing-artifact"
+                    for row in manifest["rows"]
+                    for requirement in row["requirements"]
+                )
+            )
+
+    def test_x64_scope_requires_only_x64_packages_and_archives(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "artifacts"
+            output = Path(directory) / "output"
+            root.mkdir()
+            self._create_complete_artifact_fixture(root)
+            required_ids = set(
+                self.requirements["producerScopes"]["x64"][
+                    "requiredArtifactRequirementIds"
+                ]
+            )
+            for requirement in self.requirements["producerRequirements"][
+                "pipelineArtifactArchives"
+            ]:
+                if requirement["id"] not in required_ids:
+                    (root / requirement["fileName"]).unlink()
+            for requirement in self.requirements["producerRequirements"][
+                "definition306DotnetLayouts"
+            ]:
+                (root / requirement["artifact"]["fileName"]).unlink()
+            for requirement in self.requirements["producerRequirements"][
+                "runtimePackagesAndSymbols"
+            ]:
+                if requirement["id"] in required_ids:
+                    continue
+                for package in root.glob(f"{requirement['package']['id']}.*.nupkg"):
+                    package.unlink()
+
+            args = self._manifest_args(root, output)
+            args.producer_scope = "x64"
+            manifest, receipt, errors = manifest_generator.generate(args)
+
+            self.assertEqual([], errors)
+            self.assertIsNone(receipt)
+            self.assertEqual("x64", manifest["producerScope"])
+            self.assertEqual(required_ids, set(manifest["artifacts"]))
+            definition702_x64 = [
+                row
+                for row in manifest["rows"]
+                if row["definitionId"] == 702
+                and row["rid"] in ("linux-x64", "win-x64")
+            ]
+            self.assertEqual(4, len(definition702_x64))
+            self.assertEqual(
+                {"ready"}, {row["status"] for row in definition702_x64}
+            )
+            self.assertTrue(
+                any(
+                    requirement["status"] == "blocked-out-of-scope"
                     for row in manifest["rows"]
                     for requirement in row["requirements"]
                 )

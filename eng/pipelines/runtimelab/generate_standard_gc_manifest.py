@@ -14,7 +14,7 @@ import zipfile
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 REQUIREMENTS_FILE_SHA256 = (
-    "19e0e75e2cd09421696b9167cdeb1b7c48c8a299d083b6adcb596d2042f800da"
+    "d8eb7c11b408f3e5c3f3883e276fb9c270f5a129edf816c43ec87bc2e619366e"
 )
 ASPNET_BINDING_REPORTED_FILE_SHA256 = (
     "8e13df1a77f3797e67d601ad87fa58c3e3ff5f8d925c84284d576161fc08e746"
@@ -121,7 +121,9 @@ def _artifact_evidence(path: Path, kind: str, identity: Dict) -> Dict:
     return evidence
 
 
-def _collect_artifacts(requirements: Dict, artifact_root: Path) -> Tuple[Dict, List[str]]:
+def _collect_artifacts(
+    requirements: Dict, artifact_root: Path, required_ids: set[str]
+) -> Tuple[Dict, List[str]]:
     evidence = {}
     errors = []
 
@@ -152,7 +154,8 @@ def _collect_artifacts(requirements: Dict, artifact_root: Path) -> Tuple[Dict, L
                 ),
             }
         except (OSError, ValueError, zipfile.BadZipFile) as error:
-            errors.append(f"{requirement_id}: {error}")
+            if requirement_id in required_ids:
+                errors.append(f"{requirement_id}: {error}")
 
     for requirement in requirements["producerRequirements"]["pipelineArtifactArchives"]:
         requirement_id = requirement["id"]
@@ -170,7 +173,8 @@ def _collect_artifacts(requirements: Dict, artifact_root: Path) -> Tuple[Dict, L
                 },
             )
         except (OSError, ValueError) as error:
-            errors.append(f"{requirement_id}: {error}")
+            if requirement_id in required_ids:
+                errors.append(f"{requirement_id}: {error}")
 
     for requirement in requirements["producerRequirements"]["definition306DotnetLayouts"]:
         requirement_id = requirement["id"]
@@ -188,7 +192,8 @@ def _collect_artifacts(requirements: Dict, artifact_root: Path) -> Tuple[Dict, L
                 },
             )
         except (OSError, ValueError) as error:
-            errors.append(f"{requirement_id}: {error}")
+            if requirement_id in required_ids:
+                errors.append(f"{requirement_id}: {error}")
 
     return evidence, errors
 
@@ -285,7 +290,7 @@ def _validate_requirements(requirements: Dict) -> None:
     for group_name in (
         "runtimePackagesAndSymbols",
         "pipelineArtifactArchives",
-        "sourceBuildRequirementsOwnedByDefinition163",
+        "sourceBuildRequirements",
         "definition306DotnetLayouts",
         "validationReceipts",
     ):
@@ -295,8 +300,11 @@ def _validate_requirements(requirements: Dict) -> None:
 
     rows = requirements["downstreamRowMappings"]
     row_ids = [row["rowId"] for row in rows]
-    if len(rows) != 197 or len(row_ids) != len(set(row_ids)):
-        raise ValueError("producer requirements must contain 197 unique downstream rows")
+    required_row_count = requirements["requiredRowCount"]
+    if len(rows) != required_row_count or len(row_ids) != len(set(row_ids)):
+        raise ValueError(
+            f"producer requirements must contain {required_row_count} unique downstream rows"
+        )
     known_requirements = set(requirement_ids)
     for row in rows:
         if not row["requirementIds"]:
@@ -308,7 +316,13 @@ def _validate_requirements(requirements: Dict) -> None:
             )
 
 
-def _row_statuses(requirements: Dict, evidence: Dict, source_commit: str) -> List[Dict]:
+def _row_statuses(
+    requirements: Dict,
+    evidence: Dict,
+    source_commit: str,
+    producer_scope: str,
+    required_ids: set[str],
+) -> List[Dict]:
     rows = []
     for row in requirements["downstreamRowMappings"]:
         statuses = []
@@ -316,9 +330,15 @@ def _row_statuses(requirements: Dict, evidence: Dict, source_commit: str) -> Lis
             if requirement_id.startswith("source-build:"):
                 status = "blocked-external-definition163"
             elif requirement_id == "validation-receipt:definition306":
-                status = "generated-after-cohort-manifest"
+                status = (
+                    "generated-after-cohort-manifest"
+                    if producer_scope == "full"
+                    else "blocked-out-of-scope"
+                )
             elif requirement_id in evidence:
                 status = "ready"
+            elif requirement_id not in required_ids:
+                status = "blocked-out-of-scope"
             else:
                 status = "blocked-missing-artifact"
             statuses.append({"requirementId": requirement_id, "status": status})
@@ -358,7 +378,7 @@ def _definition306_receipt(
     }
     expected_rows = receipt_requirement["consumerRows"]
     if set(mappings) != set(expected_rows) or len(mappings) != 15:
-        raise ValueError("definition306 mapping must contain the exact 15 frozen v4 rows")
+        raise ValueError("definition306 mapping must contain the exact 15 frozen v5 rows")
 
     proof_root = output_root / "proofs"
     rows = []
@@ -401,7 +421,9 @@ def _definition306_receipt(
     receipt = {
         "schemaVersion": 1,
         "definitionId": 306,
-        "coverageRowsSha256": requirements["coverageRowsSha256"],
+        "coverageRowsSha256": requirements["coverageAuthority"][
+            "contractRowsSha256"
+        ],
         "sourceCommit": identity["sourceCommit"],
         "producerDefinitionId": identity["producerDefinitionId"],
         "producerBuildId": identity["producerBuildId"],
@@ -417,16 +439,24 @@ def _definition306_receipt(
     return receipt
 
 
-def generate(args: argparse.Namespace) -> Tuple[Dict, Dict, List[str]]:
+def generate(args: argparse.Namespace) -> Tuple[Dict, Optional[Dict], List[str]]:
     _validate_identity(args)
     if _hash_file(args.requirements, "sha256") != REQUIREMENTS_FILE_SHA256:
-        raise ValueError("producer requirements authority hash does not match contract v2")
+        raise ValueError("producer requirements authority hash does not match contract v5")
     requirements = json.loads(args.requirements.read_text(encoding="utf-8"))
-    if requirements["coverageRowsSha256"] != args.coverage_rows_sha256:
+    coverage_authority = requirements["coverageAuthority"]
+    if coverage_authority["contractRowsSha256"] != args.coverage_rows_sha256:
         raise ValueError("coverage contract hash does not match producer requirements")
     _validate_requirements(requirements)
+    if args.producer_scope not in requirements["producerScopes"]:
+        raise ValueError(f"unsupported producer scope: {args.producer_scope}")
+    required_ids = set(
+        requirements["producerScopes"][args.producer_scope][
+            "requiredArtifactRequirementIds"
+        ]
+    )
 
-    evidence, errors = _collect_artifacts(requirements, args.artifact_root)
+    evidence, errors = _collect_artifacts(requirements, args.artifact_root, required_ids)
     aspnet_validation = {
         "status": "blocked-unbound",
         "reason": "authoritative ExternalRuntimeAspNetValidation binding not supplied",
@@ -456,28 +486,39 @@ def generate(args: argparse.Namespace) -> Tuple[Dict, Dict, List[str]]:
         "cohortId": args.cohort_id,
     }
     manifest = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "contract": {
             "id": requirements["contractId"],
             "version": requirements["contractVersion"],
-            "canonicalPayloadSha256": requirements["contractCanonicalPayloadSha256"],
-            "fileSha256": requirements["contractFileSha256"],
-            "coverageRowsSha256": requirements["coverageRowsSha256"],
+            "fileSha256": REQUIREMENTS_FILE_SHA256,
+            "coverageContractVersion": coverage_authority["contractVersion"],
+            "coverageContractFileSha256": coverage_authority["fileSha256"],
+            "coverageRowsSha256": coverage_authority["contractRowsSha256"],
         },
         "identity": identity,
+        "producerScope": args.producer_scope,
+        "requiredArtifactRequirementIds": sorted(required_ids),
         "artifacts": {key: evidence[key] for key in sorted(evidence)},
-        "rows": _row_statuses(requirements, evidence, args.source_commit),
+        "rows": _row_statuses(
+            requirements,
+            evidence,
+            args.source_commit,
+            args.producer_scope,
+            required_ids,
+        ),
         "aspNetValidation": aspnet_validation,
         "errors": errors,
     }
     manifest_sha256 = _write_json(args.output_root / "standard-gc-cohort-manifest.json", manifest)
-    receipt = _definition306_receipt(
-        requirements,
-        evidence,
-        identity,
-        manifest_sha256,
-        args.output_root / "ExternalRuntime306Validation",
-    )
+    receipt = None
+    if args.producer_scope == "full":
+        receipt = _definition306_receipt(
+            requirements,
+            evidence,
+            identity,
+            manifest_sha256,
+            args.output_root / "ExternalRuntime306Validation",
+        )
     return manifest, receipt, errors
 
 
@@ -496,6 +537,7 @@ def main() -> None:
     parser.add_argument("--campaign-id", required=True)
     parser.add_argument("--cohort-id", required=True)
     parser.add_argument("--coverage-rows-sha256", required=True)
+    parser.add_argument("--producer-scope", required=True, choices=("x64", "full"))
     parser.add_argument("--aspnet-validation-binding", type=Path)
     args = parser.parse_args()
     _, _, errors = generate(args)
