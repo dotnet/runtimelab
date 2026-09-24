@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import redirect_stdout
 import copy
 import hashlib
 import http.client
@@ -26,10 +27,17 @@ from orchestrate_gc_validation import (
     OrchestrationError,
     PermissionPreflightError,
     ROOTS,
+    RUN_KIND_DIRECT,
+    RUN_KIND_PARENT_CHILD,
     canonical_json_bytes,
     classify_transient_infrastructure_failure,
+    emit_run_identity_tags,
     evaluate_queue_permission,
+    hydrated_matching_runs,
+    identity_tags,
     run_matches,
+    run_tag_value,
+    validate_shard_identity,
 )
 
 
@@ -95,7 +103,21 @@ class FakeClient:
             "result": None,
             "resources": copy.deepcopy(request["resources"]),
             "templateParameters": {},
-            "variables": copy.deepcopy(request["variables"]),
+            "tags": list(
+                identity_tags(
+                    run_kind=request["templateParameters"][
+                        "gcValidationRunKind"
+                    ],
+                    campaign_id=request["templateParameters"][
+                        "gcValidationCampaignId"
+                    ],
+                    parent_build_id=request["templateParameters"][
+                        "gcValidationParentBuildId"
+                    ],
+                    root=root,
+                    attempt=attempt,
+                )
+            ),
             "nativeScenario": "genuine",
             "buildResult": None,
         }
@@ -109,8 +131,8 @@ class FakeClient:
     def get_run(self, run_id: int) -> dict:
         self.get_calls.append(run_id)
         run = next(run for run in self.runs if run["id"] == run_id)
-        root = run["variables"]["GC_VALIDATION_ROOT"]["value"]
-        attempt = int(run["variables"]["GC_VALIDATION_ATTEMPT"]["value"])
+        root = run_tag_value(run, "root")
+        attempt = int(run_tag_value(run, "attempt"))
         if self.complete_on_get:
             run["state"] = "completed"
             run["result"] = self.results.get((root, attempt), "succeeded")
@@ -121,8 +143,8 @@ class FakeClient:
     def get_timeline(self, run_id: int) -> dict:
         self.timeline_calls.append(run_id)
         run = next(run for run in self.runs if run["id"] == run_id)
-        root = run["variables"]["GC_VALIDATION_ROOT"]["value"]
-        attempt = int(run["variables"]["GC_VALIDATION_ATTEMPT"]["value"])
+        root = run_tag_value(run, "root")
+        attempt = int(run_tag_value(run, "attempt"))
         timeline = json.loads(
             (FIXTURES / "definition163-child-timeline.json").read_text(
                 encoding="utf-8"
@@ -205,16 +227,13 @@ class FakeClient:
         run_id = int(artifact["name"].rsplit("_", 1)[1])
         run = next(run for run in self.runs if run["id"] == run_id)
         receipt = {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "definitionId": self.pipeline_id,
-            "campaignId": run_variable_value(
-                run, "GC_VALIDATION_CAMPAIGN_ID"
-            ),
-            "parentBuildId": run_variable_value(
-                run, "GC_VALIDATION_PARENT_BUILD_ID"
-            ),
-            "root": run_variable_value(run, "GC_VALIDATION_ROOT"),
-            "attempt": int(run_variable_value(run, "GC_VALIDATION_ATTEMPT")),
+            "runKind": run_tag_value(run, "runKind"),
+            "campaignId": run_tag_value(run, "campaignId"),
+            "parentBuildId": run_tag_value(run, "parentBuildId"),
+            "root": run_tag_value(run, "root"),
+            "attempt": int(run_tag_value(run, "attempt")),
             "sourceRef": run["resources"]["repositories"]["self"]["refName"],
             "sourceVersion": run["resources"]["repositories"]["self"]["version"],
             "currentRunId": run_id,
@@ -241,12 +260,6 @@ class FakeClient:
                 canonical_json_bytes(receipt) + b"\n",
             )
         return stream.getvalue()
-
-
-def run_variable_value(run: dict, name: str) -> str:
-    return str(run["variables"][name]["value"])
-
-
 def create_orchestrator(
     client: FakeClient,
     output_directory: Path,
@@ -528,35 +541,123 @@ class GcValidationOrchestrationTests(unittest.TestCase):
                 "gcValidationMode": "correctness-shard",
                 "gcValidationRoot": ROOTS[0],
                 "gcValidationCampaignId": CAMPAIGN_ID,
+                "gcValidationRunKind": RUN_KIND_PARENT_CHILD,
                 "gcValidationParentBuildId": PARENT_BUILD_ID,
                 "gcValidationAttempt": "1",
             },
             request["templateParameters"],
         )
-        self.assertEqual(
-            {
-                "GC_VALIDATION_MODE": {
-                    "value": "correctness-shard",
-                    "isSecret": False,
-                },
-                "GC_VALIDATION_CAMPAIGN_ID": {
-                    "value": CAMPAIGN_ID,
-                    "isSecret": False,
-                },
-                "GC_VALIDATION_PARENT_BUILD_ID": {
-                    "value": PARENT_BUILD_ID,
-                    "isSecret": False,
-                },
-                "GC_VALIDATION_ROOT": {
-                    "value": ROOTS[0],
-                    "isSecret": False,
-                },
-                "GC_VALIDATION_ATTEMPT": {
-                    "value": "1",
-                    "isSecret": False,
-                },
+        self.assertNotIn("variables", request)
+
+    def test_direct_shard_identity_is_tagged_and_discoverable(self) -> None:
+        output = io.StringIO()
+        with redirect_stdout(output):
+            emit_run_identity_tags(
+                run_kind=RUN_KIND_DIRECT,
+                campaign_id="phase1-direct-campaign",
+                parent_build_id=RUN_KIND_DIRECT,
+                root=ROOTS[0],
+                attempt=1,
+            )
+        tags = [
+            line.removeprefix("##vso[build.addbuildtag]")
+            for line in output.getvalue().splitlines()
+        ]
+        run = {
+            "id": 123,
+            "tags": tags,
+            "resources": {
+                "repositories": {
+                    "self": {
+                        "refName": SOURCE_REF,
+                        "version": SOURCE_VERSION,
+                    }
+                }
             },
-            request["variables"],
+            "templateParameters": {},
+        }
+
+        self.assertEqual(6, len(tags))
+        self.assertTrue(
+            run_matches(
+                run,
+                run_kind=RUN_KIND_DIRECT,
+                campaign_id="phase1-direct-campaign",
+                parent_build_id=RUN_KIND_DIRECT,
+                root=ROOTS[0],
+                source_ref=SOURCE_REF,
+                source_version=SOURCE_VERSION,
+                attempt=1,
+            )
+        )
+        self.assertFalse(
+            run_matches(
+                run,
+                run_kind=RUN_KIND_PARENT_CHILD,
+                campaign_id="phase1-direct-campaign",
+                parent_build_id=RUN_KIND_DIRECT,
+                root=ROOTS[0],
+                source_ref=SOURCE_REF,
+                source_version=SOURCE_VERSION,
+                attempt=1,
+            )
+        )
+
+    def test_shard_identity_rejects_missing_or_forged_parameters(self) -> None:
+        cases = (
+            (
+                {
+                    "run_kind": RUN_KIND_DIRECT,
+                    "campaign_id": "",
+                    "parent_build_id": RUN_KIND_DIRECT,
+                    "root": ROOTS[0],
+                    "attempt": 1,
+                },
+                "campaign ID must be explicit",
+            ),
+            (
+                {
+                    "run_kind": RUN_KIND_DIRECT,
+                    "campaign_id": CAMPAIGN_ID,
+                    "parent_build_id": PARENT_BUILD_ID,
+                    "root": ROOTS[0],
+                    "attempt": 1,
+                },
+                "must use parent build ID 'direct'",
+            ),
+            (
+                {
+                    "run_kind": RUN_KIND_DIRECT,
+                    "campaign_id": CAMPAIGN_ID,
+                    "parent_build_id": RUN_KIND_DIRECT,
+                    "root": ROOTS[0],
+                    "attempt": 2,
+                },
+                "permit attempt 1 only",
+            ),
+            (
+                {
+                    "run_kind": RUN_KIND_PARENT_CHILD,
+                    "campaign_id": CAMPAIGN_ID,
+                    "parent_build_id": RUN_KIND_DIRECT,
+                    "root": ROOTS[0],
+                    "attempt": 1,
+                },
+                "positive numeric parent build ID",
+            ),
+        )
+        for arguments, message in cases:
+            with self.subTest(arguments=arguments):
+                with self.assertRaisesRegex(OrchestrationError, message):
+                    validate_shard_identity(**arguments)
+
+        validate_shard_identity(
+            run_kind=RUN_KIND_PARENT_CHILD,
+            campaign_id=CAMPAIGN_ID,
+            parent_build_id=PARENT_BUILD_ID,
+            root=ROOTS[0],
+            attempt=2,
+            current_run_id=1000,
         )
 
     def test_run_match_includes_campaign_root_parent_and_source(self) -> None:
@@ -569,11 +670,20 @@ class GcValidationOrchestrationTests(unittest.TestCase):
             "id": 123,
             "resources": request["resources"],
             "templateParameters": {},
-            "variables": request["variables"],
+            "tags": list(
+                identity_tags(
+                    run_kind=RUN_KIND_PARENT_CHILD,
+                    campaign_id=CAMPAIGN_ID,
+                    parent_build_id=PARENT_BUILD_ID,
+                    root=ROOTS[0],
+                    attempt=1,
+                )
+            ),
         }
         self.assertTrue(
             run_matches(
                 run,
+                run_kind=RUN_KIND_PARENT_CHILD,
                 campaign_id=CAMPAIGN_ID,
                 parent_build_id=PARENT_BUILD_ID,
                 root=ROOTS[0],
@@ -586,6 +696,20 @@ class GcValidationOrchestrationTests(unittest.TestCase):
         self.assertFalse(
             run_matches(
                 run,
+                run_kind=RUN_KIND_PARENT_CHILD,
+                campaign_id=CAMPAIGN_ID,
+                parent_build_id=PARENT_BUILD_ID,
+                root=ROOTS[0],
+                source_ref=SOURCE_REF,
+                source_version=SOURCE_VERSION,
+            )
+        )
+        run["id"] = 123
+        run["tags"].append("gc-validation.parent.999")
+        self.assertFalse(
+            run_matches(
+                run,
+                run_kind=RUN_KIND_PARENT_CHILD,
                 campaign_id=CAMPAIGN_ID,
                 parent_build_id=PARENT_BUILD_ID,
                 root=ROOTS[0],
@@ -598,6 +722,7 @@ class GcValidationOrchestrationTests(unittest.TestCase):
         self.assertFalse(
             run_matches(
                 run,
+                run_kind=RUN_KIND_PARENT_CHILD,
                 campaign_id=CAMPAIGN_ID,
                 parent_build_id=PARENT_BUILD_ID,
                 root=ROOTS[0],
@@ -617,11 +742,15 @@ class GcValidationOrchestrationTests(unittest.TestCase):
             client = FakeClient()
             orchestrator = create_orchestrator(client, Path(directory))
             request = orchestrator.build_request(ROOTS[0], 1)
-            returned_variables = {
-                name.lower(): copy.deepcopy(value)
-                for name, value in request["variables"].items()
-            }
-            detail["variables"] = copy.deepcopy(returned_variables)
+            detail["tags"] = list(
+                identity_tags(
+                    run_kind=RUN_KIND_PARENT_CHILD,
+                    campaign_id=CAMPAIGN_ID,
+                    parent_build_id=PARENT_BUILD_ID,
+                    root=ROOTS[0],
+                    attempt=1,
+                )
+            )
             detail["resources"] = copy.deepcopy(request["resources"])
             listing["value"].insert(
                 0,
@@ -647,9 +776,56 @@ class GcValidationOrchestrationTests(unittest.TestCase):
         self.assertNotIn("resources", listing["value"][0])
         self.assertEqual({}, matches[0]["templateParameters"])
         self.assertEqual(
+            set(detail["tags"]),
+            set(matches[0]["tags"]),
+        )
+        self.assertEqual(
             SOURCE_VERSION,
             matches[0]["resources"]["repositories"]["self"]["version"],
         )
+
+    def test_direct_run_hydrates_captured_list_and_get_shapes(self) -> None:
+        listing = json.loads(
+            (FIXTURES / "definition163-runs-list.json").read_text(encoding="utf-8")
+        )
+        detail = json.loads(
+            (FIXTURES / "definition163-run-get.json").read_text(encoding="utf-8")
+        )
+        campaign_id = "phase1-direct-campaign"
+        detail["tags"] = list(
+            identity_tags(
+                run_kind=RUN_KIND_DIRECT,
+                campaign_id=campaign_id,
+                parent_build_id=RUN_KIND_DIRECT,
+                root=ROOTS[0],
+                attempt=1,
+            )
+        )
+        detail["resources"]["repositories"]["self"].update(
+            {
+                "refName": SOURCE_REF,
+                "version": SOURCE_VERSION,
+            }
+        )
+        client = FakeClient()
+        client.list_runs = lambda: copy.deepcopy(listing["value"])
+        client.get_run = lambda _: copy.deepcopy(detail)
+
+        matches = hydrated_matching_runs(
+            client,
+            run_kind=RUN_KIND_DIRECT,
+            campaign_id=campaign_id,
+            parent_build_id=RUN_KIND_DIRECT,
+            root=ROOTS[0],
+            source_ref=SOURCE_REF,
+            source_version=SOURCE_VERSION,
+            attempt=1,
+        )
+
+        self.assertEqual([1607407], [run["id"] for run in matches])
+        self.assertEqual({}, matches[0]["templateParameters"])
+        self.assertNotIn("variables", matches[0])
+        self.assertEqual(set(detail["tags"]), set(matches[0]["tags"]))
 
     def test_ambiguous_queue_response_adopts_matching_run_without_requeue(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -667,6 +843,35 @@ class GcValidationOrchestrationTests(unittest.TestCase):
         self.assertEqual(
             1000, receipt["children"][ROOTS[0]]["currentRunId"]
         )
+
+    def test_adoption_waits_for_source_identity_tags(self) -> None:
+        class DelayedIdentityClient(FakeClient):
+            def __init__(self):
+                super().__init__(complete_on_get=False)
+                self.identity_reads = 0
+
+            def list_runs(self) -> list[dict]:
+                runs = super().list_runs()
+                if self.identity_reads == 0:
+                    for run in runs:
+                        run.pop("tags", None)
+                return runs
+
+            def get_run(self, run_id: int) -> dict:
+                run = super().get_run(run_id)
+                self.identity_reads += 1
+                if self.identity_reads == 1:
+                    run.pop("tags", None)
+                return run
+
+        with tempfile.TemporaryDirectory() as directory:
+            client = DelayedIdentityClient()
+            orchestrator = create_orchestrator(client, Path(directory))
+            attempt = orchestrator.ensure_run(ROOTS[0], 1)
+
+        self.assertEqual(1, len(client.queue_calls))
+        self.assertEqual(1000, attempt["runId"])
+        self.assertGreaterEqual(client.identity_reads, 2)
 
     def test_nonpositive_or_invalid_post_id_is_adopted_without_requeue(self) -> None:
         for response in ([], {}, {"id": 0}, {"id": -1}, {"id": True}, {"id": "1"}):
@@ -841,6 +1046,7 @@ class GcValidationOrchestrationTests(unittest.TestCase):
             admission = GcValidationAdmission(
                 client,
                 Path(directory) / "pending-admission",
+                RUN_KIND_PARENT_CHILD,
                 CAMPAIGN_ID,
                 PARENT_BUILD_ID,
                 ROOTS[0],
@@ -987,6 +1193,7 @@ class GcValidationOrchestrationTests(unittest.TestCase):
             admission = GcValidationAdmission(
                 client,
                 Path(directory) / "expired-terminal",
+                RUN_KIND_PARENT_CHILD,
                 CAMPAIGN_ID,
                 PARENT_BUILD_ID,
                 ROOTS[0],
@@ -1124,6 +1331,46 @@ class GcValidationOrchestrationTests(unittest.TestCase):
         )
         self.assertEqual(1, sum(attempt["adopted"] for attempt in attempts))
 
+    def test_direct_shard_admission_uses_direct_identity_contract(self) -> None:
+        client = FakeClient(complete_on_get=False)
+        campaign_id = "phase1-direct-campaign"
+        with tempfile.TemporaryDirectory() as directory:
+            request = create_orchestrator(
+                client, Path(directory)
+            ).build_request(ROOTS[0], 1)
+            request["templateParameters"].update(
+                {
+                    "gcValidationCampaignId": campaign_id,
+                    "gcValidationRunKind": RUN_KIND_DIRECT,
+                    "gcValidationParentBuildId": RUN_KIND_DIRECT,
+                }
+            )
+            client.queue_run(request)
+            admission = GcValidationAdmission(
+                client,
+                Path(directory) / "direct",
+                RUN_KIND_DIRECT,
+                campaign_id,
+                RUN_KIND_DIRECT,
+                ROOTS[0],
+                1,
+                SOURCE_REF,
+                SOURCE_VERSION,
+                1000,
+                observation_seconds=0,
+                poll_seconds=1,
+            )
+
+            self.assertTrue(admission.run())
+            receipt = json.loads(
+                admission.receipt_path.read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(2, receipt["schemaVersion"])
+        self.assertEqual(RUN_KIND_DIRECT, receipt["runKind"])
+        self.assertEqual(RUN_KIND_DIRECT, receipt["parentBuildId"])
+        self.assertTrue(receipt["admitted"])
+
     def test_two_duplicate_children_admit_only_lowest_run_id(self) -> None:
         class SynchronizedAdmissionClient(FakeClient):
             def __init__(self):
@@ -1154,6 +1401,7 @@ class GcValidationOrchestrationTests(unittest.TestCase):
                 run_id: GcValidationAdmission(
                     client,
                     Path(directory) / str(run_id),
+                    RUN_KIND_PARENT_CHILD,
                     CAMPAIGN_ID,
                     PARENT_BUILD_ID,
                     ROOTS[0],
@@ -1203,6 +1451,7 @@ class GcValidationOrchestrationTests(unittest.TestCase):
             admission = GcValidationAdmission(
                 client,
                 Path(directory) / "delayed",
+                RUN_KIND_PARENT_CHILD,
                 CAMPAIGN_ID,
                 PARENT_BUILD_ID,
                 ROOTS[0],
@@ -1239,6 +1488,7 @@ class GcValidationOrchestrationTests(unittest.TestCase):
             admission = GcValidationAdmission(
                 client,
                 Path(directory) / "completed-canonical",
+                RUN_KIND_PARENT_CHILD,
                 CAMPAIGN_ID,
                 PARENT_BUILD_ID,
                 ROOTS[0],

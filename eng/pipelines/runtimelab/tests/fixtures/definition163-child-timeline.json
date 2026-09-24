@@ -19,7 +19,7 @@
       "parentId": "01234567-89ab-cdef-0123-456789abcdef",
       "type": "Job",
       "name": "Admit canonical GC validation shard",
-      "identifier": "gcvalidationadmission.AdmitCanonicalGcValidationShard",
+      "identifier": "GCValidationAdmission.AdmitCanonicalGcValidationShard.__default",
       "state": "completed",
       "result": "succeeded",
       "order": 1

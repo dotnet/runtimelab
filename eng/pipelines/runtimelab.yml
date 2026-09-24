@@ -22,10 +22,17 @@ parameters:
   displayName: GC validation campaign ID
   type: string
   default: ''
+- name: gcValidationRunKind
+  displayName: GC validation run kind
+  type: string
+  default: direct
+  values:
+  - direct
+  - parent-child
 - name: gcValidationParentBuildId
   displayName: GC validation parent build ID
   type: string
-  default: ''
+  default: direct
 - name: gcValidationAttempt
   displayName: GC validation shard attempt
   type: number
@@ -141,14 +148,34 @@ extends:
               set -euo pipefail
 
               python3 '$(Build.SourcesDirectory)/eng/pipelines/runtimelab/orchestrate_gc_validation.py' \
+                --emit-run-identity-tags \
+                --run-kind "$GC_VALIDATION_RUN_KIND" \
+                --campaign-id "$GC_VALIDATION_CAMPAIGN_ID" \
+                --parent-build-id "$GC_VALIDATION_PARENT_BUILD_ID" \
+                --root "$GC_VALIDATION_ROOT" \
+                --attempt "$GC_VALIDATION_ATTEMPT"
+            displayName: Publish GC validation run identity
+            env:
+              GC_VALIDATION_RUN_KIND: ${{ parameters.gcValidationRunKind }}
+              GC_VALIDATION_CAMPAIGN_ID: ${{ parameters.gcValidationCampaignId }}
+              GC_VALIDATION_PARENT_BUILD_ID: ${{ parameters.gcValidationParentBuildId }}
+              GC_VALIDATION_ROOT: ${{ parameters.gcValidationRoot }}
+              GC_VALIDATION_ATTEMPT: ${{ parameters.gcValidationAttempt }}
+
+          - bash: |
+              set -euo pipefail
+
+              python3 '$(Build.SourcesDirectory)/eng/pipelines/runtimelab/orchestrate_gc_validation.py' \
                 --admit-child \
                 --output-directory '$(Build.ArtifactStagingDirectory)/gc-validation-admission' \
+                --run-kind "$GC_VALIDATION_RUN_KIND" \
                 --campaign-id "$GC_VALIDATION_CAMPAIGN_ID" \
                 --parent-build-id "$GC_VALIDATION_PARENT_BUILD_ID" \
                 --root "$GC_VALIDATION_ROOT" \
                 --attempt "$GC_VALIDATION_ATTEMPT"
             displayName: Admit canonical child run
             env:
+              GC_VALIDATION_RUN_KIND: ${{ parameters.gcValidationRunKind }}
               GC_VALIDATION_CAMPAIGN_ID: ${{ parameters.gcValidationCampaignId }}
               GC_VALIDATION_PARENT_BUILD_ID: ${{ parameters.gcValidationParentBuildId }}
               GC_VALIDATION_ROOT: ${{ parameters.gcValidationRoot }}
@@ -224,7 +251,7 @@ extends:
             displayName: Queue and monitor child runs
             env:
               GC_VALIDATION_CAMPAIGN_ID: ${{ parameters.gcValidationCampaignId }}
-              GC_VALIDATION_PARENT_BUILD_ID: ${{ parameters.gcValidationParentBuildId }}
+              GC_VALIDATION_PARENT_BUILD_ID: $(Build.BuildId)
               SYSTEM_ACCESSTOKEN: $(System.AccessToken)
 
           - task: PublishPipelineArtifact@1
