@@ -16,6 +16,9 @@ from orchestrate_gc_validation import ROOTS as ORCHESTRATION_ROOTS
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 RUNTIMELAB_PIPELINE_PATH = REPO_ROOT / "eng" / "pipelines" / "runtimelab.yml"
+HELIX_JOB_MONITOR_PATH = (
+    REPO_ROOT / "eng" / "common" / "core-templates" / "job" / "helix-job-monitor.yml"
+)
 TEMPLATE_ROOT = (
     REPO_ROOT / "eng" / "pipelines" / "coreclr" / "templates" / "gc-validation"
 )
@@ -208,6 +211,18 @@ class GcValidationArchitectureTests(unittest.TestCase):
         self.assertEqual("number", self.parameters["gcValidationAttempt"]["type"])
         self.assertEqual(1, self.parameters["gcValidationAttempt"]["default"])
         self.assertEqual([1, 2], self.parameters["gcValidationAttempt"]["values"])
+
+    def test_helix_monitor_explicitly_preserves_token_authentication(self) -> None:
+        template = load_yaml(HELIX_JOB_MONITOR_PATH)
+        monitor_step = next(
+            step
+            for step in template["jobs"][0]["steps"]
+            if step.get("displayName") == "Monitor Helix Jobs"
+        )
+        self.assertIn(
+            "--use-entra-authentication    'False'",
+            monitor_step["bash"],
+        )
 
     def test_baseline_authored_structure_is_exact(self) -> None:
         baseline = copy.deepcopy(self.pipeline)

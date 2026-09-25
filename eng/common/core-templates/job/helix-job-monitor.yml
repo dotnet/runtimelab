@@ -214,6 +214,7 @@ jobs:
 
       toolArgs=(
         --helix-base-uri              '${{ parameters.helixBaseUri }}'
+        --use-entra-authentication    'False'
         --polling-interval-seconds    '${{ parameters.pollingIntervalSeconds }}'
         --fail-on-failed-tests        '${{ parameters.failWorkItemsWithFailedTests }}'
         --allow-no-helix-jobs         '${{ parameters.allowNoHelixJobs }}'
