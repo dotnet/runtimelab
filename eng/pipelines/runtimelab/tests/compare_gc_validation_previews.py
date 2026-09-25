@@ -6,6 +6,20 @@ import yaml
 
 
 ADMISSION_STAGE_NAME = "GCValidationAdmission"
+DEFINITION129_ROOT = "runtime-coreclr-correctness"
+DEFINITION129_AUTHORITY_JOBS = [
+    "build_wasi_wasm_linux_Release_CoreCLR_WASI_RuntimeTests",
+    "run_test_p0_coreclr__linux_arm_checked",
+    "run_test_p0_coreclr__windows_x86_checked",
+    "run_test_p0_coreclr__windows_arm64_checked",
+    "run_test_p0_coreclr__browser_wasm_checked",
+    "run_test_p0_coreclr_R2R_CG2_browser_wasm_checked",
+    "run_test_p0_coreclr__linux_arm64_checked",
+    "run_test_p0_coreclr__linux_x64_checked",
+    "run_test_p0_coreclr__osx_arm64_checked",
+    "run_test_p0_coreclr__osx_x64_checked",
+    "run_test_p0_coreclr__windows_x64_checked",
+]
 HELIX_SUBMITTER_JOBS = {
     "gcstress0x3-gcstress0xc": [
         "run_test_p1__linux_arm_checked",
@@ -46,6 +60,7 @@ HELIX_SUBMITTER_JOBS = {
         "run_test_p1_GCStandAloneServer_windows_x64_checked",
         "run_test_p1_GCStandAloneServer_windows_arm64_checked",
     ],
+    DEFINITION129_ROOT: DEFINITION129_AUTHORITY_JOBS,
 }
 
 
@@ -162,6 +177,77 @@ def shard_execution_stages(preview: dict, root: str) -> list[dict]:
     ]
 
 
+def stage_by_name(preview: dict, name: str) -> dict:
+    matches = [stage for stage in preview["stages"] if stage.get("stage") == name]
+    if len(matches) != 1:
+        raise AssertionError(f"preview must contain one {name} stage")
+    return matches[0]
+
+
+def jobs_by_name(stage: dict) -> dict[str, dict]:
+    result = {}
+    for job in stage.get("jobs", []):
+        name = job.get("job")
+        if not name:
+            continue
+        if name in result:
+            raise AssertionError(f"stage contains duplicate job {name}")
+        result[name] = job
+    return result
+
+
+def contains_helix_submission(value: object) -> bool:
+    if isinstance(value, dict):
+        if value.get("displayName") == "Send to Helix":
+            return True
+        return any(contains_helix_submission(item) for item in value.values())
+    if isinstance(value, list):
+        return any(contains_helix_submission(item) for item in value)
+    return isinstance(value, str) and "helixpublishwitharcade.proj" in value
+
+
+def compare_definition129_previews(authority: Path, shard: Path) -> None:
+    authority_preview = normalize_inert_metadata(load_final_yaml(authority))
+    authority_stage = stage_by_name(authority_preview, "Build")
+    authority_jobs = jobs_by_name(authority_stage)
+
+    shard_preview = load_final_yaml(shard)
+    shard_stages = shard_execution_stages(shard_preview, DEFINITION129_ROOT)
+    if len(shard_stages) != 1 or shard_stages[0].get("stage") != "Build":
+        raise AssertionError("definition 129 shard must contain one Build stage")
+    shard_stage = shard_stages[0]
+    shard_jobs = jobs_by_name(shard_stage)
+
+    missing_authority = [
+        name for name in DEFINITION129_AUTHORITY_JOBS if name not in authority_jobs
+    ]
+    missing_shard = [
+        name for name in DEFINITION129_AUTHORITY_JOBS if name not in shard_jobs
+    ]
+    if missing_authority or missing_shard:
+        raise AssertionError(
+            "definition 129 authority jobs are missing: "
+            f"authority={missing_authority!r}, shard={missing_shard!r}"
+        )
+
+    for name in DEFINITION129_AUTHORITY_JOBS:
+        if authority_jobs[name] != shard_jobs[name]:
+            raise AssertionError(
+                f"definition 129 authoritative job {name} differs"
+            )
+
+    submitters = [
+        job.get("job")
+        for job in shard_stage.get("jobs", [])
+        if contains_helix_submission(job)
+    ]
+    if submitters != DEFINITION129_AUTHORITY_JOBS:
+        raise AssertionError(
+            "definition 129 shard Helix submitters differ: "
+            f"{submitters!r}"
+        )
+
+
 def compare_previews(
     baseline_before: Path,
     baseline_after: Path,
@@ -199,6 +285,8 @@ def main() -> None:
     parser.add_argument("--root-before", action="append", default=[], metavar="NAME=PATH")
     parser.add_argument("--root-after", action="append", default=[], metavar="NAME=PATH")
     parser.add_argument("--shard", action="append", default=[], metavar="NAME=PATH")
+    parser.add_argument("--definition129-authority", type=Path)
+    parser.add_argument("--definition129-shard", type=Path)
     args = parser.parse_args()
 
     compare_previews(
@@ -208,6 +296,17 @@ def main() -> None:
         parse_named_paths(args.root_after),
         parse_named_paths(args.shard),
     )
+    if (args.definition129_authority is None) != (
+        args.definition129_shard is None
+    ):
+        parser.error(
+            "--definition129-authority and --definition129-shard are required together"
+        )
+    if args.definition129_authority is not None:
+        compare_definition129_previews(
+            args.definition129_authority,
+            args.definition129_shard,
+        )
 
 
 if __name__ == "__main__":

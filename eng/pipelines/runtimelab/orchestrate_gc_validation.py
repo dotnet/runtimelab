@@ -26,6 +26,7 @@ ROOTS = (
     "gc-simulator",
     "gc-standalone",
 )
+DIRECT_ROOTS = ROOTS + ("runtime-coreclr-correctness",)
 EXPECTED_DEFINITION_ID = 163
 BUILD_SECURITY_NAMESPACE_ID = "33344d9c-fc72-4d6f-aba5-fa317101a7e9"
 RUN_KIND_DIRECT = "direct"
@@ -1883,7 +1884,7 @@ def validate_shard_identity(
             "Correctness shard campaign ID must be explicit."
         )
     resolve_campaign_id(campaign_id, parent_build_id)
-    if root not in ROOTS:
+    if root not in DIRECT_ROOTS:
         raise OrchestrationError("Correctness shard root is missing or invalid.")
     if attempt not in (1, 2):
         raise OrchestrationError("Correctness shard attempt must be 1 or 2.")
@@ -1897,6 +1898,10 @@ def validate_shard_identity(
                 "Direct correctness shards permit attempt 1 only."
             )
         return
+    if root not in ROOTS:
+        raise OrchestrationError(
+            "Parent-child correctness shards must use a parent-orchestrated root."
+        )
     if not parent_build_id.isdigit() or int(parent_build_id) <= 0:
         raise OrchestrationError(
             "Parent-child correctness shards require a positive numeric "
@@ -1947,7 +1952,7 @@ def main() -> int:
     parser.add_argument("--adoption-timeout-seconds", type=int, default=900)
     parser.add_argument("--admit-child", action="store_true")
     parser.add_argument("--emit-run-identity-tags", action="store_true")
-    parser.add_argument("--root", choices=ROOTS)
+    parser.add_argument("--root", choices=DIRECT_ROOTS)
     parser.add_argument("--attempt", type=int, choices=(1, 2))
     parser.add_argument("--admission-observation-seconds", type=int, default=60)
     parser.add_argument("--admission-poll-seconds", type=int, default=5)

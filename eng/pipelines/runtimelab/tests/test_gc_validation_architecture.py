@@ -11,11 +11,17 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from compare_gc_validation_previews import (
+    DEFINITION129_AUTHORITY_JOBS,
+    DEFINITION129_ROOT,
     HELIX_SUBMITTER_JOBS,
+    compare_definition129_previews,
     compare_previews,
     normalize_inert_metadata,
 )
-from orchestrate_gc_validation import ROOTS as ORCHESTRATION_ROOTS
+from orchestrate_gc_validation import (
+    DIRECT_ROOTS,
+    ROOTS as ORCHESTRATION_ROOTS,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -54,6 +60,7 @@ ROOTS = {
         "preamble_hash": "2cf11cb9b4f761897a6d8db580871a8145e80a992e83fc0bea5fb3000f39bad2",
     },
 }
+DIRECT_ONLY_ROOTS = (DEFINITION129_ROOT,)
 BASELINE_PIPELINE_HASH = (
     "b8732c8723cd1da1ddaaa92134a2332e04fca50be0af29e436ca04dee658aa3b"
 )
@@ -206,8 +213,12 @@ class GcValidationArchitectureTests(unittest.TestCase):
             self.parameters["gcValidationMode"]["values"],
         )
         self.assertEqual("baseline", self.parameters["gcValidationMode"]["default"])
-        self.assertEqual(list(ROOTS), self.parameters["gcValidationRoot"]["values"])
+        self.assertEqual(
+            [*ROOTS, *DIRECT_ONLY_ROOTS],
+            self.parameters["gcValidationRoot"]["values"],
+        )
         self.assertEqual(tuple(ROOTS), ORCHESTRATION_ROOTS)
+        self.assertEqual((*ORCHESTRATION_ROOTS, *DIRECT_ONLY_ROOTS), DIRECT_ROOTS)
         self.assertEqual(
             "gcstress0x3-gcstress0xc",
             self.parameters["gcValidationRoot"]["default"],
@@ -279,6 +290,23 @@ class GcValidationArchitectureTests(unittest.TestCase):
                     },
                 }
             ]
+        expected_conditions[
+            "${{ if and(eq(parameters.gcValidationMode, 'correctness-shard'), "
+            f"eq(parameters.gcValidationRoot, '{DEFINITION129_ROOT}')) }}}}"
+        ] = [
+            {
+                "template": (
+                    "/eng/pipelines/coreclr/templates/gc-validation/"
+                    "runtime-coreclr-correctness-stages.yml"
+                ),
+                "parameters": {
+                    "enableHelixJobMonitor": MONITOR_ARGUMENT,
+                    "dependsOn": ["GCValidationAdmission"],
+                    "helixMonitorDependsOn": DEFINITION129_AUTHORITY_JOBS,
+                    "helixMonitorCondition": "succeededOrFailed()",
+                },
+            }
+        ]
 
         actual_conditions = {
             condition: value
@@ -287,6 +315,43 @@ class GcValidationArchitectureTests(unittest.TestCase):
             and condition != ADMISSION_CONDITION
         }
         self.assertEqual(expected_conditions, actual_conditions)
+
+    def test_definition129_root_is_direct_only_and_has_no_extra_helix_leg(self) -> None:
+        template_path = TEMPLATE_ROOT / "runtime-coreclr-correctness-stages.yml"
+        template = load_yaml(template_path)
+        self.assertEqual(
+            [
+                {"name": "enableHelixJobMonitor", "type": "string"},
+                {"name": "dependsOn", "type": "object", "default": []},
+                {
+                    "name": "helixMonitorDependsOn",
+                    "type": "object",
+                    "default": [],
+                },
+                {
+                    "name": "helixMonitorCondition",
+                    "type": "string",
+                    "default": "",
+                },
+            ],
+            template["parameters"],
+        )
+        self.assertEqual("Build", template["stages"][0]["stage"])
+        text = template_path.read_text(encoding="utf-8")
+        self.assertNotIn("/eng/pipelines/libraries/helix.yml", text)
+        self.assertEqual(
+            4,
+            text.count(
+                "jobTemplate: /eng/pipelines/common/templates/runtimes/run-test-job.yml"
+            ),
+        )
+        self.assertEqual(
+            1,
+            text.count(
+                "template: /eng/pipelines/common/templates/"
+                "wasi-wasm-coreclr-runtime-tests.yml"
+            ),
+        )
 
     def test_shard_admission_precedes_authoritative_graph(self) -> None:
         admission_stages = self.conditions[ADMISSION_CONDITION]
@@ -465,6 +530,141 @@ class GcValidationArchitectureTests(unittest.TestCase):
             {"templateContext": {"outputs": []}},
             normalize_inert_metadata({"templateContext": {"outputs": []}}),
         )
+
+    def test_definition129_preview_comparator_requires_exact_jobs_and_submitters(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            def authority_job(name: str) -> dict:
+                return {
+                    "job": name,
+                    "steps": [
+                        {
+                            "displayName": "Send to Helix",
+                            "script": (
+                                "dotnet src/tests/Common/"
+                                "helixpublishwitharcade.proj"
+                            )
+                        }
+                    ],
+                }
+
+            authority = root / "authority.json"
+            authority.write_text(
+                json.dumps(
+                    {
+                        "finalYaml": yaml.safe_dump(
+                            {
+                                "stages": [
+                                    {
+                                        "stage": "Build",
+                                        "jobs": [
+                                            authority_job(name)
+                                            for name in DEFINITION129_AUTHORITY_JOBS
+                                        ],
+                                    }
+                                ]
+                            },
+                            sort_keys=False,
+                        )
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            def write_shard(name: str, jobs: list[dict]) -> Path:
+                path = root / f"{name}.json"
+                path.write_text(
+                    json.dumps(
+                        {
+                            "finalYaml": yaml.safe_dump(
+                                {
+                                    "stages": [
+                                        {
+                                            "stage": "GCValidationAdmission",
+                                            "jobs": [{"job": "Admit"}],
+                                        },
+                                        {
+                                            "stage": "Build",
+                                            "dependsOn": [
+                                                "GCValidationAdmission"
+                                            ],
+                                            "jobs": [
+                                                {
+                                                    "job": "HelixJobMonitor",
+                                                    "dependsOn": (
+                                                        DEFINITION129_AUTHORITY_JOBS
+                                                    ),
+                                                    "condition": "succeededOrFailed()",
+                                                },
+                                                *jobs,
+                                            ],
+                                        },
+                                    ]
+                                },
+                                sort_keys=False,
+                            )
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                return path
+
+            exact_jobs = [
+                authority_job(name) for name in DEFINITION129_AUTHORITY_JOBS
+            ]
+            compare_definition129_previews(
+                authority,
+                write_shard("exact", exact_jobs),
+            )
+
+            with self.assertRaisesRegex(
+                AssertionError,
+                "Helix submitters differ",
+            ):
+                compare_definition129_previews(
+                    authority,
+                    write_shard(
+                        "extra",
+                        [
+                            *exact_jobs,
+                            authority_job("unexpected_submitter"),
+                        ],
+                    ),
+                )
+
+            missing_jobs = exact_jobs[1:]
+            with self.assertRaisesRegex(
+                AssertionError,
+                "authority jobs are missing",
+            ):
+                compare_definition129_previews(
+                    authority,
+                    write_shard("missing", missing_jobs),
+                )
+
+            changed_jobs = copy.deepcopy(exact_jobs)
+            changed_jobs[0]["timeoutInMinutes"] = 1
+            with self.assertRaisesRegex(
+                AssertionError,
+                "authoritative job .* differs",
+            ):
+                compare_definition129_previews(
+                    authority,
+                    write_shard("changed", changed_jobs),
+                )
+
+            duplicate_jobs = [*exact_jobs, copy.deepcopy(exact_jobs[0])]
+            with self.assertRaisesRegex(
+                AssertionError,
+                "duplicate job",
+            ):
+                compare_definition129_previews(
+                    authority,
+                    write_shard("duplicate", duplicate_jobs),
+                )
 
 
 if __name__ == "__main__":

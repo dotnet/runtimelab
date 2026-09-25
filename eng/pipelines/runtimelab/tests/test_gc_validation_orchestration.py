@@ -26,6 +26,7 @@ from orchestrate_gc_validation import (
     GcValidationOrchestrator,
     OrchestrationError,
     PermissionPreflightError,
+    DIRECT_ROOTS,
     ROOTS,
     RUN_KIND_DIRECT,
     RUN_KIND_PARENT_CHILD,
@@ -602,6 +603,29 @@ class GcValidationOrchestrationTests(unittest.TestCase):
                 attempt=1,
             )
         )
+
+    def test_definition129_root_is_direct_only(self) -> None:
+        root = DIRECT_ROOTS[-1]
+        validate_shard_identity(
+            run_kind=RUN_KIND_DIRECT,
+            campaign_id=CAMPAIGN_ID,
+            parent_build_id=RUN_KIND_DIRECT,
+            root=root,
+            attempt=1,
+            current_run_id=1000,
+        )
+        with self.assertRaisesRegex(
+            OrchestrationError,
+            "must use a parent-orchestrated root",
+        ):
+            validate_shard_identity(
+                run_kind=RUN_KIND_PARENT_CHILD,
+                campaign_id=CAMPAIGN_ID,
+                parent_build_id=PARENT_BUILD_ID,
+                root=root,
+                attempt=1,
+                current_run_id=1000,
+            )
 
     def test_shard_identity_rejects_missing_or_forged_parameters(self) -> None:
         cases = (
