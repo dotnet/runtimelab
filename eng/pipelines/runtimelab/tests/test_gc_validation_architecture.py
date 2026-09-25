@@ -15,6 +15,7 @@ from orchestrate_gc_validation import ROOTS as ORCHESTRATION_ROOTS
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
+DOTNET_TOOLS_PATH = REPO_ROOT / ".config" / "dotnet-tools.json"
 RUNTIMELAB_PIPELINE_PATH = REPO_ROOT / "eng" / "pipelines" / "runtimelab.yml"
 HELIX_JOB_MONITOR_PATH = (
     REPO_ROOT / "eng" / "common" / "core-templates" / "job" / "helix-job-monitor.yml"
@@ -223,6 +224,12 @@ class GcValidationArchitectureTests(unittest.TestCase):
             "--use-entra-authentication    'False'",
             monitor_step["bash"],
         )
+
+    def test_helix_monitor_tool_supports_explicit_authentication_mode(self) -> None:
+        manifest = json.loads(DOTNET_TOOLS_PATH.read_text(encoding="utf-8"))
+        tool = manifest["tools"]["microsoft.dotnet.helix.jobmonitor"]
+        self.assertEqual("12.0.0-beta.26471.108", tool["version"])
+        self.assertEqual(["dotnet-helix-job-monitor"], tool["commands"])
 
     def test_baseline_authored_structure_is_exact(self) -> None:
         baseline = copy.deepcopy(self.pipeline)
