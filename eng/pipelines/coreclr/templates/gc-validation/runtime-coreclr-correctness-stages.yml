@@ -224,7 +224,7 @@ stages:
     parameters:
       platforms:
       - wasi_wasm
-      alwaysRun: ${{ variables.isRollingBuild }}
+      alwaysRun: true
       useHelixMonitor: ${{ parameters.enableHelixJobMonitor }}
 
   # Definition 129 authority common managed test build.
@@ -330,7 +330,7 @@ stages:
       jobParameters:
         testGroup: innerloop
         liveLibrariesBuildConfig: Release
-        unifiedArtifactsName: Libraries_CheckedCoreCLR_BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_Release
+        unifiedArtifactsName: Libraries_CheckedCoreCLR_BuildArtifacts_$(osGroup)$(osSubgroup)_$(archType)_$(debugOnPrReleaseOnRolling)
         unifiedBuildNameSuffix: Libraries_CheckedCoreCLR
         unifiedBuildConfigOverride: Release
         useHelixMonitor: ${{ parameters.enableHelixJobMonitor }}

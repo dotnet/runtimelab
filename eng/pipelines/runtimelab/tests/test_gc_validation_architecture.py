@@ -339,8 +339,12 @@ class GcValidationArchitectureTests(unittest.TestCase):
         self.assertEqual("Build", template["stages"][0]["stage"])
         text = template_path.read_text(encoding="utf-8")
         self.assertNotIn("/eng/pipelines/libraries/helix.yml", text)
-        self.assertNotIn("debugOnPrReleaseOnRolling", text)
+        self.assertNotIn(
+            "${{ variables.debugOnPrReleaseOnRolling }}",
+            text,
+        )
         self.assertEqual(3, text.count("buildConfig: Release"))
+        self.assertIn("alwaysRun: true", text)
         self.assertIn("unifiedBuildConfigOverride: Release", text)
         self.assertEqual(
             4,
