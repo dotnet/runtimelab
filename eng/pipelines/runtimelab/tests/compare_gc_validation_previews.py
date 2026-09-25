@@ -6,6 +6,47 @@ import yaml
 
 
 ADMISSION_STAGE_NAME = "GCValidationAdmission"
+HELIX_SUBMITTER_JOBS = {
+    "gcstress0x3-gcstress0xc": [
+        "run_test_p1__linux_arm_checked",
+        "run_test_p1__linux_arm64_checked",
+        "run_test_p1__linux_x64_checked",
+        "run_test_p1__osx_arm64_checked",
+        "run_test_p1__windows_x64_checked",
+        "run_test_p1__windows_x86_checked",
+        "run_test_p1__windows_arm64_checked",
+    ],
+    "gcstress-extra": [
+        "run_test_p1__linux_arm_checked",
+        "run_test_p1__linux_arm64_checked",
+        "run_test_p1__linux_x64_checked",
+        "run_test_p1__osx_arm64_checked",
+        "run_test_p1__windows_x64_checked",
+        "run_test_p1__windows_x86_checked",
+        "run_test_p1__windows_arm64_checked",
+    ],
+    "gc-longrunning": [
+        "run_test_p1__linux_arm64_release",
+        "run_test_p1__linux_x64_release",
+        "run_test_p1__windows_x64_release",
+        "run_test_p1__windows_arm64_release",
+    ],
+    "gc-simulator": [
+        "run_test_p1__linux_arm64_release",
+        "run_test_p1__windows_x64_release",
+        "run_test_p1__windows_arm64_release",
+    ],
+    "gc-standalone": [
+        "run_test_p1_GCStandAlone_linux_arm64_checked",
+        "run_test_p1_GCStandAlone_linux_x64_checked",
+        "run_test_p1_GCStandAlone_windows_x64_checked",
+        "run_test_p1_GCStandAlone_windows_arm64_checked",
+        "run_test_p1_GCStandAloneServer_linux_arm64_checked",
+        "run_test_p1_GCStandAloneServer_linux_x64_checked",
+        "run_test_p1_GCStandAloneServer_windows_x64_checked",
+        "run_test_p1_GCStandAloneServer_windows_arm64_checked",
+    ],
+}
 
 
 def load_final_yaml(path: Path) -> dict:
@@ -47,7 +88,11 @@ def normalize_authority_preview(preview: dict) -> dict:
     preview = normalize_inert_metadata(preview)
     normalized = dict(preview)
     normalized["stages"] = [
-        normalize_execution_stage(stage, expected_dependency=[])
+        normalize_monitor_dependency(
+            normalize_execution_stage(stage, expected_dependency=[]),
+            expected_dependency=[],
+            expected_condition="",
+        )
         for stage in preview["stages"]
     ]
     return normalized
@@ -65,7 +110,38 @@ def normalize_execution_stage(
     return normalized
 
 
-def shard_execution_stages(preview: dict) -> list[dict]:
+def normalize_monitor_dependency(
+    stage: dict, *, expected_dependency: list[str], expected_condition: str
+) -> dict:
+    normalized = dict(stage)
+    jobs = []
+    monitor_count = 0
+    for job in stage.get("jobs", []):
+        normalized_job = dict(job)
+        if normalized_job.get("job") == "HelixJobMonitor":
+            monitor_count += 1
+            actual_dependency = normalized_job.pop("dependsOn", [])
+            if actual_dependency != expected_dependency:
+                raise AssertionError(
+                    "HelixJobMonitor has unexpected dependsOn "
+                    f"{actual_dependency!r}"
+                )
+            actual_condition = normalized_job.pop("condition", "")
+            if actual_condition != expected_condition:
+                raise AssertionError(
+                    "HelixJobMonitor has unexpected condition "
+                    f"{actual_condition!r}"
+                )
+        jobs.append(normalized_job)
+    if monitor_count != 1:
+        raise AssertionError(
+            f"{stage.get('stage')} must contain one HelixJobMonitor job"
+        )
+    normalized["jobs"] = jobs
+    return normalized
+
+
+def shard_execution_stages(preview: dict, root: str) -> list[dict]:
     preview = normalize_inert_metadata(preview)
     stages = preview["stages"]
     if not stages or stages[0].get("stage") != ADMISSION_STAGE_NAME:
@@ -75,8 +151,12 @@ def shard_execution_stages(preview: dict) -> list[dict]:
     ) != 1:
         raise AssertionError("shard preview must contain one admission stage")
     return [
-        normalize_execution_stage(
-            stage, expected_dependency=[ADMISSION_STAGE_NAME]
+        normalize_monitor_dependency(
+            normalize_execution_stage(
+                stage, expected_dependency=[ADMISSION_STAGE_NAME]
+            ),
+            expected_dependency=HELIX_SUBMITTER_JOBS[root],
+            expected_condition="succeededOrFailed()",
         )
         for stage in stages[1:]
     ]
@@ -101,7 +181,9 @@ def compare_previews(
     for name in sorted(expected_roots):
         before = normalize_authority_preview(load_final_yaml(root_before[name]))
         after = normalize_authority_preview(load_final_yaml(root_after[name]))
-        shard_stages = shard_execution_stages(load_final_yaml(shards[name]))
+        shard_stages = shard_execution_stages(
+            load_final_yaml(shards[name]), name
+        )
         if before != after:
             raise AssertionError(f"{name} standard root preview changed")
         if before["stages"] != shard_stages:

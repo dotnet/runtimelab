@@ -4,6 +4,12 @@ parameters:
 - name: dependsOn
   type: object
   default: []
+- name: helixMonitorDependsOn
+  type: object
+  default: []
+- name: helixMonitorCondition
+  type: string
+  default: ''
 
 stages:
 - stage: Build
@@ -15,6 +21,8 @@ stages:
         helixAccessToken: $(HelixApiAccessToken)
         timeoutInMinutes: 720
         allowNoHelixJobs: true
+        dependsOn: ${{ parameters.helixMonitorDependsOn }}
+        condition: ${{ parameters.helixMonitorCondition }}
 
   - template: /eng/pipelines/common/platform-matrix.yml
     parameters:

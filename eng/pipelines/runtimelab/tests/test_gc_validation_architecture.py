@@ -10,7 +10,11 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from compare_gc_validation_previews import compare_previews, normalize_inert_metadata
+from compare_gc_validation_previews import (
+    HELIX_SUBMITTER_JOBS,
+    compare_previews,
+    normalize_inert_metadata,
+)
 from orchestrate_gc_validation import ROOTS as ORCHESTRATION_ROOTS
 
 
@@ -115,8 +119,13 @@ def authoritative_graph(value: object) -> object:
             ): authoritative_graph(item)
             for key, item in value.items()
             if not (
-                key == "dependsOn"
-                and item == "${{ parameters.dependsOn }}"
+                key in ("dependsOn", "condition")
+                and item
+                in (
+                    "${{ parameters.dependsOn }}",
+                    "${{ parameters.helixMonitorDependsOn }}",
+                    "${{ parameters.helixMonitorCondition }}",
+                )
             )
         }
     if isinstance(value, list):
@@ -176,6 +185,16 @@ class GcValidationArchitectureTests(unittest.TestCase):
                             "name": "dependsOn",
                             "type": "object",
                             "default": [],
+                        },
+                        {
+                            "name": "helixMonitorDependsOn",
+                            "type": "object",
+                            "default": [],
+                        },
+                        {
+                            "name": "helixMonitorCondition",
+                            "type": "string",
+                            "default": "",
                         },
                     ],
                     load_yaml(template_path)["parameters"],
@@ -255,6 +274,8 @@ class GcValidationArchitectureTests(unittest.TestCase):
                     "parameters": {
                         "enableHelixJobMonitor": MONITOR_ARGUMENT,
                         "dependsOn": ["GCValidationAdmission"],
+                        "helixMonitorDependsOn": HELIX_SUBMITTER_JOBS[name],
+                        "helixMonitorCondition": "succeededOrFailed()",
                     },
                 }
             ]
@@ -375,12 +396,22 @@ class GcValidationArchitectureTests(unittest.TestCase):
             )
             root_before = write(
                 "root-before",
-                "stages:\n- stage: Shared\n  jobs:\n  - job: Build\n",
+                "stages:\n- stage: Shared\n  jobs:\n"
+                "  - job: HelixJobMonitor\n"
+                "  - job: Build\n",
             )
             root_after = write(
                 "root-after",
                 "stages:\n- stage: Shared\n  dependsOn: []\n"
-                "  jobs:\n  - job: Build\n",
+                "  jobs:\n"
+                "  - job: HelixJobMonitor\n"
+                "  - job: Build\n",
+            )
+            monitor_dependencies = "".join(
+                f"    - {job}\n"
+                for job in HELIX_SUBMITTER_JOBS[
+                    "gcstress0x3-gcstress0xc"
+                ]
             )
             shard = write(
                 "shard",
@@ -388,17 +419,42 @@ class GcValidationArchitectureTests(unittest.TestCase):
                 "  jobs:\n  - job: Admit\n"
                 "- stage: Shared\n"
                 "  dependsOn:\n  - GCValidationAdmission\n"
-                "  jobs:\n  - job: Build\n"
+                "  jobs:\n"
+                "  - job: HelixJobMonitor\n"
+                "    dependsOn:\n"
+                f"{monitor_dependencies}"
+                "    condition: succeededOrFailed()\n"
+                "  - job: Build\n"
                 "    templateContext: {}\n",
             )
 
             compare_previews(
                 baseline_before,
                 baseline_after,
-                {"sample": root_before},
-                {"sample": root_after},
-                {"sample": shard},
+                {"gcstress0x3-gcstress0xc": root_before},
+                {"gcstress0x3-gcstress0xc": root_after},
+                {"gcstress0x3-gcstress0xc": shard},
             )
+
+            incorrect_shard = write(
+                "incorrect-shard",
+                json.loads(shard.read_text(encoding="utf-8"))["finalYaml"].replace(
+                    HELIX_SUBMITTER_JOBS["gcstress0x3-gcstress0xc"][0],
+                    "unexpected_submitter",
+                    1,
+                ),
+            )
+            with self.assertRaisesRegex(
+                AssertionError,
+                "HelixJobMonitor has unexpected dependsOn",
+            ):
+                compare_previews(
+                    baseline_before,
+                    baseline_after,
+                    {"gcstress0x3-gcstress0xc": root_before},
+                    {"gcstress0x3-gcstress0xc": root_after},
+                    {"gcstress0x3-gcstress0xc": incorrect_shard},
+                )
 
     def test_only_empty_template_context_is_normalized(self) -> None:
         self.assertEqual(

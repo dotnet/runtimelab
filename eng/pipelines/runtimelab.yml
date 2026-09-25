@@ -195,30 +195,69 @@ extends:
           enableHelixJobMonitor: ${{ variables.enableHelixJobMonitor }}
           dependsOn:
           - GCValidationAdmission
+          helixMonitorDependsOn:
+          - run_test_p1__linux_arm_checked
+          - run_test_p1__linux_arm64_checked
+          - run_test_p1__linux_x64_checked
+          - run_test_p1__osx_arm64_checked
+          - run_test_p1__windows_x64_checked
+          - run_test_p1__windows_x86_checked
+          - run_test_p1__windows_arm64_checked
+          helixMonitorCondition: succeededOrFailed()
     - ${{ if and(eq(parameters.gcValidationMode, 'correctness-shard'), eq(parameters.gcValidationRoot, 'gcstress-extra')) }}:
       - template: /eng/pipelines/coreclr/templates/gc-validation/gcstress-extra-stages.yml
         parameters:
           enableHelixJobMonitor: ${{ variables.enableHelixJobMonitor }}
           dependsOn:
           - GCValidationAdmission
+          helixMonitorDependsOn:
+          - run_test_p1__linux_arm_checked
+          - run_test_p1__linux_arm64_checked
+          - run_test_p1__linux_x64_checked
+          - run_test_p1__osx_arm64_checked
+          - run_test_p1__windows_x64_checked
+          - run_test_p1__windows_x86_checked
+          - run_test_p1__windows_arm64_checked
+          helixMonitorCondition: succeededOrFailed()
     - ${{ if and(eq(parameters.gcValidationMode, 'correctness-shard'), eq(parameters.gcValidationRoot, 'gc-longrunning')) }}:
       - template: /eng/pipelines/coreclr/templates/gc-validation/gc-longrunning-stages.yml
         parameters:
           enableHelixJobMonitor: ${{ variables.enableHelixJobMonitor }}
           dependsOn:
           - GCValidationAdmission
+          helixMonitorDependsOn:
+          - run_test_p1__linux_arm64_release
+          - run_test_p1__linux_x64_release
+          - run_test_p1__windows_x64_release
+          - run_test_p1__windows_arm64_release
+          helixMonitorCondition: succeededOrFailed()
     - ${{ if and(eq(parameters.gcValidationMode, 'correctness-shard'), eq(parameters.gcValidationRoot, 'gc-simulator')) }}:
       - template: /eng/pipelines/coreclr/templates/gc-validation/gc-simulator-stages.yml
         parameters:
           enableHelixJobMonitor: ${{ variables.enableHelixJobMonitor }}
           dependsOn:
           - GCValidationAdmission
+          helixMonitorDependsOn:
+          - run_test_p1__linux_arm64_release
+          - run_test_p1__windows_x64_release
+          - run_test_p1__windows_arm64_release
+          helixMonitorCondition: succeededOrFailed()
     - ${{ if and(eq(parameters.gcValidationMode, 'correctness-shard'), eq(parameters.gcValidationRoot, 'gc-standalone')) }}:
       - template: /eng/pipelines/coreclr/templates/gc-validation/gc-standalone-stages.yml
         parameters:
           enableHelixJobMonitor: ${{ variables.enableHelixJobMonitor }}
           dependsOn:
           - GCValidationAdmission
+          helixMonitorDependsOn:
+          - run_test_p1_GCStandAlone_linux_arm64_checked
+          - run_test_p1_GCStandAlone_linux_x64_checked
+          - run_test_p1_GCStandAlone_windows_x64_checked
+          - run_test_p1_GCStandAlone_windows_arm64_checked
+          - run_test_p1_GCStandAloneServer_linux_arm64_checked
+          - run_test_p1_GCStandAloneServer_linux_x64_checked
+          - run_test_p1_GCStandAloneServer_windows_x64_checked
+          - run_test_p1_GCStandAloneServer_windows_arm64_checked
+          helixMonitorCondition: succeededOrFailed()
 
     - ${{ if eq(parameters.gcValidationMode, 'correctness-stress') }}:
       - stage: GCValidationCorrectnessStress
