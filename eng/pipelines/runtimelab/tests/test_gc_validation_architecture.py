@@ -13,8 +13,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from compare_gc_validation_previews import (
     DEFINITION129_AUTHORITY_JOBS,
     DEFINITION129_ROOT,
+    DEFINITION141_AUTHORITY_JOBS,
+    DEFINITION141_ROOT,
+    DEFINITION141_SCENARIOS,
     HELIX_SUBMITTER_JOBS,
     compare_definition129_previews,
+    compare_definition141_previews,
     compare_previews,
     normalize_inert_metadata,
 )
@@ -60,7 +64,7 @@ ROOTS = {
         "preamble_hash": "2cf11cb9b4f761897a6d8db580871a8145e80a992e83fc0bea5fb3000f39bad2",
     },
 }
-DIRECT_ONLY_ROOTS = (DEFINITION129_ROOT,)
+DIRECT_ONLY_ROOTS = (DEFINITION129_ROOT, DEFINITION141_ROOT)
 BASELINE_PIPELINE_HASH = (
     "b8732c8723cd1da1ddaaa92134a2332e04fca50be0af29e436ca04dee658aa3b"
 )
@@ -307,6 +311,23 @@ class GcValidationArchitectureTests(unittest.TestCase):
                 },
             }
         ]
+        expected_conditions[
+            "${{ if and(eq(parameters.gcValidationMode, 'correctness-shard'), "
+            f"eq(parameters.gcValidationRoot, '{DEFINITION141_ROOT}')) }}}}"
+        ] = [
+            {
+                "template": (
+                    "/eng/pipelines/coreclr/templates/gc-validation/"
+                    "crossgen2-composite-gcstress-stages.yml"
+                ),
+                "parameters": {
+                    "enableHelixJobMonitor": MONITOR_ARGUMENT,
+                    "dependsOn": ["GCValidationAdmission"],
+                    "helixMonitorDependsOn": DEFINITION141_AUTHORITY_JOBS,
+                    "helixMonitorCondition": "succeededOrFailed()",
+                },
+            }
+        ]
 
         actual_conditions = {
             condition: value
@@ -358,6 +379,62 @@ class GcValidationArchitectureTests(unittest.TestCase):
                 "template: /eng/pipelines/common/templates/"
                 "wasi-wasm-coreclr-runtime-tests.yml"
             ),
+        )
+
+    def test_definition141_root_and_shard_reuse_exact_authority_graph(self) -> None:
+        authority_root_path = (
+            REPO_ROOT / "eng" / "pipelines" / "coreclr" / "crossgen2-gcstress.yml"
+        )
+        authority_root = load_yaml(authority_root_path)
+        authority_root_text = authority_root_path.read_text(encoding="utf-8")
+        template_path = (
+            TEMPLATE_ROOT / "crossgen2-composite-gcstress-stages.yml"
+        )
+        template = load_yaml(template_path)
+        self.assertEqual(
+            [
+                {
+                    "template": (
+                        "/eng/pipelines/coreclr/templates/gc-validation/"
+                        "crossgen2-composite-gcstress-stages.yml"
+                    ),
+                    "parameters": {
+                        "enableHelixJobMonitor": MONITOR_ARGUMENT,
+                    },
+                }
+            ],
+            authority_root["extends"]["parameters"]["stages"],
+        )
+        self.assertEqual(
+            "3bc84024a4c7b2a1c919c7f1376c0e9c8d535e0fa267844e00f0da21a1382b70",
+            hashlib.sha256(
+                authority_root_text.split("extends:", 1)[0].encode()
+            ).hexdigest(),
+        )
+        self.assertEqual(
+            "60d3d68471a5ae51e523761e7308659c98a54c22a13a4578e0bc30d50c0bc81f",
+            canonical_hash(root_contract(authority_root)),
+        )
+        self.assertEqual(
+            [
+                {"name": "enableHelixJobMonitor", "type": "string"},
+                {"name": "dependsOn", "type": "object", "default": []},
+                {
+                    "name": "helixMonitorDependsOn",
+                    "type": "object",
+                    "default": [],
+                },
+                {
+                    "name": "helixMonitorCondition",
+                    "type": "string",
+                    "default": "",
+                },
+            ],
+            template["parameters"],
+        )
+        self.assertEqual(
+            "b066b311ebb9964a67c4e50a0931c0d36e00d9882b5425cfec0b12c330bc0313",
+            canonical_hash(authoritative_graph(template["stages"])),
         )
 
     def test_shard_admission_precedes_authoritative_graph(self) -> None:
@@ -671,6 +748,151 @@ class GcValidationArchitectureTests(unittest.TestCase):
                 compare_definition129_previews(
                     authority,
                     write_shard("duplicate", duplicate_jobs),
+                )
+
+    def test_definition141_preview_comparator_requires_exact_jobs_and_rows(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            def authority_job(name: str) -> dict:
+                return {
+                    "job": name,
+                    "timeoutInMinutes": 510,
+                    "steps": [
+                        {
+                            "displayName": "Send to Helix",
+                            "env": {
+                                "_Scenarios": ",".join(
+                                    DEFINITION141_SCENARIOS
+                                ),
+                            },
+                            "script": (
+                                "dotnet src/tests/Common/"
+                                "helixpublishwitharcade.proj"
+                            ),
+                        }
+                    ],
+                }
+
+            def write_authority(name: str, jobs: list[dict]) -> Path:
+                path = root / f"{name}.json"
+                path.write_text(
+                    json.dumps(
+                        {
+                            "finalYaml": yaml.safe_dump(
+                                {
+                                    "stages": [
+                                        {
+                                            "stage": "Build",
+                                            "jobs": jobs,
+                                        }
+                                    ]
+                                },
+                                sort_keys=False,
+                            )
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                return path
+
+            def write_shard(name: str, jobs: list[dict]) -> Path:
+                path = root / f"{name}.json"
+                path.write_text(
+                    json.dumps(
+                        {
+                            "finalYaml": yaml.safe_dump(
+                                {
+                                    "stages": [
+                                        {
+                                            "stage": "GCValidationAdmission",
+                                            "jobs": [{"job": "Admit"}],
+                                        },
+                                        {
+                                            "stage": "Build",
+                                            "dependsOn": [
+                                                "GCValidationAdmission"
+                                            ],
+                                            "jobs": [
+                                                {
+                                                    "job": "HelixJobMonitor",
+                                                    "dependsOn": (
+                                                        DEFINITION141_AUTHORITY_JOBS
+                                                    ),
+                                                    "condition": "succeededOrFailed()",
+                                                },
+                                                *jobs,
+                                            ],
+                                        },
+                                    ]
+                                },
+                                sort_keys=False,
+                            )
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                return path
+
+            exact_jobs = [
+                authority_job(name) for name in DEFINITION141_AUTHORITY_JOBS
+            ]
+            authority = write_authority("authority", exact_jobs)
+            compare_definition141_previews(
+                authority,
+                write_shard("exact", exact_jobs),
+            )
+
+            changed_jobs = copy.deepcopy(exact_jobs)
+            changed_jobs[0]["timeoutInMinutes"] = 1
+            with self.assertRaisesRegex(
+                AssertionError,
+                "authoritative job .* differs",
+            ):
+                compare_definition141_previews(
+                    authority,
+                    write_shard("changed", changed_jobs),
+                )
+
+            changed_rows = copy.deepcopy(exact_jobs)
+            changed_rows[0]["steps"][0]["env"]["_Scenarios"] = "heapverify1"
+            with self.assertRaisesRegex(
+                AssertionError,
+                "authoritative job .* differs",
+            ):
+                compare_definition141_previews(
+                    authority,
+                    write_shard("changed-rows", changed_rows),
+                )
+
+            matching_changed_authority = write_authority(
+                "changed-authority",
+                changed_rows,
+            )
+            with self.assertRaisesRegex(
+                AssertionError,
+                "canonical rows differ",
+            ):
+                compare_definition141_previews(
+                    matching_changed_authority,
+                    write_shard("matching-changed-rows", changed_rows),
+                )
+
+            with self.assertRaisesRegex(
+                AssertionError,
+                "Helix submitters differ",
+            ):
+                compare_definition141_previews(
+                    authority,
+                    write_shard(
+                        "extra",
+                        [
+                            *exact_jobs,
+                            authority_job("unexpected_submitter"),
+                        ],
+                    ),
                 )
 
 

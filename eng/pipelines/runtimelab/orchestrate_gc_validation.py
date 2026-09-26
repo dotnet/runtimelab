@@ -26,7 +26,10 @@ ROOTS = (
     "gc-simulator",
     "gc-standalone",
 )
-DIRECT_ROOTS = ROOTS + ("runtime-coreclr-correctness",)
+DIRECT_ROOTS = ROOTS + (
+    "runtime-coreclr-correctness",
+    "crossgen2-composite-gcstress",
+)
 EXPECTED_DEFINITION_ID = 163
 BUILD_SECURITY_NAMESPACE_ID = "33344d9c-fc72-4d6f-aba5-fa317101a7e9"
 RUN_KIND_DIRECT = "direct"

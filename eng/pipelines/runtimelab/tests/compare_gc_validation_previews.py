@@ -20,6 +20,24 @@ DEFINITION129_AUTHORITY_JOBS = [
     "run_test_p0_coreclr__osx_x64_checked",
     "run_test_p0_coreclr__windows_x64_checked",
 ]
+DEFINITION141_ROOT = "crossgen2-composite-gcstress"
+DEFINITION141_AUTHORITY_JOBS = [
+    "run_test_p1_Composite_linux_arm64_checked",
+    "run_test_p1_Composite_linux_x64_checked",
+    "run_test_p1_Composite_osx_arm64_checked",
+    "run_test_p1_Composite_windows_x64_checked",
+    "run_test_p1_Composite_windows_arm64_checked",
+]
+DEFINITION141_SCENARIOS = [
+    "heapverify1",
+    "gcstress0xc_disabler2r",
+    "gcstress0xc_disabler2r_jitstress2",
+    "gcstress0xc_disabler2r_heapverify1",
+    "gcstress0xc_jitstress1",
+    "gcstress0xc_jitstress2",
+    "gcstress0xc_tailcallstress",
+    "gcstress0xc_jitminopts_heapverify1",
+]
 HELIX_SUBMITTER_JOBS = {
     "gcstress0x3-gcstress0xc": [
         "run_test_p1__linux_arm_checked",
@@ -61,6 +79,7 @@ HELIX_SUBMITTER_JOBS = {
         "run_test_p1_GCStandAloneServer_windows_arm64_checked",
     ],
     DEFINITION129_ROOT: DEFINITION129_AUTHORITY_JOBS,
+    DEFINITION141_ROOT: DEFINITION141_AUTHORITY_JOBS,
 }
 
 
@@ -248,6 +267,89 @@ def compare_definition129_previews(authority: Path, shard: Path) -> None:
         )
 
 
+def definition141_rows(jobs: dict[str, dict]) -> set[tuple[str, str]]:
+    rows = set()
+    for name in DEFINITION141_AUTHORITY_JOBS:
+        job = jobs[name]
+        submission_steps = [
+            step
+            for step in job.get("steps", [])
+            if contains_helix_submission(step)
+        ]
+        if len(submission_steps) != 1:
+            raise AssertionError(
+                f"definition 141 job {name} must contain one Helix submission"
+            )
+        scenarios = submission_steps[0].get("env", {}).get("_Scenarios")
+        if not isinstance(scenarios, str):
+            raise AssertionError(
+                f"definition 141 job {name} is missing _Scenarios"
+            )
+        for scenario in scenarios.split(","):
+            if not scenario or (name, scenario) in rows:
+                raise AssertionError(
+                    f"definition 141 job {name} has invalid scenarios"
+                )
+            rows.add((name, scenario))
+    return rows
+
+
+def compare_definition141_previews(authority: Path, shard: Path) -> None:
+    authority_preview = normalize_inert_metadata(load_final_yaml(authority))
+    authority_stage = stage_by_name(authority_preview, "Build")
+    authority_jobs = jobs_by_name(authority_stage)
+
+    shard_preview = load_final_yaml(shard)
+    shard_stages = shard_execution_stages(shard_preview, DEFINITION141_ROOT)
+    if len(shard_stages) != 1 or shard_stages[0].get("stage") != "Build":
+        raise AssertionError("definition 141 shard must contain one Build stage")
+    shard_stage = shard_stages[0]
+    shard_jobs = jobs_by_name(shard_stage)
+
+    missing_authority = [
+        name for name in DEFINITION141_AUTHORITY_JOBS if name not in authority_jobs
+    ]
+    missing_shard = [
+        name for name in DEFINITION141_AUTHORITY_JOBS if name not in shard_jobs
+    ]
+    if missing_authority or missing_shard:
+        raise AssertionError(
+            "definition 141 authority jobs are missing: "
+            f"authority={missing_authority!r}, shard={missing_shard!r}"
+        )
+
+    for name in DEFINITION141_AUTHORITY_JOBS:
+        if authority_jobs[name] != shard_jobs[name]:
+            raise AssertionError(
+                f"definition 141 authoritative job {name} differs"
+            )
+
+    submitters = [
+        job.get("job")
+        for job in shard_stage.get("jobs", [])
+        if contains_helix_submission(job)
+    ]
+    if submitters != DEFINITION141_AUTHORITY_JOBS:
+        raise AssertionError(
+            "definition 141 shard Helix submitters differ: "
+            f"{submitters!r}"
+        )
+
+    expected_rows = {
+        (job, scenario)
+        for job in DEFINITION141_AUTHORITY_JOBS
+        for scenario in DEFINITION141_SCENARIOS
+    }
+    authority_rows = definition141_rows(authority_jobs)
+    shard_rows = definition141_rows(shard_jobs)
+    if authority_rows != expected_rows or shard_rows != expected_rows:
+        raise AssertionError(
+            "definition 141 canonical rows differ: "
+            f"authority={len(authority_rows)}, shard={len(shard_rows)}, "
+            f"expected={len(expected_rows)}"
+        )
+
+
 def compare_previews(
     baseline_before: Path,
     baseline_after: Path,
@@ -287,6 +389,8 @@ def main() -> None:
     parser.add_argument("--shard", action="append", default=[], metavar="NAME=PATH")
     parser.add_argument("--definition129-authority", type=Path)
     parser.add_argument("--definition129-shard", type=Path)
+    parser.add_argument("--definition141-authority", type=Path)
+    parser.add_argument("--definition141-shard", type=Path)
     args = parser.parse_args()
 
     compare_previews(
@@ -306,6 +410,17 @@ def main() -> None:
         compare_definition129_previews(
             args.definition129_authority,
             args.definition129_shard,
+        )
+    if (args.definition141_authority is None) != (
+        args.definition141_shard is None
+    ):
+        parser.error(
+            "--definition141-authority and --definition141-shard are required together"
+        )
+    if args.definition141_authority is not None:
+        compare_definition141_previews(
+            args.definition141_authority,
+            args.definition141_shard,
         )
 
 
