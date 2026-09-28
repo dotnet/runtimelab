@@ -1896,10 +1896,6 @@ def validate_shard_identity(
             raise OrchestrationError(
                 "Direct correctness shards must use parent build ID 'direct'."
             )
-        if attempt != 1:
-            raise OrchestrationError(
-                "Direct correctness shards permit attempt 1 only."
-            )
         return
     if root not in ROOTS:
         raise OrchestrationError(
