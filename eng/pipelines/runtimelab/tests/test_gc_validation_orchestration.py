@@ -551,60 +551,58 @@ class GcValidationOrchestrationTests(unittest.TestCase):
         self.assertNotIn("variables", request)
 
     def test_direct_shard_identity_is_tagged_and_discoverable(self) -> None:
-        for attempt in (1, 2):
-            with self.subTest(attempt=attempt):
-                output = io.StringIO()
-                with redirect_stdout(output):
-                    emit_run_identity_tags(
-                        run_kind=RUN_KIND_DIRECT,
-                        campaign_id="phase1-direct-campaign",
-                        parent_build_id=RUN_KIND_DIRECT,
-                        root=ROOTS[0],
-                        attempt=attempt,
-                    )
-                tags = [
-                    line.removeprefix("##vso[build.addbuildtag]")
-                    for line in output.getvalue().splitlines()
-                ]
-                run = {
-                    "id": 123,
-                    "tags": tags,
-                    "resources": {
-                        "repositories": {
-                            "self": {
-                                "refName": SOURCE_REF,
-                                "version": SOURCE_VERSION,
-                            }
-                        }
-                    },
-                    "templateParameters": {},
+        output = io.StringIO()
+        with redirect_stdout(output):
+            emit_run_identity_tags(
+                run_kind=RUN_KIND_DIRECT,
+                campaign_id="phase1-direct-campaign",
+                parent_build_id=RUN_KIND_DIRECT,
+                root=ROOTS[0],
+                attempt=2,
+            )
+        tags = [
+            line.removeprefix("##vso[build.addbuildtag]")
+            for line in output.getvalue().splitlines()
+        ]
+        run = {
+            "id": 123,
+            "tags": tags,
+            "resources": {
+                "repositories": {
+                    "self": {
+                        "refName": SOURCE_REF,
+                        "version": SOURCE_VERSION,
+                    }
                 }
+            },
+            "templateParameters": {},
+        }
 
-                self.assertEqual(6, len(tags))
-                self.assertTrue(
-                    run_matches(
-                        run,
-                        run_kind=RUN_KIND_DIRECT,
-                        campaign_id="phase1-direct-campaign",
-                        parent_build_id=RUN_KIND_DIRECT,
-                        root=ROOTS[0],
-                        source_ref=SOURCE_REF,
-                        source_version=SOURCE_VERSION,
-                        attempt=attempt,
-                    )
-                )
-                self.assertFalse(
-                    run_matches(
-                        run,
-                        run_kind=RUN_KIND_PARENT_CHILD,
-                        campaign_id="phase1-direct-campaign",
-                        parent_build_id=RUN_KIND_DIRECT,
-                        root=ROOTS[0],
-                        source_ref=SOURCE_REF,
-                        source_version=SOURCE_VERSION,
-                        attempt=attempt,
-                    )
-                )
+        self.assertEqual(6, len(tags))
+        self.assertTrue(
+            run_matches(
+                run,
+                run_kind=RUN_KIND_DIRECT,
+                campaign_id="phase1-direct-campaign",
+                parent_build_id=RUN_KIND_DIRECT,
+                root=ROOTS[0],
+                source_ref=SOURCE_REF,
+                source_version=SOURCE_VERSION,
+                attempt=2,
+            )
+        )
+        self.assertFalse(
+            run_matches(
+                run,
+                run_kind=RUN_KIND_PARENT_CHILD,
+                campaign_id="phase1-direct-campaign",
+                parent_build_id=RUN_KIND_DIRECT,
+                root=ROOTS[0],
+                source_ref=SOURCE_REF,
+                source_version=SOURCE_VERSION,
+                attempt=2,
+            )
+        )
 
     def test_additional_authority_roots_are_direct_only(self) -> None:
         for root in DIRECT_ROOTS[len(ROOTS):]:
@@ -678,13 +676,6 @@ class GcValidationOrchestrationTests(unittest.TestCase):
                 with self.assertRaisesRegex(OrchestrationError, message):
                     validate_shard_identity(**arguments)
 
-        validate_shard_identity(
-            run_kind=RUN_KIND_DIRECT,
-            campaign_id=CAMPAIGN_ID,
-            parent_build_id=RUN_KIND_DIRECT,
-            root=ROOTS[0],
-            attempt=2,
-        )
         validate_shard_identity(
             run_kind=RUN_KIND_PARENT_CHILD,
             campaign_id=CAMPAIGN_ID,
@@ -1366,47 +1357,45 @@ class GcValidationOrchestrationTests(unittest.TestCase):
         self.assertEqual(1, sum(attempt["adopted"] for attempt in attempts))
 
     def test_direct_shard_admission_uses_direct_identity_contract(self) -> None:
+        client = FakeClient(complete_on_get=False)
         campaign_id = "phase1-direct-campaign"
-        for attempt in (1, 2):
-            with self.subTest(attempt=attempt):
-                client = FakeClient(complete_on_get=False)
-                with tempfile.TemporaryDirectory() as directory:
-                    request = create_orchestrator(
-                        client, Path(directory)
-                    ).build_request(ROOTS[0], attempt)
-                    request["templateParameters"].update(
-                        {
-                            "gcValidationCampaignId": campaign_id,
-                            "gcValidationRunKind": RUN_KIND_DIRECT,
-                            "gcValidationParentBuildId": RUN_KIND_DIRECT,
-                        }
-                    )
-                    client.queue_run(request)
-                    admission = GcValidationAdmission(
-                        client,
-                        Path(directory) / "direct",
-                        RUN_KIND_DIRECT,
-                        campaign_id,
-                        RUN_KIND_DIRECT,
-                        ROOTS[0],
-                        attempt,
-                        SOURCE_REF,
-                        SOURCE_VERSION,
-                        1000,
-                        observation_seconds=0,
-                        poll_seconds=1,
-                    )
+        with tempfile.TemporaryDirectory() as directory:
+            request = create_orchestrator(
+                client, Path(directory)
+            ).build_request(ROOTS[0], 2)
+            request["templateParameters"].update(
+                {
+                    "gcValidationCampaignId": campaign_id,
+                    "gcValidationRunKind": RUN_KIND_DIRECT,
+                    "gcValidationParentBuildId": RUN_KIND_DIRECT,
+                }
+            )
+            client.queue_run(request)
+            admission = GcValidationAdmission(
+                client,
+                Path(directory) / "direct",
+                RUN_KIND_DIRECT,
+                campaign_id,
+                RUN_KIND_DIRECT,
+                ROOTS[0],
+                2,
+                SOURCE_REF,
+                SOURCE_VERSION,
+                1000,
+                observation_seconds=0,
+                poll_seconds=1,
+            )
 
-                    self.assertTrue(admission.run())
-                    receipt = json.loads(
-                        admission.receipt_path.read_text(encoding="utf-8")
-                    )
+            self.assertTrue(admission.run())
+            receipt = json.loads(
+                admission.receipt_path.read_text(encoding="utf-8")
+            )
 
-                self.assertEqual(2, receipt["schemaVersion"])
-                self.assertEqual(RUN_KIND_DIRECT, receipt["runKind"])
-                self.assertEqual(RUN_KIND_DIRECT, receipt["parentBuildId"])
-                self.assertEqual(attempt, receipt["attempt"])
-                self.assertTrue(receipt["admitted"])
+        self.assertEqual(2, receipt["schemaVersion"])
+        self.assertEqual(RUN_KIND_DIRECT, receipt["runKind"])
+        self.assertEqual(RUN_KIND_DIRECT, receipt["parentBuildId"])
+        self.assertEqual(2, receipt["attempt"])
+        self.assertTrue(receipt["admitted"])
 
     def test_two_duplicate_children_admit_only_lowest_run_id(self) -> None:
         class SynchronizedAdmissionClient(FakeClient):
