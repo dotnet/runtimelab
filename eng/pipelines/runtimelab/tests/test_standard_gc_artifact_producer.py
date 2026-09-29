@@ -1,4 +1,5 @@
 import argparse
+import copy
 import hashlib
 import importlib.util
 import json
@@ -49,7 +50,6 @@ LAYOUT_GENERATOR_PATH = (
     REPO_ROOT / "eng" / "pipelines" / "runtimelab" / "create_dotnet_layout.py"
 )
 BASE_SHA = "5ffec89f0944c7ca7001bd3c57713f4fa0fe9492"
-FINAL_BASELINE_SHA = "0eb8c02a0f784e131673af5beea5180052979924"
 
 
 def _load_module(path: Path, name: str):
@@ -185,6 +185,7 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
         self.assertIn("standardGcArtifactProducerRequiresCohortId", pipeline_text)
 
     def test_frozen_requirements_cover_exact_v5_contract(self):
+        self.assertEqual("3.1.0", self.requirements["contractVersion"])
         self.assertEqual(258, self.requirements["requiredRowCount"])
         self.assertEqual(258, len(self.requirements["downstreamRowMappings"]))
         self.assertEqual(
@@ -256,6 +257,33 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
                 "requiredArtifactRequirementIds"
             ],
         )
+        receipt = self.requirements["producerRequirements"]["validationReceipts"][0]
+        x64_receipt = receipt["producerScopes"]["x64"]
+        self.assertEqual(6, x64_receipt["rowCount"])
+        self.assertEqual(6, len(x64_receipt["consumerRows"]))
+        self.assertEqual(
+            "c1ef5277516215ffd534c92745fa6b952954acb58f7bbb739d0aef98c117439d",
+            x64_receipt["rowIdsSha256"],
+        )
+        self.assertEqual(
+            {"linux-x64", "win-x64"},
+            {
+                row["rid"]
+                for row in self.requirements["downstreamRowMappings"]
+                if row["rowId"] in x64_receipt["consumerRows"]
+            },
+        )
+        self.assertTrue(
+            all(
+                row["configuration"]["runKind"] == "micro"
+                for row in self.requirements["downstreamRowMappings"]
+                if row["rowId"] in x64_receipt["consumerRows"]
+            )
+        )
+        full_receipt = receipt["producerScopes"]["full"]
+        self.assertEqual(15, full_receipt["rowCount"])
+        self.assertEqual(receipt["consumerRows"], full_receipt["consumerRows"])
+        self.assertEqual(receipt["rowIdsSha256"], full_receipt["rowIdsSha256"])
 
     def test_finalized_aspnet_binding_is_exact_and_strictly_validated(self):
         binding = json.loads(ASPNET_BINDING_PATH.read_text(encoding="utf-8"))
@@ -301,6 +329,23 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
         self.assertNotIn("PublishPipelineArtifact@1", PRODUCER_TEMPLATE_PATH.read_text())
         self.assertIn("templateContext:", authored)
         self.assertIn("outputs:", authored)
+
+    def test_manifest_job_publishes_scoped_definition306_validation(self):
+        document = _load_yaml(MANIFEST_JOB_PATH)
+        outputs = document["jobs"][0]["parameters"]["templateContext"]["outputs"]
+        validation_output = next(
+            output
+            for output in outputs
+            if output.get("artifactName") == "ExternalRuntime306Validation"
+        )
+        self.assertEqual("always()", validation_output["condition"])
+        manifest_text = MANIFEST_JOB_PATH.read_text(encoding="utf-8")
+        self.assertIn(
+            'test -f "$output/ExternalRuntime306Validation/'
+            'external-runtime-306-validation.json"',
+            manifest_text,
+        )
+        self.assertNotIn("parameters.producerScope }}' = full", manifest_text)
 
     def test_standard_coreclr_output_is_a_single_archive_directory(self):
         build_stage = self.pipeline["extends"]["parameters"]["stages"][3]
@@ -354,23 +399,15 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
             pipeline_text,
         )
 
-    def test_definition163_orchestration_is_not_changed(self):
-        changed = subprocess.run(
-            ["git", "diff", "--name-only", FINAL_BASELINE_SHA, "--"],
-            cwd=REPO_ROOT,
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout.splitlines()
-        self.assertFalse(
-            any(
-                path == "eng/pipelines/runtimelab.yml"
-                or "gc-validation" in path
-                or path.endswith("orchestrate_gc_validation.py")
-                for path in changed
-            ),
-            changed,
+    def test_definition163_orchestration_is_not_coupled(self):
+        authored = (
+            PIPELINE_PATH.read_text(encoding="utf-8")
+            + PRODUCER_TEMPLATE_PATH.read_text(encoding="utf-8")
+            + MANIFEST_JOB_PATH.read_text(encoding="utf-8")
         )
+        self.assertNotIn("/eng/pipelines/runtimelab.yml", authored)
+        self.assertNotIn("gc-validation", authored)
+        self.assertNotIn("orchestrate_gc_validation.py", authored)
 
     def _create_complete_artifact_fixture(self, root: Path):
         version = "12.0.0-test.1"
@@ -437,11 +474,21 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
                 {"a" * 40}, {row["sourceCommit"] for row in manifest["rows"]}
             )
             self.assertIsNotNone(receipt)
+            self.assertEqual("full", receipt["producerScope"])
             self.assertEqual(15, receipt["rowCount"])
             self.assertEqual(15, len(receipt["rows"]))
             self.assertEqual(
                 {"passed"}, {row["status"] for row in receipt["rows"]}
             )
+            for row in receipt["rows"]:
+                proof = output / "ExternalRuntime306Validation" / row[
+                    "rowCompatibilityProof"
+                ]
+                self.assertTrue(proof.is_file())
+                self.assertEqual(
+                    row["compatibilityProofSha256"],
+                    hashlib.sha256(proof.read_bytes()).hexdigest(),
+                )
             for row in receipt["rows"]:
                 self.assertRegex(row["compatibilityProofSha256"], r"^[0-9a-f]{64}$")
                 proof = output / "ExternalRuntime306Validation" / row[
@@ -522,7 +569,18 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
             manifest, receipt, errors = manifest_generator.generate(args)
 
             self.assertEqual([], errors)
-            self.assertIsNone(receipt)
+            self.assertIsNotNone(receipt)
+            self.assertEqual("x64", receipt["producerScope"])
+            self.assertEqual(6, receipt["rowCount"])
+            self.assertEqual(
+                self.requirements["producerRequirements"]["validationReceipts"][0][
+                    "producerScopes"
+                ]["x64"]["rowIdsSha256"],
+                receipt["rowIdsSha256"],
+            )
+            self.assertEqual(
+                {"passed"}, {row["status"] for row in receipt["rows"]}
+            )
             self.assertEqual("x64", manifest["producerScope"])
             self.assertEqual(required_ids, set(manifest["artifacts"]))
             definition702_x64 = [
@@ -534,6 +592,29 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
             self.assertEqual(4, len(definition702_x64))
             self.assertEqual(
                 {"ready"}, {row["status"] for row in definition702_x64}
+            )
+            definition306 = [
+                row for row in manifest["rows"] if row["definitionId"] == 306
+            ]
+            ready_definition306 = [
+                row for row in definition306 if row["status"] == "ready"
+            ]
+            self.assertEqual(6, len(ready_definition306))
+            self.assertEqual(
+                {"linux-x64", "win-x64"},
+                {row["rid"] for row in ready_definition306},
+            )
+            self.assertEqual(
+                set(
+                    self.requirements["producerRequirements"][
+                        "validationReceipts"
+                    ][0]["producerScopes"]["x64"]["consumerRows"]
+                ),
+                {row["rowId"] for row in ready_definition306},
+            )
+            self.assertEqual(
+                9,
+                sum(row["status"] == "blocked" for row in definition306),
             )
             self.assertTrue(
                 any(
@@ -566,6 +647,31 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
             args.requirements = unknown
             with self.assertRaisesRegex(ValueError, "authority hash"):
                 manifest_generator.generate(args)
+
+    def test_definition306_scope_cannot_claim_unbuilt_artifacts(self):
+        missing_scope = copy.deepcopy(self.requirements)
+        del missing_scope["producerRequirements"]["validationReceipts"][0][
+            "producerScopes"
+        ]["x64"]
+        with self.assertRaisesRegex(ValueError, "producer scopes do not match"):
+            manifest_generator._validate_requirements(missing_scope)
+
+        requirements = copy.deepcopy(self.requirements)
+        receipt = requirements["producerRequirements"]["validationReceipts"][0]
+        x64_scope = receipt["producerScopes"]["x64"]
+        win_x86_row = next(
+            row
+            for row in requirements["downstreamRowMappings"]
+            if row["definitionId"] == 306 and row["rid"] == "win-x86"
+        )
+        x64_scope["consumerRows"].append(win_x86_row["rowId"])
+        x64_scope["rowCount"] += 1
+        x64_scope["rowIdsSha256"] = manifest_generator._canonical_sha256(
+            sorted(x64_scope["consumerRows"])
+        )
+
+        with self.assertRaisesRegex(ValueError, "outside producer scope x64"):
+            manifest_generator._validate_requirements(requirements)
 
     def test_aspnet_binding_boundary_validates_authority_and_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:

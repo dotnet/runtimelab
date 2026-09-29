@@ -24,7 +24,7 @@ jobs:
         displayName: Publish definition 306 validation
         targetPath: $(Build.StagingDirectory)/standard-gc-manifest/ExternalRuntime306Validation
         artifactName: ExternalRuntime306Validation
-        condition: and(always(), eq('${{ parameters.producerScope }}', 'full'))
+        condition: always()
     steps:
     - checkout: self
       clean: true
@@ -70,9 +70,7 @@ jobs:
     - bash: |
         output='$(Build.StagingDirectory)/standard-gc-manifest'
         test -f "$output/standard-gc-cohort-manifest.json"
-        if [ '${{ parameters.producerScope }}' = full ]; then
-          test -f "$output/ExternalRuntime306Validation/external-runtime-306-validation.json"
-        fi
+        test -f "$output/ExternalRuntime306Validation/external-runtime-306-validation.json"
         test "$(cat "$output/generation-exit-code.txt")" = 0
       displayName: Enforce complete producer cohort
       condition: always()

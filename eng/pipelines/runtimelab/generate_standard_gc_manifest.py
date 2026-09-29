@@ -5,7 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Tuple
 import uuid
 import xml.etree.ElementTree as ET
 import zipfile
@@ -14,7 +14,7 @@ import zipfile
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 REQUIREMENTS_FILE_SHA256 = (
-    "d8eb7c11b408f3e5c3f3883e276fb9c270f5a129edf816c43ec87bc2e619366e"
+    "93e293f1a89b0bff61096050339fc7ff6161b1f64e90242092f2c9449683755c"
 )
 ASPNET_BINDING_REPORTED_FILE_SHA256 = (
     "8e13df1a77f3797e67d601ad87fa58c3e3ff5f8d925c84284d576161fc08e746"
@@ -306,6 +306,7 @@ def _validate_requirements(requirements: Dict) -> None:
             f"producer requirements must contain {required_row_count} unique downstream rows"
         )
     known_requirements = set(requirement_ids)
+    rows_by_id = {row["rowId"]: row for row in rows}
     for row in rows:
         if not row["requirementIds"]:
             raise ValueError(f"downstream row has no requirements: {row['rowId']}")
@@ -315,12 +316,60 @@ def _validate_requirements(requirements: Dict) -> None:
                 f"downstream row {row['rowId']} has unknown requirements: {sorted(unknown)}"
             )
 
+    receipts = groups["validationReceipts"]
+    if len(receipts) != 1:
+        raise ValueError("producer requirements must contain one validation receipt")
+    receipt = receipts[0]
+    definition306_rows = {
+        row["rowId"] for row in rows if row["definitionId"] == 306
+    }
+    if set(receipt["consumerRows"]) != definition306_rows:
+        raise ValueError("definition306 validation receipt must cover the frozen rows")
+    receipt_scopes = receipt["producerScopes"]
+    if set(receipt_scopes) != set(requirements["producerScopes"]):
+        raise ValueError("definition306 validation receipt producer scopes do not match")
+    full_receipt = receipt_scopes["full"]
+    if (
+        full_receipt["consumerRows"] != receipt["consumerRows"]
+        or full_receipt["rowCount"] != receipt["rowCount"]
+        or full_receipt["rowIdsSha256"] != receipt["rowIdsSha256"]
+    ):
+        raise ValueError("definition306 full validation receipt scope does not match")
+    for producer_scope, scoped_receipt in receipt_scopes.items():
+        scoped_rows = scoped_receipt["consumerRows"]
+        if (
+            len(scoped_rows) != scoped_receipt["rowCount"]
+            or len(scoped_rows) != len(set(scoped_rows))
+            or not set(scoped_rows).issubset(definition306_rows)
+            or _canonical_sha256(sorted(scoped_rows))
+            != scoped_receipt["rowIdsSha256"]
+        ):
+            raise ValueError(
+                f"definition306 validation receipt scope is invalid: {producer_scope}"
+            )
+        scoped_artifacts = set(
+            requirements["producerScopes"][producer_scope][
+                "requiredArtifactRequirementIds"
+            ]
+        )
+        for row_id in scoped_rows:
+            artifact_requirements = set(rows_by_id[row_id]["requirementIds"]) - {
+                receipt["id"]
+            }
+            if len(artifact_requirements) != 1 or not artifact_requirements.issubset(
+                scoped_artifacts
+            ):
+                raise ValueError(
+                    f"definition306 validation row is outside producer scope "
+                    f"{producer_scope}: {row_id}"
+                )
+
 
 def _row_statuses(
     requirements: Dict,
     evidence: Dict,
     source_commit: str,
-    producer_scope: str,
+    validation_row_ids: set[str],
     required_ids: set[str],
 ) -> List[Dict]:
     rows = []
@@ -332,7 +381,7 @@ def _row_statuses(
             elif requirement_id == "validation-receipt:definition306":
                 status = (
                     "generated-after-cohort-manifest"
-                    if producer_scope == "full"
+                    if row["rowId"] in validation_row_ids
                     else "blocked-out-of-scope"
                 )
             elif requirement_id in evidence:
@@ -367,18 +416,23 @@ def _definition306_receipt(
     requirements: Dict,
     evidence: Dict,
     identity: Dict,
+    producer_scope: str,
     cohort_manifest_sha256: str,
     output_root: Path,
 ) -> Dict:
     receipt_requirement = requirements["producerRequirements"]["validationReceipts"][0]
+    scoped_receipt = receipt_requirement["producerScopes"][producer_scope]
     mappings = {
         row["rowId"]: row
         for row in requirements["downstreamRowMappings"]
         if row["definitionId"] == 306
     }
-    expected_rows = receipt_requirement["consumerRows"]
-    if set(mappings) != set(expected_rows) or len(mappings) != 15:
+    if (
+        set(mappings) != set(receipt_requirement["consumerRows"])
+        or len(mappings) != 15
+    ):
         raise ValueError("definition306 mapping must contain the exact 15 frozen v5 rows")
+    expected_rows = scoped_receipt["consumerRows"]
 
     proof_root = output_root / "proofs"
     rows = []
@@ -430,8 +484,9 @@ def _definition306_receipt(
         "campaignId": identity["campaignId"],
         "cohortId": identity["cohortId"],
         "cohortManifestSha256": cohort_manifest_sha256,
-        "rowCount": 15,
-        "rowIdsSha256": receipt_requirement["rowIdsSha256"],
+        "producerScope": producer_scope,
+        "rowCount": scoped_receipt["rowCount"],
+        "rowIdsSha256": scoped_receipt["rowIdsSha256"],
         "rowCompatibilityStatus": "passed",
         "rows": rows,
     }
@@ -439,7 +494,7 @@ def _definition306_receipt(
     return receipt
 
 
-def generate(args: argparse.Namespace) -> Tuple[Dict, Optional[Dict], List[str]]:
+def generate(args: argparse.Namespace) -> Tuple[Dict, Dict, List[str]]:
     _validate_identity(args)
     if _hash_file(args.requirements, "sha256") != REQUIREMENTS_FILE_SHA256:
         raise ValueError("producer requirements authority hash does not match contract v5")
@@ -454,6 +509,10 @@ def generate(args: argparse.Namespace) -> Tuple[Dict, Optional[Dict], List[str]]
         requirements["producerScopes"][args.producer_scope][
             "requiredArtifactRequirementIds"
         ]
+    )
+    receipt_requirement = requirements["producerRequirements"]["validationReceipts"][0]
+    validation_row_ids = set(
+        receipt_requirement["producerScopes"][args.producer_scope]["consumerRows"]
     )
 
     evidence, errors = _collect_artifacts(requirements, args.artifact_root, required_ids)
@@ -503,22 +562,21 @@ def generate(args: argparse.Namespace) -> Tuple[Dict, Optional[Dict], List[str]]
             requirements,
             evidence,
             args.source_commit,
-            args.producer_scope,
+            validation_row_ids,
             required_ids,
         ),
         "aspNetValidation": aspnet_validation,
         "errors": errors,
     }
     manifest_sha256 = _write_json(args.output_root / "standard-gc-cohort-manifest.json", manifest)
-    receipt = None
-    if args.producer_scope == "full":
-        receipt = _definition306_receipt(
-            requirements,
-            evidence,
-            identity,
-            manifest_sha256,
-            args.output_root / "ExternalRuntime306Validation",
-        )
+    receipt = _definition306_receipt(
+        requirements,
+        evidence,
+        identity,
+        args.producer_scope,
+        manifest_sha256,
+        args.output_root / "ExternalRuntime306Validation",
+    )
     return manifest, receipt, errors
 
 

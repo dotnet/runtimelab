@@ -25,6 +25,19 @@ CI is manual-only; `publishToExperimentalFeed` defaults to `false`.
 after the changes have been reviewed.** Build-only approval is not publishing
 approval.
 
+### Standard-GC producer validation
+
+Definition 895 keeps the standard-GC producer disabled by default. The `x64`
+mode builds the Linux and Windows x64 runtime packages and archives and
+publishes `ExternalRuntime306Validation` for exactly the six definition 306
+microbenchmark rows on those RIDs across the `main`, `9.0`, and `8.0`
+channels. Each row proof is bound to the producer source, build, campaign,
+cohort manifest, package identity, and measured runtime binary hashes.
+
+The `full` mode retains the complete 15-row definition 306 receipt. Neither
+producer mode queues definition 306, changes its workload settings or queues,
+or enables performance-result ingestion.
+
 See [Create an experiment](https://github.com/dotnet/runtimelab/blob/docs/CreateAnExperiment.md)
 for the standard runtimelab conventions.
 
