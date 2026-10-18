@@ -38,6 +38,7 @@ namespace ILCompiler
             LLVMCodegenConfigProvider options,
             IInliningPolicy inliningPolicy,
             InstructionSetSupport instructionSetSupport,
+            ProfileDataManager profileDataManager,
             MethodImportationErrorProvider errorProvider,
             ReadOnlyFieldPolicy readOnlyFieldPolicy,
             MethodLayoutAlgorithm methodLayoutAlgorithm,
@@ -46,7 +47,7 @@ namespace ILCompiler
             int parallelism,
             string orderFile)
             : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, logger, inliningPolicy, instructionSetSupport,
-                null /* ProfileDataManager */, errorProvider, readOnlyFieldPolicy, baseOptions, methodLayoutAlgorithm, fileLayoutAlgorithm, parallelism, orderFile)
+                profileDataManager, errorProvider, readOnlyFieldPolicy, baseOptions, methodLayoutAlgorithm, fileLayoutAlgorithm, parallelism, orderFile)
         {
             _parallelOptions = new() { MaxDegreeOfParallelism = parallelism };
             NodeFactory = nodeFactory;

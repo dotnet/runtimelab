@@ -20,7 +20,7 @@ namespace ILCompiler
         protected MethodLayoutAlgorithm _methodLayoutAlgorithm;
         protected FileLayoutAlgorithm _fileLayoutAlgorithm;
         private ILProvider _ilProvider = new NativeAotILProvider();
-        private ProfileDataManager _profileDataManager;
+        protected ProfileDataManager _profileDataManager;
         protected string _orderFile;
         protected string _jitPath;
 
