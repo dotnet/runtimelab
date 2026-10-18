@@ -38,7 +38,7 @@ namespace ILCompiler
             JitConfigProvider.Initialize(_context.Target, jitFlags, _ryujitOptions, _jitPath);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(new CompilerComparer()));
 
-            return new LLVMCodegenCompilation(graph, factory, [.._compilationRoots, _typeMapManager], GetILProvider(), _debugInformationProvider, _logger, _config, _inliningPolicy, _instructionSetSupport, _methodImportationErrorProvider, _readOnlyFieldPolicy, _methodLayoutAlgorithm, _fileLayoutAlgorithm, options, _parallelism, _orderFile);
+            return new LLVMCodegenCompilation(graph, factory, [.._compilationRoots, _typeMapManager], GetILProvider(), _debugInformationProvider, _logger, _config, _inliningPolicy, _instructionSetSupport, _profileDataManager, _methodImportationErrorProvider, _readOnlyFieldPolicy, _methodLayoutAlgorithm, _fileLayoutAlgorithm, options, _parallelism, _orderFile);
         }
     }
 
