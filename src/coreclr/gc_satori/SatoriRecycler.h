@@ -31,7 +31,7 @@
 #include "../gc.h"
 #include "SatoriRegionQueue.h"
 #include "SatoriWorkList.h"
-#include "SatoriGate.h"
+#include "gcenv.os.h"
 
 class SatoriHeap;
 class SatoriTrimmer;
@@ -243,7 +243,7 @@ private:
     int64_t m_perfCounterTicksPerMilli;
     int64_t m_perfCounterTicksPerMicro;
 
-    SatoriGate* m_workerGate;
+    GCGate* m_workerGate;
 
     volatile int m_gateSignaled;
     volatile int m_workerWoken;

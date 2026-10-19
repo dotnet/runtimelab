@@ -8,6 +8,7 @@ set(GC_PAL_SOURCES
     gcenv.unix.cpp
     numasupport.cpp
     events.cpp
+    gate.cpp
     cgroup.cpp)
 
 add_library(gc_pal OBJECT ${GC_PAL_SOURCES} ${VERSION_FILE_PATH})
