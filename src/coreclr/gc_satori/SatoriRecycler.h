@@ -31,7 +31,7 @@
 #include "../gc.h"
 #include "SatoriRegionQueue.h"
 #include "SatoriWorkList.h"
-#include "SatoriGate.h"
+#include "gcenv.os.h"
 
 class SatoriHeap;
 class SatoriTrimmer;
@@ -307,7 +307,7 @@ private:
     int64_t m_osTicksPerMicro;
     int64_t m_timeStampTicksPerMilli;
 
-    SatoriGate* m_workerGate;
+    GCGate* m_workerGate;
 
     // Idle workers poll this while spinning. Keep it on a cache line of its own, away from the counters
     // below, which are updated with interlocked operations. (the next field starts a new line)

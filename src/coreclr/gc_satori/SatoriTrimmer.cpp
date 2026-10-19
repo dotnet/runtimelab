@@ -46,7 +46,7 @@ SatoriTrimmer::SatoriTrimmer(SatoriHeap* heap)
     m_event = new (nothrow) GCEvent;
     m_event->CreateAutoEventNoThrow(false);
 
-    m_sleepGate = new (nothrow) SatoriGate();
+    m_sleepGate = new (nothrow) GCGate();
 
     if (SatoriUtil::IsTrimmingEnabled())
     {

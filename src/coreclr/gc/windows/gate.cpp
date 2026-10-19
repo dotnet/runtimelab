@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+//
 // Copyright (c) 2025 Vladimir Sadov
 //
 // Permission is hereby granted, free of charge, to any person
@@ -20,41 +23,49 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 // OTHER DEALINGS IN THE SOFTWARE.
-//
-// SatoriGate.h
-//
 
-#ifndef __SATORI_GATE_H__
-#define __SATORI_GATE_H__
+#include "common.h"
+#include "gcenv.structs.h"
+#include "gcenv.base.h"
+#include "gcenv.os.h"
 
-#include <stdint.h>
-
-class SatoriGate
+GCGate::GCGate()
+    : m_impl(nullptr), m_state(Blocking)
 {
-private:
-    static const uint32_t s_open = 1;
-    static const uint32_t s_blocking = 0;
+}
 
-    volatile uint32_t m_state;
+void GCGate::Wait()
+{
+    TimedWait(INFINITE);
+}
 
-#if defined(_INC_PTHREADS)
-    pthread_mutex_t* m_cs;
-    pthread_cond_t* m_cv;
-#else
-    size_t* dummy1;
-    size_t* dummy2;
-#endif
+bool GCGate::TimedWait(uint32_t timeout)
+{
+    uint32_t blocking = Blocking;
+    BOOL result = WaitOnAddress(&m_state, &blocking, sizeof(blocking), timeout);
+    if (result == FALSE)
+    {
+        if (GetLastError() == ERROR_TIMEOUT)
+        {
+            return false;
+        }
 
-public:
-    SatoriGate();
+        assert(!"Failed to wait on GC gate");
+        abort();
+    }
 
-    void Wait();
+    m_state = Blocking;
+    return true;
+}
 
-    bool TimedWait(int timeout);
+void GCGate::WakeOne()
+{
+    m_state = Open;
+    WakeByAddressSingle(const_cast<uint32_t*>(&m_state));
+}
 
-    void WakeOne();
-
-    void WakeAll();
-};
-
-#endif
+void GCGate::WakeAll()
+{
+    m_state = Open;
+    WakeByAddressAll(const_cast<uint32_t*>(&m_state));
+}
