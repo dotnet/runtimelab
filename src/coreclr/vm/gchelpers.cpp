@@ -454,7 +454,14 @@ inline void LogAlloc(Object* object)
 template <class TObj>
 void PublishObjectAndNotify(TObj* &orObject, GC_ALLOC_FLAGS flags)
 {
+	if (g_heap_type != GC_HEAP_CUSTOM)
+	{
     _ASSERTE(orObject->HasEmptySyncBlockInfo());
+	}
+	else
+	{
+		_ASSERTE(orObject->HasEmptySyncBlockInfo() || (flags & (GC_ALLOC_LARGE_OBJECT_HEAP | GC_ALLOC_PINNED_OBJECT_HEAP)));
+	}
 
     if (flags & GC_ALLOC_USER_OLD_HEAP)
     {
@@ -1337,6 +1344,8 @@ void ErectWriteBarrier(OBJECTREF *dst, OBJECTREF ref)
     STATIC_CONTRACT_NOTHROW;
     STATIC_CONTRACT_GC_NOTRIGGER;
 
+    if (g_heap_type != GC_HEAP_CUSTOM)
+    {
     // if the dst is outside of the heap (unboxed value classes) then we
     //      simply exit
     if (((BYTE*)dst < g_lowest_address) || ((BYTE*)dst >= g_highest_address))
@@ -1368,6 +1377,11 @@ void ErectWriteBarrier(OBJECTREF *dst, OBJECTREF ref)
         }
     }
 }
+    else
+    {
+        GCHeapUtilities::GetFastGCFunctions().write_barrier(GCHeapUtilities::GetFastGCFunctions().context, (Object**)dst, OBJECTREFToObject(ref));
+    }
+}
 #include <optdefault.h>
 
 void ErectWriteBarrierForMT(MethodTable **dst, MethodTable *ref)
@@ -1376,6 +1390,8 @@ void ErectWriteBarrierForMT(MethodTable **dst, MethodTable *ref)
     STATIC_CONTRACT_NOTHROW;
     STATIC_CONTRACT_GC_NOTRIGGER;
 
+	if (g_heap_type != GC_HEAP_CUSTOM)
+    {
     *dst = ref;
 
 #ifdef WRITE_BARRIER_CHECK
@@ -1407,5 +1423,11 @@ void ErectWriteBarrierForMT(MethodTable **dst, MethodTable *ref)
 #endif
             }
         }
+        }
+    }
+    else
+    {
+    	// this whole thing is unnecessary in Satori
+    	UNREACHABLE();
     }
 }

@@ -30,7 +30,6 @@ Object* FrozenObjectHeapManager::TryAllocateObject(PTR_MethodTable type, size_t 
     }
     CONTRACTL_END
 
-
     Object* obj = nullptr;
     FrozenObjectSegment* curSeg = nullptr;
     uint8_t* curSegmentCurrent = nullptr;

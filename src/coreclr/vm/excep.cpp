@@ -5343,6 +5343,8 @@ static uintptr_t writeBarrierAVLocations[] =
 #endif
 };
 
+uintptr_t* g_customWriteBarrierAVLocations = nullptr;
+
 // Check if the passed in instruction pointer is in one of the
 // JIT helper functions.
 bool IsIPInMarkedJitHelper(PCODE uControlPc)
@@ -5361,6 +5363,15 @@ bool IsIPInMarkedJitHelper(PCODE uControlPc)
 
         if (writeBarrierAVLocations[i] == PCODEToPINSTR(uControlPc))
             return true;
+    }
+
+    if (g_customWriteBarrierAVLocations != nullptr)
+    {
+        for (size_t i = 0; g_customWriteBarrierAVLocations[i] != 0; i++)
+        {
+            if (g_customWriteBarrierAVLocations[i] == PCODEToPINSTR(uControlPc))
+                return true;
+        }
     }
 
 #define CHECK_RANGE(name) \

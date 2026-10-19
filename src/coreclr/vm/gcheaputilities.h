@@ -226,7 +226,7 @@ public:
     {
         WRAPPER_NO_CONTRACT;
 
-        return IsServerHeap() && g_SystemInfo.dwNumberOfProcessors >= 2;
+        return IsServerHeap() && g_SystemInfo.dwNumberOfProcessors >= 2 && g_heap_type != GC_HEAP_CUSTOM;
     }
 
     // Waits until a GC is complete, if the heap has been initialized.
@@ -245,11 +245,14 @@ public:
 
 #ifdef FEATURE_SVR_GC
         _ASSERTE(g_heap_type != GC_HEAP_INVALID);
-        return g_heap_type == GC_HEAP_SVR;
+        // TODO: Satori is closer to SVR than WKS, since there is threading. Need a better API though.
+        return (g_heap_type == GC_HEAP_SVR) || (g_heap_type == GC_HEAP_CUSTOM);
 #else
         return false;
 #endif // FEATURE_SVR_GC
     }
+
+    static void InitializeFastGCFunctions(IGCHeap* gcHeap);
 
 #ifdef FEATURE_USE_SOFTWARE_WRITE_WATCH_FOR_GC_HEAP
 
@@ -259,7 +262,7 @@ public:
     {
         WRAPPER_NO_CONTRACT;
 
-        return g_sw_ww_enabled_for_gc_heap;
+        return VolatileLoadWithoutBarrier(&g_sw_ww_enabled_for_gc_heap);
     }
 
     // In accordance with the SoftwareWriteWatch scheme, marks a given address as
@@ -329,9 +332,16 @@ public:
     static void RecordEventStateChange(bool isPublicProvider, GCEventKeyword keywords, GCEventLevel level);
 #endif // DACCESS_COMPILE
 
+    inline static const FastGCFunctions& GetFastGCFunctions()
+    {
+        return s_fastGCFunctions;
+    }
+
 private:
     // This class should never be instantiated.
     GCHeapUtilities() = delete;
+
+    static FastGCFunctions s_fastGCFunctions;
 };
 
 #endif // _GCHEAPUTILITIES_H_
