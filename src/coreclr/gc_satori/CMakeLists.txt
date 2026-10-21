@@ -45,6 +45,8 @@ include_directories(../gc)
 include_directories(../pal/inc)
 
 if (CLR_CMAKE_TARGET_WIN32)
+  list(APPEND GC_SOURCES ../gc/windows/Native.rc)
+
   set(GC_WRITE_BARRIER_SOURCES
     ${ARCH_SOURCES_DIR}/writebarrier.asm
   )
