@@ -92,7 +92,7 @@ void ToggleWriteBarrier(bool concurrent, bool skipCards, bool eeSuspended)
 
 void SatoriRecycler::Initialize(SatoriHeap* heap)
 {
-    m_workerGate = new (nothrow) SatoriGate();
+    m_workerGate = new (nothrow) GCGate();
     m_gateSignaled = 0;
     m_workerWoken = 0;
     m_activeWorkers= 0;

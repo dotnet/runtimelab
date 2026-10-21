@@ -30,7 +30,7 @@
 #include "common.h"
 #include "../gc.h"
 #include "SatoriUtil.h"
-#include "SatoriGate.h"
+#include "gcenv.os.h"
 
 #if defined(TARGET_OSX)
 #include <time.h>
@@ -60,7 +60,7 @@ private:
     volatile uint16_t _wakeWatchDog;
     volatile size_t _owningThreadId;
 
-    SatoriGate* _gate;
+    GCGate* _gate;
 
 private:
     FORCEINLINE
@@ -124,7 +124,7 @@ public:
         _spinCount = DefaultMinSpinCount;
         _wakeWatchDog = 0;
         _owningThreadId = 0;
-        _gate = new (nothrow) SatoriGate();
+        _gate = new (nothrow) GCGate();
     }
 
     FORCEINLINE

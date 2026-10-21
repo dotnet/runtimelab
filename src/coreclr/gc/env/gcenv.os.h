@@ -127,6 +127,39 @@ public:
 
 };
 
+// A gate retains a wake until a waiter consumes it. Unlike an auto-reset event,
+// WakeAll releases all current waiters, and waits may return spuriously.
+// This is a notification primitive; callers must synchronize their shared state separately.
+// Gates have process lifetime, like GCEvent; they deliberately have no destructor.
+class GCGate final
+{
+    static const uint32_t Blocking = 0;
+    static const uint32_t Open = 1;
+
+    class Impl;
+    Impl* m_impl;
+    volatile uint32_t m_state;
+
+public:
+    // Constructs a closed gate. Initialization failure is fatal.
+    GCGate();
+
+    GCGate(const GCGate&) = delete;
+    GCGate& operator=(const GCGate&) = delete;
+
+    void Wait();
+
+    // The timeout is in milliseconds. Returns false only on timeout.
+    bool TimedWait(uint32_t timeout);
+
+    // Releases at least one waiter, or retains a wake for a future waiter.
+    // Concurrent wakes may coalesce.
+    void WakeOne();
+
+    // Like WakeOne, but releases all currently blocked waiters.
+    void WakeAll();
+};
+
 // GC thread function prototype
 typedef void (*GCThreadFunction)(void* param);
 
