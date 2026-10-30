@@ -4,6 +4,17 @@
 #include "unixasmmacros.inc"
 #include "../../inc/satoriconstants.h"
 
+// The EE copies RhpCheckedAssignRef and RhpAssignRef as one block (see InitJITWriteBarrierHelpers), and
+// RhpCheckedAssignRef reaches into RhpAssignRef with PC-relative instructions: the branch to RhpCheckedEntry
+// and the literal load from the patchable pool at the end of RhpAssignRef.
+//
+// On Apple platforms every symbol that is not an .alt_entry starts a separate atom that the linker may place
+// independently, while the assembler resolves PC-relative references to local labels without relocations.
+// Thus both helpers must be in one atom, and RhpAssignRef is an .alt_entry there (see its entry below).
+//
+// The block starts 8-byte aligned, so that the patchable slots, which are 8-byte aligned within it, are also
+// aligned in the copy, where the EE updates them with single 8-byte stores.
+
 // JIT_CheckedWriteBarrier(Object** dst, Object* src)
 //
 // Write barrier for writes to objects that may reside
@@ -20,6 +31,8 @@
 //   x15  : trashed
 //   x16  : trashed (ip0)
 //   x17  : trashed (ip1)
+    .text
+    .p2align 3
     LEAF_ENTRY RhpCheckedAssignRef, _TEXT
     // See if dst is in GCHeap
     // Card bundle table value is a literal load from a patchable slot co-located with this code
@@ -53,7 +66,16 @@ LOCAL_LABEL(NotInHeap):
 //   x15  : trashed
 //   x16  : trashed (ip0)
 //   x17  : trashed (ip1)
+#if defined(__APPLE__)
+    // An .alt_entry, so that RhpAssignRef stays in the atom of RhpCheckedAssignRef (see the top of the file).
+    // As with LEAF_ENTRY, it has its own unwind info.
+    .global C_FUNC(RhpAssignRef)
+    .alt_entry C_FUNC(RhpAssignRef)
+C_FUNC(RhpAssignRef):
+    .cfi_startproc
+#else
     LEAF_ENTRY RhpAssignRef, _TEXT
+#endif
     // check for escaping assignment
     // 1) check if we own the source region
 #ifdef FEATURE_SATORI_EXTERNAL_OBJECTS
@@ -245,7 +267,7 @@ LOCAL_LABEL(RecordEscape):
     // PC-relative literal loads above stay correct no matter where this code is copied to; the EE
     // refreshes these slots after copying and whenever the globals' values change; see
     // GetAssignRefFunctions.
-        .align 8
+        .p2align 3
     PATCH_LABEL PatchableValue_CheckedAssignRef_CardBundleTable
     LOCAL_LABEL(PatchableValue_CheckedAssignRef_CardBundleTable):
         .quad 0

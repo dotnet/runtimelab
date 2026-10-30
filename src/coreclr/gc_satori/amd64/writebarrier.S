@@ -4,6 +4,14 @@
 .intel_syntax noprefix
 #include "unixasmmacros.inc"
 
+// The patchable values are the imm64 operands of "mov reg, imm64" instructions. The EE updates them with
+// single 8-byte stores (see UpdateCustomWriteBarrierGlobals), so each imm64 must be 8-byte aligned.
+//
+// Each one is aligned by construction: it follows a .p2align 3 with only fixed-size code in between (padding,
+// the opcode, and in one case a store). No jump may sit in between, since jump encodings differ between ELF
+// and Mach-O, where a jump across an .alt_entry symbol is not relaxed to its short form.
+// The first two values follow a LEAF_ENTRY, which aligns to 16 bytes, and 6 bytes of padding.
+
 //
 //   rdi - dest address 
 //   rsi - object
@@ -86,14 +94,16 @@ LOCAL_LABEL(JustAssign):
     ret
     ////nop
 
+    // Not executed. Aligns the imm64 below: 3 bytes of padding, the 3-byte store and the 2-byte opcode
+    // end on an 8-byte boundary (see the top of the file).
+    .p2align 3
+    NOP_3_BYTE
 LOCAL_LABEL(AssignAndMarkCards):
     ALTERNATE_ENTRY RhpAssignRefAVLocation
     mov     [rdi], rsi
 
     // TUNING: barriers in different modes could be separate pieces of code, but barrier switch 
     //         needs to suspend EE, not sure if skipping mode check would worth that much.
-    // No padding needed here: the preceding code already leaves the opcode start 8-byte-aligned
-    // (mod 8) at the required offset; see note above PatchableValue_CheckedAssignRef_CardBundleTable.
     .byte   0x49, 0xBB              // mov r11, imm64 (REX.WB B8+(r11&7))
     ALTERNATE_ENTRY PatchableValue_AssignAndMarkCards_WriteBarrierState
     .quad   0x0F0F0F0F0F0F0F0F0      // fetch the barrier state value (patched; see GetAssignRefFunctions)
@@ -110,10 +120,6 @@ LOCAL_LABEL(AssignAndMarkCards):
     //mov     rsi, r10
 LOCAL_LABEL(Exit):
     ret
-
-    NOP_2_BYTE
-    NOP_2_BYTE
-    NOP_3_BYTE
 
 LOCAL_LABEL(DoCards):
     // if same region, just check if barrier is not concurrent
@@ -132,6 +138,10 @@ LOCAL_LABEL(CheckConcurrent):
     cmp     r11, 0
     je      LOCAL_LABEL(Exit)
 
+    // Aligns the imm64 below: the padding and the 2-byte opcode end on an 8-byte boundary.
+    // It is ahead of the label, so only the fall-through from CheckConcurrent runs it.
+    .p2align 3
+    NOP_6_BYTE
 LOCAL_LABEL(MarkCards):
     .byte   0x49, 0xB9              // mov r9, imm64 (REX.WB B8+(r9&7))
     ALTERNATE_ENTRY PatchableValue_MarkCards_CardTable
@@ -163,10 +173,12 @@ LOCAL_LABEL(SetPage):
     jne     LOCAL_LABEL(CardSet)
     mov     byte ptr [rax], 1
 
+    // Aligns the imm64 below: the padding and the 2-byte opcode end on an 8-byte boundary.
+    // It is ahead of the label, so only the fall-through from SetPage runs it.
+    .p2align 3
+    NOP_6_BYTE
 LOCAL_LABEL(CardSet):
     // check if concurrent marking is still not in progress
-    // 3 bytes of padding needed here; see note above PatchableValue_CheckedAssignRef_CardBundleTable.
-    NOP_3_BYTE
     .byte   0x49, 0xB9              // mov r9, imm64 (REX.WB B8+(r9&7))
     ALTERNATE_ENTRY PatchableValue_CardSet_WriteBarrierState
     .quad   0x0F0F0F0F0F0F0F0F0      // fetch the barrier state value (patched; see GetAssignRefFunctions)
