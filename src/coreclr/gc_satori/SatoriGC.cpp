@@ -330,9 +330,20 @@ size_t SatoriGC::GetLastGCGenerationSize(int gen)
     return m_heap->Recycler()->GetOccupancy(gen);
 }
 
+// FastGCFunctions::is_in_gc_heap. The VM calls this with words that need not be object references:
+// tagged references (see Thread::IsObjRefValid), interior pointers, and with conservative stack
+// scanning every word on every stack (see GCToEEInterface::GcScanRoots). The page map covers only the
+// address space in SATORI_ADDRESS_SPACE_BITS, so anything above it is not in the heap and must not be
+// looked up, and the low bits, which may hold a tag, are ignored.
 bool IsInHeap(void* context, void* object)
 {
-    return SatoriHeap::IsInHeap(((size_t)object) & ~(size_t)3);
+    size_t address = (size_t)object;
+    if (address >= ((size_t)1 << SATORI_ADDRESS_SPACE_BITS))
+    {
+        return false;
+    }
+
+    return SatoriHeap::IsInHeap(address & ~(size_t)(sizeof(size_t) - 1));
 }
 
 void CheckEscapeSatori(Object** dst, Object* ref)
