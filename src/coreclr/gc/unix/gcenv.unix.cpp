@@ -70,8 +70,15 @@
 #include <mach/mach_host.h>
 
 #include <mach/task.h>
+#include <mach/task_info.h>
+#include <mach/mach_init.h>
 #include <mach/vm_map.h>
 #endif // __APPLE__
+
+#if defined(TARGET_LINUX) && !defined(MAP_FIXED_NOREPLACE)
+// Linux 4.17+. Older headers do not define it. The value is the same on all architectures that we support.
+#define MAP_FIXED_NOREPLACE 0x100000
+#endif
 
 #ifdef __HAIKU__
 #include <OS.h>
@@ -443,19 +450,48 @@ void* GCToOSInterface::VirtualReserve(size_t size, size_t alignment, uint32_t fl
     return VirtualReserveInner(size, alignment, flags, 0, /* committing */ false);
 }
 
-void* GCToOSInterface::VirtualReserve(void* location, size_t size, bool useTHP)
+void* GCToOSInterface::VirtualReserve(void* location, size_t size, bool useTHP, VirtualReserveStatus* status)
 {
-    void* pRetVal = mmap(location, size, PROT_NONE, MAP_ANON | MAP_PRIVATE , -1, 0);
+    int mmapFlags = MAP_ANON | MAP_PRIVATE;
+#ifdef TARGET_LINUX
+    if (location != nullptr)
+    {
+        // Fail with EEXIST instead of mapping elsewhere when the range is taken.
+        // Kernels older than 4.17 ignore the flag and treat location as a hint, that is handled below.
+        mmapFlags |= MAP_FIXED_NOREPLACE;
+    }
+#endif
+
+    void* pRetVal = mmap(location, size, PROT_NONE, mmapFlags, -1, 0);
 
     if (pRetVal == MAP_FAILED)
     {
+        if (status != nullptr)
+        {
+            *status = (errno == EEXIST) ? VirtualReserveStatus::Occupied : VirtualReserveStatus::Refused;
+        }
+
         return NULL;
     }
 
     if (location != nullptr && pRetVal != location)
     {
+        // location was treated as a hint and the range was taken, so the kernel mapped elsewhere.
+        // NB: on Apple OSes, when there is no space at or above the hint, the kernel retries from
+        //     the bottom of the address space, so this can also happen past the end of the usable range.
+        //     Callers that scan for a location should stay within GetUserAddressRange.
         munmap(pRetVal, size);
+        if (status != nullptr)
+        {
+            *status = VirtualReserveStatus::Occupied;
+        }
+
         return NULL;
+    }
+
+    if (status != nullptr)
+    {
+        *status = VirtualReserveStatus::Success;
     }
 
 #ifdef TARGET_LINUX
@@ -1152,6 +1188,44 @@ size_t GCToOSInterface::GetVirtualMemoryMaxAddress()
 #endif // TARGET_LINUX && (TARGET_ARM64 || TARGET_RISCV64 || TARGET_LOONGARCH64)
 #else
     return (size_t)-1;
+#endif
+}
+
+// Get the range of addresses where this process can map memory.
+// Parameters:
+//  start - receives the lowest address that can be mapped
+//  end   - receives the address right after the highest address that can be mapped
+// Return:
+//  true if it has succeeded, false if the range is not known. On failure start and end are not modified.
+bool GCToOSInterface::GetUserAddressRange(size_t* start, size_t* end)
+{
+#if defined(__APPLE__)
+    // The range depends on the platform. On iOS it is small and also depends on the device memory and
+    // on entitlements (the end can be as low as 12.5 GiB), and the low 4 GiB are taken by __PAGEZERO.
+    task_vm_info_data_t info;
+    mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+    kern_return_t kr = task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&info, &count);
+
+    // min_address and max_address were added in rev2 of the structure.
+    if (kr != KERN_SUCCESS || count < TASK_VM_INFO_REV2_COUNT || info.max_address <= info.min_address)
+    {
+        return false;
+    }
+
+    *start = (size_t)info.min_address;
+    *end = (size_t)info.max_address;
+    return true;
+#elif defined(HOST_64BIT)
+    *start = 0;
+#if defined(HOST_ARM64)
+    // arm64 Linux uses up to 48 bits of user address space.
+    *end = (size_t)1 << 48;
+#else
+    *end = GetVirtualMemoryMaxAddress();
+#endif
+    return true;
+#else
+    return false;
 #endif
 }
 
