@@ -366,22 +366,30 @@ void ErectWriteBarrier(void* context, Object **dst, Object* ref)
     SatoriHeap *pHeap = ((SatoriGC*)context)->GetHeap();
     SatoriRecycler *pRecycler = pHeap->Recycler();
 
+    // if the barrier does not ask for cards, we are done.
+    if (!pRecycler->CardsAreNeeded())
+        return;
+
     // check for obj in the same region or in gen2
     if ((((size_t)dst ^ (size_t)obj) < Satori::REGION_SIZE_GRANULARITY) ||
         (obj->ContainingRegion()->Generation() == 2))
     {
-         if (!pRecycler->IsBarrierConcurrent())
-             return;
+        // such reference needs no card, unless the concurrent marker must see the write.
+        // NB: the asm barriers are already published as concurrent while the barrier is still
+        //     being switched, so the switching state must count as concurrent here too.
+        if (!pRecycler->IsBarrierConcurrent(/* includeSwitching */ true))
+            return;
     }
 
     SatoriPage* page = pHeap->PageForAddressChecked((size_t)dst);
     if (!page)
         return;
 
-    if (!pRecycler->IsBarrierConcurrent())
+    if (!pRecycler->IsBarrierConcurrent(/* includeSwitching */ true))
     {
         page->SetCardForAddress((size_t)dst);
-        if (!pRecycler->IsBarrierConcurrent())
+        // recheck - the barrier could turn concurrent while we were setting the card.
+        if (!pRecycler->IsBarrierConcurrent(/* includeSwitching */ true))
             return;
     }
 
