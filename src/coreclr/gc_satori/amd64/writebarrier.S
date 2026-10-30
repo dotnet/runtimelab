@@ -12,6 +12,20 @@
 // and Mach-O, where a jump across an .alt_entry symbol is not relaxed to its short form.
 // The first two values follow a LEAF_ENTRY, which aligns to 16 bytes, and 6 bytes of padding.
 
+// An alternate entry in the middle of a helper. Apple's linkers attribute unwind info to the symbol that a range
+// starts at, so the range from an .alt_entry symbol has no unwind info unless an unwind region also starts there
+// (see https://github.com/dotnet/runtime/pull/114982#discussion_r2083272768). This ends the current region and
+// starts a new one at the entry, on Apple platforms only.
+.macro ALTERNATE_ENTRY_WITH_UNWIND Name
+#if defined(__APPLE__)
+    .cfi_endproc
+#endif
+    ALTERNATE_ENTRY \Name
+#if defined(__APPLE__)
+    .cfi_startproc
+#endif
+.endm
+
 //
 //   rdi - dest address 
 //   rsi - object
@@ -20,7 +34,7 @@ LEAF_ENTRY RhpCheckedAssignRef, _TEXT
     // See if dst is in GCHeap
     NOP_6_BYTE
     .byte   0x48, 0xB8              // mov rax, imm64 (REX.W B8+rax)
-ALTERNATE_ENTRY PatchableValue_CheckedAssignRef_CardBundleTable
+ALTERNATE_ENTRY_WITH_UNWIND PatchableValue_CheckedAssignRef_CardBundleTable
     .quad   0x0F0F0F0F0F0F0F0F0      // fetch the page byte map value (patched; see GetAssignRefFunctions)
     mov     r8,  rdi
     shr     r8,  30                    // dst page index
@@ -28,7 +42,7 @@ ALTERNATE_ENTRY PatchableValue_CheckedAssignRef_CardBundleTable
     jne     LOCAL_LABEL(RhpCheckedEntry)
 
 LOCAL_LABEL(NotInHeap):
-ALTERNATE_ENTRY RhpCheckedAssignRefAVLocation
+ALTERNATE_ENTRY_WITH_UNWIND RhpCheckedAssignRefAVLocation
     mov     [rdi], rsi
     ret
 LEAF_END_MARKED RhpCheckedAssignRef, _TEXT
@@ -42,7 +56,7 @@ LEAF_ENTRY RhpAssignRef, _TEXT
 #ifdef FEATURE_SATORI_EXTERNAL_OBJECTS
     NOP_6_BYTE
     .byte   0x48, 0xB8              // mov rax, imm64 (REX.W B8+rax)
-    ALTERNATE_ENTRY PatchableValue_AssignRef_CardBundleTable
+    ALTERNATE_ENTRY_WITH_UNWIND PatchableValue_AssignRef_CardBundleTable
     .quad   0x0F0F0F0F0F0F0F0F0      // fetch the page byte map value (patched; see GetAssignRefFunctions)
     //ALTERNATE_ENTRY RhpCheckedEntry
 LOCAL_LABEL(RhpCheckedEntry):
@@ -86,7 +100,7 @@ LOCAL_LABEL(RhpCheckedEntry):
     jb      LOCAL_LABEL(RecordEscape)            // target is exposed. record an escape.
 
 LOCAL_LABEL(JustAssign):
-    ALTERNATE_ENTRY RhpAssignRefAVLocationNotHeap
+    ALTERNATE_ENTRY_WITH_UNWIND RhpAssignRefAVLocationNotHeap
     mov     [rdi], rsi              // src is external/null, or the assignment is completely threadlocal
     // set rdi, rsi per contract with JIT_ByRefWriteBarrier
     //add     rdi, 8
@@ -99,13 +113,13 @@ LOCAL_LABEL(JustAssign):
     .p2align 3
     NOP_3_BYTE
 LOCAL_LABEL(AssignAndMarkCards):
-    ALTERNATE_ENTRY RhpAssignRefAVLocation
+    ALTERNATE_ENTRY_WITH_UNWIND RhpAssignRefAVLocation
     mov     [rdi], rsi
 
     // TUNING: barriers in different modes could be separate pieces of code, but barrier switch 
     //         needs to suspend EE, not sure if skipping mode check would worth that much.
     .byte   0x49, 0xBB              // mov r11, imm64 (REX.WB B8+(r11&7))
-    ALTERNATE_ENTRY PatchableValue_AssignAndMarkCards_WriteBarrierState
+    ALTERNATE_ENTRY_WITH_UNWIND PatchableValue_AssignAndMarkCards_WriteBarrierState
     .quad   0x0F0F0F0F0F0F0F0F0      // fetch the barrier state value (patched; see GetAssignRefFunctions)
 
     // set rdi per contract with JIT_ByRefWriteBarrier
@@ -144,7 +158,7 @@ LOCAL_LABEL(CheckConcurrent):
     NOP_6_BYTE
 LOCAL_LABEL(MarkCards):
     .byte   0x49, 0xB9              // mov r9, imm64 (REX.WB B8+(r9&7))
-    ALTERNATE_ENTRY PatchableValue_MarkCards_CardTable
+    ALTERNATE_ENTRY_WITH_UNWIND PatchableValue_MarkCards_CardTable
     .quad   0x0F0F0F0F0F0F0F0F0      // fetch the page map value (patched; see GetAssignRefFunctions)
     mov     rdx, rax
     shr     rax, 30
@@ -180,7 +194,7 @@ LOCAL_LABEL(SetPage):
 LOCAL_LABEL(CardSet):
     // check if concurrent marking is still not in progress
     .byte   0x49, 0xB9              // mov r9, imm64 (REX.WB B8+(r9&7))
-    ALTERNATE_ENTRY PatchableValue_CardSet_WriteBarrierState
+    ALTERNATE_ENTRY_WITH_UNWIND PatchableValue_CardSet_WriteBarrierState
     .quad   0x0F0F0F0F0F0F0F0F0      // fetch the barrier state value (patched; see GetAssignRefFunctions)
     cmp     r9, 0
     jne     LOCAL_LABEL(DirtyCard)

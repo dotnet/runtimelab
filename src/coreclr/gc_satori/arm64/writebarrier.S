@@ -15,6 +15,20 @@
 // The block starts 8-byte aligned, so that the patchable slots, which are 8-byte aligned within it, are also
 // aligned in the copy, where the EE updates them with single 8-byte stores.
 
+// An alternate entry in the middle of a helper. Apple's linkers attribute unwind info to the symbol that a range
+// starts at, so the range from an .alt_entry symbol has no unwind info unless an unwind region also starts there
+// (see https://github.com/dotnet/runtime/pull/114982#discussion_r2083272768). This ends the current region and
+// starts a new one at the entry, on Apple platforms only.
+.macro ALTERNATE_ENTRY_WITH_UNWIND Name
+#if defined(__APPLE__)
+    .cfi_endproc
+#endif
+    ALTERNATE_ENTRY \Name
+#if defined(__APPLE__)
+    .cfi_startproc
+#endif
+.endm
+
 // JIT_CheckedWriteBarrier(Object** dst, Object* src)
 //
 // Write barrier for writes to objects that may reside
@@ -46,7 +60,7 @@
         cbnz    x12, LOCAL_LABEL(RhpCheckedEntry)
 
 LOCAL_LABEL(NotInHeap):
-    ALTERNATE_ENTRY RhpCheckedAssignRefAVLocation
+    ALTERNATE_ENTRY_WITH_UNWIND RhpCheckedAssignRefAVLocation
         str  x15, [x14]
         ret  lr
     LEAF_END_MARKED RhpCheckedAssignRef
@@ -115,21 +129,12 @@ C_FUNC(RhpAssignRef):
 
     // UNORDERED! assignment of unescaped, null or external (immutable) object
 LOCAL_LABEL(JustAssign):
-    ALTERNATE_ENTRY RhpAssignRefAVLocationNotHeap
+    ALTERNATE_ENTRY_WITH_UNWIND RhpAssignRefAVLocationNotHeap
         str      x15, [x14]
         ret      lr
 
 LOCAL_LABEL(AssignAndMarkCards):
-    //ALTERNATE_ENTRY RhpAssignRefAVLocation
-#ifdef TARGET_APPLE
-// Apple's linker has issues which break unwind info if
-// an ALTERNATE_ENTRY is present in the middle of a function see https://github.com/dotnet/runtime/pull/114982#discussion_r2083272768
-.cfi_endproc
-#endif
-    ALTERNATE_ENTRY RhpAssignRefAVLocation
-#ifdef TARGET_APPLE
-.cfi_startproc
-#endif
+    ALTERNATE_ENTRY_WITH_UNWIND RhpAssignRefAVLocation
         stlr    x15, [x14]
 
     // TUNING: barriers in different modes could be separate pieces of code, but barrier switch 
