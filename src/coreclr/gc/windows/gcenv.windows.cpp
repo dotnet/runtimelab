@@ -714,10 +714,26 @@ void* GCToOSInterface::VirtualReserve(size_t size, size_t alignment, uint32_t fl
     }
 }
 
-void* GCToOSInterface::VirtualReserve(void* location, size_t size, bool useTHP /*unused*/)
+void* GCToOSInterface::VirtualReserve(void* location, size_t size, bool useTHP /*unused*/, VirtualReserveStatus* status)
 {
     DWORD memFlags = MEM_RESERVE;
-    return ::VirtualAlloc(location, size, memFlags, PAGE_READWRITE);
+    void* pRetVal = ::VirtualAlloc(location, size, memFlags, PAGE_READWRITE);
+    if (status != nullptr)
+    {
+        if (pRetVal != nullptr)
+        {
+            *status = VirtualReserveStatus::Success;
+        }
+        else
+        {
+            // ERROR_INVALID_ADDRESS means that the range, or a part of it, is already reserved.
+            *status = (location != nullptr && ::GetLastError() == ERROR_INVALID_ADDRESS) ?
+                VirtualReserveStatus::Occupied :
+                VirtualReserveStatus::Refused;
+        }
+    }
+
+    return pRetVal;
 }
 
 // Release virtual memory range previously reserved using VirtualReserve
@@ -969,6 +985,23 @@ size_t GCToOSInterface::GetVirtualMemoryMaxAddress()
 {
     // On Windows, the maximum address is the same as the virtual memory limit, unlike Unix
     return GCToOSInterface::GetVirtualMemoryLimit();
+}
+
+// Get the range of addresses where this process can map memory.
+// Parameters:
+//  start - receives the lowest address that can be mapped
+//  end   - receives the address right after the highest address that can be mapped
+// Return:
+//  true if it has succeeded, false if the range is not known. On failure start and end are not modified.
+bool GCToOSInterface::GetUserAddressRange(size_t* start, size_t* end)
+{
+    SYSTEM_INFO systemInfo;
+    GetSystemInfo(&systemInfo);
+
+    // lpMaximumApplicationAddress is the highest accessible address, not the end of the range.
+    *start = (size_t)systemInfo.lpMinimumApplicationAddress;
+    *end = (size_t)systemInfo.lpMaximumApplicationAddress + 1;
+    return true;
 }
 
 // Return the size of the available user-mode portion of the virtual address space of this process.

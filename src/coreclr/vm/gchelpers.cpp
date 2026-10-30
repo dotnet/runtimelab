@@ -450,20 +450,31 @@ inline void LogAlloc(Object* object)
 #define LogAlloc( object)
 #endif
 
+// A custom GC may hand out an object that is not finished until the GC is told that the object is ready
+// to be seen (see PublishObject). The header of such an object has BIT_SBLK_UNUSED set, same as in
+// SatoriObject::IsUnfinished.
+static inline bool IsUnfinishedByCustomGC(Object* obj)
+{
+    _ASSERTE(g_heap_type == GC_HEAP_CUSTOM);
+    return (obj->GetHeader()->GetBits() & BIT_SBLK_UNUSED) != 0;
+}
+
 // signals completion of the object to GC and sends events if necessary
 template <class TObj>
 void PublishObjectAndNotify(TObj* &orObject, GC_ALLOC_FLAGS flags)
 {
-	if (g_heap_type != GC_HEAP_CUSTOM)
-	{
-    _ASSERTE(orObject->HasEmptySyncBlockInfo());
-	}
-	else
-	{
-		_ASSERTE(orObject->HasEmptySyncBlockInfo() || (flags & (GC_ALLOC_LARGE_OBJECT_HEAP | GC_ALLOC_PINNED_OBJECT_HEAP)));
-	}
+    bool unfinished = false;
+    if (g_heap_type != GC_HEAP_CUSTOM)
+    {
+        _ASSERTE(orObject->HasEmptySyncBlockInfo());
+    }
+    else
+    {
+        unfinished = IsUnfinishedByCustomGC(orObject);
+        _ASSERTE(orObject->HasEmptySyncBlockInfo() || unfinished || (flags & (GC_ALLOC_LARGE_OBJECT_HEAP | GC_ALLOC_PINNED_OBJECT_HEAP)));
+    }
 
-    if (flags & GC_ALLOC_USER_OLD_HEAP)
+    if ((flags & GC_ALLOC_USER_OLD_HEAP) || unfinished)
     {
         GCHeapUtilities::GetGCHeap()->PublishObject((BYTE*)orObject);
     }

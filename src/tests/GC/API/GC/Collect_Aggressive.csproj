@@ -12,5 +12,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Collect_Aggressive.cs" />
+    <!-- Reclamation must come from the explicit request, not the background trimmer or another GC's relocation. -->
+    <CLRTestEnvironmentVariable Include="DOTNET_gcTrim" Value="0" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcRelocatingGen1" Value="0" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcRelocatingGen2" Value="0" />
   </ItemGroup>
 </Project>

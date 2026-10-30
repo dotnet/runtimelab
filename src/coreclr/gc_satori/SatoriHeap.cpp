@@ -96,6 +96,7 @@ SatoriHeap* SatoriHeap::Create()
     if (!GCToOSInterface::VirtualCommit(reserved, commitSize))
     {
         // failure
+        GCToOSInterface::VirtualRelease(reserved, reserveSize);
         return nullptr;
     }
 
@@ -106,12 +107,30 @@ SatoriHeap* SatoriHeap::Create()
     heap->m_committedBytes = commitSize;
     InitWriteBarrier(heap->m_pageMap, s_pageByteMap, heap->CommittedMapLength() * Satori::PAGE_SIZE_GRANULARITY - 1);
     heap->m_mapLock.Initialize();
-    heap->m_nextPageIndex = 1;
+
+    // Place pages only where the process can map memory. That keeps the search for a free location
+    // from scanning the rest of the map once the address space runs out.
+    // On iOS the range is small and depends on the device, and the low 4 GiB are __PAGEZERO.
+    // Map index 0 is never used.
+    size_t firstPageIndex = 1;
+    size_t maxPageIndex = (size_t)1 << pageCountBits;
+    size_t userStart, userEnd;
+    if (GCToOSInterface::GetUserAddressRange(&userStart, &userEnd))
+    {
+        firstPageIndex = max(firstPageIndex, ALIGN_UP(userStart, Satori::PAGE_SIZE_GRANULARITY) >> Satori::PAGE_BITS);
+        maxPageIndex = min(maxPageIndex, userEnd >> Satori::PAGE_BITS);
+    }
+
+    heap->m_maxPageIndex = maxPageIndex;
+    heap->m_nextPageIndex = firstPageIndex;
     heap->m_usedMapLength = 1;
 
     heap->m_allocator.Initialize(heap);
     heap->m_recycler.Initialize(heap);
-    heap->m_finalizationQueue.Initialize(heap);
+    if (!heap->m_finalizationQueue.Initialize(heap))
+    {
+        return nullptr;
+    }
     return heap;
 }
 
@@ -122,7 +141,9 @@ bool SatoriHeap::CommitMoreMap(size_t currentCommittedMapSize)
     {
         void* commitFrom = (void*)((size_t)&m_pageMap + currentCommittedMapSize);
         size_t commitSize = SatoriUtil::CommitGranularity();
-        _ASSERTE(m_committedMapSize + commitSize <= m_reservedMapSize);
+        // The reservation is rounded up to commit granularity, so the last commit may go past
+        // the map size, but it stays within the reservation as long as some of the map is uncommitted.
+        _ASSERTE(m_committedMapSize < m_reservedMapSize);
         if (GCToOSInterface::VirtualCommit(commitFrom, commitSize))
         {
             // we did the commit
@@ -143,7 +164,7 @@ bool SatoriHeap::CommitMoreMap(size_t currentCommittedMapSize)
 bool SatoriHeap::TryAddRegularPage(SatoriPage*& newPage)
 {
     size_t nextPageIndex = m_nextPageIndex;
-    size_t maxIndex = m_reservedMapSize / sizeof(SatoriPage*);
+    size_t maxIndex = m_maxPageIndex;
     for (size_t i = nextPageIndex; i < maxIndex; i++)
     {
         size_t currentCommittedMapSize = m_committedMapSize;
@@ -156,7 +177,14 @@ bool SatoriHeap::TryAddRegularPage(SatoriPage*& newPage)
         if (m_pageMap[i] == 0)
         {
             size_t pageAddress = i << Satori::PAGE_BITS;
-            newPage = SatoriPage::InitializeAt(pageAddress, Satori::PAGE_SIZE_GRANULARITY, this);
+            SatoriPage::InitStatus status;
+            newPage = SatoriPage::InitializeAt(pageAddress, Satori::PAGE_SIZE_GRANULARITY, this, status);
+            if (status == SatoriPage::InitStatus::CommitFailed ||
+                status == SatoriPage::InitStatus::ReserveRefused)
+            {
+                // OOM. Other locations would not do better.
+                return false;
+            }
             if (newPage)
             {
                 // SYNCRONIZATION:
@@ -200,13 +228,18 @@ bool SatoriHeap::TryAddRegularPage(SatoriPage*& newPage)
 // unless we claimed contiguously.
 SatoriPage* SatoriHeap::AddLargePage(size_t minSize)
 {
-    // Add the overhead of card table (1/512).
-    minSize += minSize / Satori::BYTES_PER_CARD_BYTE;
-    size_t pageSize = ALIGN_UP(minSize, Satori::PAGE_SIZE_GRANULARITY);
+    // The page starts with the card table, which is 1/512 of the page size, not of minSize.
+    // The rest of the page must fit minSize:
+    //    pageSize - pageSize / 512 >= minSize
+    //    pageSize >= minSize + minSize / 511
+    size_t cardOverhead = (minSize + Satori::BYTES_PER_CARD_BYTE - 2) / (Satori::BYTES_PER_CARD_BYTE - 1);
+    size_t pageSize = ALIGN_UP(minSize + cardOverhead, Satori::PAGE_SIZE_GRANULARITY);
+    _ASSERTE(pageSize - pageSize / Satori::BYTES_PER_CARD_BYTE >= minSize);
     size_t mapMarkCount = pageSize / Satori::PAGE_SIZE_GRANULARITY;
 
-    size_t maxIndex = m_reservedMapSize / sizeof(SatoriPage*);
-    for (size_t i = m_nextPageIndex; i < maxIndex; i++)
+    // the whole page must fit below m_maxPageIndex.
+    size_t maxIndex = m_maxPageIndex;
+    for (size_t i = m_nextPageIndex; i + mapMarkCount <= maxIndex; i++)
     {
         size_t currentCommittedMapSize;
         size_t requiredMapSize = (i + mapMarkCount) * sizeof(SatoriPage*);
@@ -221,7 +254,14 @@ SatoriPage* SatoriHeap::AddLargePage(size_t minSize)
         if (m_pageMap[i] == 0)
         {
             size_t pageAddress = i << Satori::PAGE_BITS;
-            SatoriPage* newPage = SatoriPage::InitializeAt(pageAddress, pageSize, this);
+            SatoriPage::InitStatus status;
+            SatoriPage* newPage = SatoriPage::InitializeAt(pageAddress, pageSize, this, status);
+            if (status == SatoriPage::InitStatus::CommitFailed ||
+                status == SatoriPage::InitStatus::ReserveRefused)
+            {
+                // OOM. Other locations would not do better.
+                return nullptr;
+            }
             if (newPage)
             {
                 // mark the map, before an object can be allocated in the new page and

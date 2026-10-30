@@ -4,6 +4,7 @@
 #include "ksarm64.h"
 #include "asmconstants.h"
 #include "asmmacros.h"
+#include "../../inc/satoriconstants.h"
 
     TEXTAREA
 
@@ -29,7 +30,9 @@
     ;; (see RhpAssignRef below), rather than a PC-relative reference to an external global, so it
     ;; stays correct no matter where this code is copied to; see GetAssignRefFunctions.
         ldr     x16, PatchableValue_CheckedAssignRef_CardBundleTable
-        lsr     x17, x14, #30                       ;; dst page index
+    ;; Native destinations may carry a top-byte tag (TBI/MTE).
+    ;; Ignore the tag only for the page-map lookup; preserve x14 for the store.
+        ubfx    x17, x14, #SATORI_PAGE_BITS, #SATORI_PAGE_MAP_BITS    ;; dst page index
         ldrb    w12, [x16, x17]
         cbnz    x12, RhpCheckedEntry
 
@@ -106,12 +109,12 @@ ExitNoCards
         ret     lr
 
 DoCards
-    ; if same region, just check if barrier is not concurrent
+    ; if src and dst are in the same region, cards are not needed, unless concurrent
         and     x12, x14, #0xFFFFFFFFFFE00000   ; target aligned to region
         cmp     x12, x16
         beq     CheckConcurrent    ; same region, just check if barrier is not concurrent
 
-    ; if src is in gen2/3 and the barrier is not concurrent we do not need to mark cards
+    ; dst is in another region - cards are needed if src is ephemeral (gen < 2)
         ldr     w12, [x16, 16]                  ; source region + 16 -> generation
         tbz     x12, #1, MarkCards
 
@@ -120,62 +123,63 @@ CheckConcurrent
         cbz     x17, ExitNoCards
 
 MarkCards
-    ; need couple temps. Save before using.
-        stp     x2,  x3,  [sp, -16]!
+    ; only x12, x15, x16 and x17 may be trashed here, so we keep the card offset in x12,
+    ; the group address in x15, the page in x16, and reuse x17 for both the loaded byte
+    ; and the value being stored. That avoids needing any extra temps.
 
     ; fetch card location for x14
         ldr     x12, PatchableValue_MarkCards_CardTable  ; fetch the page map value (patched; see GetAssignRefFunctions)
         lsr     x16, x14, #30
         ldr     x16, [x12, x16, lsl #3]              ; page
-        sub     x2,  x14, x16   ; offset in page
-        lsr     x15, x2,  #20   ; group index
-        lsr     x2,  x2,  #9    ; card offset
-        lsl     x15, x15, #1    ; group offset (index * 2)
+        sub     x12, x14, x16   ; offset in page
+        lsr     x15, x12, #20   ; group index
+        lsr     x12, x12, #9    ; card offset
+        add     x15, x16, x15, lsl #1   ; group address (page + index * 2)
 
     ; check if concurrent marking is in progress
         cbnz    x17, DirtyCard
 
     ; SETTING CARD FOR X14
 SetCard
-        ldrb    w3, [x16, x2]
-        cbnz    w3, Exit
+        ldrb    w17, [x16, x12]
+        cbnz    w17, Exit
         mov     w17, #1
-        strb    w17, [x16, x2]
+        strb    w17, [x16, x12]
 SetGroup
-        add     x12, x16, #0x80
-        ldrb    w3, [x12, x15]
-        cbnz    w3, CardSet
-        strb    w17, [x12, x15]
+        ldrb    w17, [x15, #0x80]
+        cbnz    w17, CardSet
+        mov     w17, #1
+        strb    w17, [x15, #0x80]
 SetPage
-        ldrb    w3, [x16]
-        cbnz    w3, CardSet
+        ldrb    w17, [x16]
+        cbnz    w17, CardSet
+        mov     w17, #1
         strb    w17, [x16]
 
 CardSet
     ; check if concurrent marking is still not in progress
-        ldr     x12, PatchableValue_CardSet_WriteBarrierState  ; fetch the barrier state value (patched; see GetAssignRefFunctions)
-        cbnz    x12, DirtyCard
+    ; (uses x17 so that the card offset in x12 stays live for DirtyCard)
+        ldr     x17, PatchableValue_CardSet_WriteBarrierState  ; fetch the barrier state value (patched; see GetAssignRefFunctions)
+        cbnz    x17, DirtyCard
 
 Exit
-        ldp  x2,  x3, [sp], 16
         ret  lr
 
     ; DIRTYING CARD FOR X14
 DirtyCard
+        add     x12, x16, x12   ; card address
         mov     w17, #4
-        add     x2, x2, x16
         ; must be after the field write to allow concurrent clean
-        stlrb   w17, [x2]
+        stlrb   w17, [x12]
 DirtyGroup
-        add     x12, x16, #0x80
-        ldrb    w3, [x12, x15]
-        tbnz    w3, #2, Exit
-        strb    w17, [x12, x15]
+        ldrb    w12, [x15, #0x80]
+        tbnz    w12, #2, Exit
+        strb    w17, [x15, #0x80]
 DirtyPage
-        ldrb    w3, [x16]
-        tbnz    w3, #2, Exit
+        ldrb    w12, [x16]
+        tbnz    w12, #2, Exit
         strb    w17, [x16]
-        b       Exit
+        ret  lr
 
     ;; this is expected to be rare.
 RecordEscape
@@ -188,18 +192,21 @@ RecordEscape
         lsr         x17, x17, x12
         tbnz        x17, #0, AssignAndMarkCards        ;; source is already escaped.
 
-        ;; because of the barrier call convention
-        ;; we need to preserve caller-saved x0 through x15 and x29/x30
+        ;; because of the barrier call convention we need to preserve x0-x11, x13, x14, x15 and x30.
+        ;; x12, x16 and x17 are trashable per the barrier contract, and x12 is rewritten before
+        ;; being read again. x29 is callee-saved, so EscapeFn preserves it for us.
+        ;; also save q0, in case it is used for stack clearing.
+        ;; Hopefully EscapeFn cannot corrupt other vector regs, since there is no float math or vectorizable code in there.
 
-        stp     x29,x30, [sp, -16 * 9]!
-        stp     x0, x1,  [sp, 16 * 1]
-        stp     x2, x3,  [sp, 16 * 2]
-        stp     x4, x5,  [sp, 16 * 3]
-        stp     x6, x7,  [sp, 16 * 4]
-        stp     x8, x9,  [sp, 16 * 5]
-        stp     x10,x11, [sp, 16 * 6]
-        stp     x12,x13, [sp, 16 * 7]
-        stp     x14,x15, [sp, 16 * 8]
+        stp     x30, x0, [sp, -16 * 9]!
+        stp     x1,  x2, [sp, 16 * 1]
+        stp     x3,  x4, [sp, 16 * 2]
+        stp     x5,  x6, [sp, 16 * 3]
+        stp     x7,  x8, [sp, 16 * 4]
+        stp     x9,  x10,[sp, 16 * 5]
+        stp     x11, x13,[sp, 16 * 6]
+        stp     x14, x15,[sp, 16 * 7]
+        str     q0,      [sp, 16 * 8]
 
         ;; void SatoriRegion::EscapeFn(SatoriObject** dst, SatoriObject* src, SatoriRegion* region)
         ;; mov  x0, x14  EscapeFn does not use dst, it is just to avoid arg shuffle on x64
@@ -208,15 +215,15 @@ RecordEscape
         ldr  x12, [x16, #8]                 ;; EscapeFn address
         blr  x12
 
-        ldp     x0, x1,  [sp, 16 * 1]
-        ldp     x2, x3,  [sp, 16 * 2]
-        ldp     x4, x5,  [sp, 16 * 3]
-        ldp     x6, x7,  [sp, 16 * 4]
-        ldp     x8, x9,  [sp, 16 * 5]
-        ldp     x10,x11, [sp, 16 * 6]
-        ldp     x12,x13, [sp, 16 * 7]
-        ldp     x14,x15, [sp, 16 * 8]
-        ldp     x29,x30, [sp], 16 * 9
+        ldr     q0,      [sp, 16 * 8]
+        ldp     x14, x15,[sp, 16 * 7]
+        ldp     x11, x13,[sp, 16 * 6]
+        ldp     x9,  x10,[sp, 16 * 5]
+        ldp     x7,  x8, [sp, 16 * 4]
+        ldp     x5,  x6, [sp, 16 * 3]
+        ldp     x3,  x4, [sp, 16 * 2]
+        ldp     x1,  x2, [sp, 16 * 1]
+        ldp     x30, x0, [sp], 16 * 9
 
         and     x16, x15, #0xFFFFFFFFFFE00000  ;; source region
         b       AssignAndMarkCards

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
+    <NativeAotIncompatible>true</NativeAotIncompatible>
+    <GCStressIncompatible>true</GCStressIncompatible>
+    <CLRTestTargetUnsupported Condition="'$(RuntimeFlavor)' != 'coreclr'">true</CLRTestTargetUnsupported>
+    <Nullable>enable</Nullable>
+    <WarningsAsErrors>nullable</WarningsAsErrors>
+    <DefineConstants>$(DefineConstants);INDIVIDUAL_PROMOTION</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="CollectibleLoaderAllocatorCard.cs" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcGen0" Value="0" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcConcurrent" Value="0" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcRelocatingGen1" Value="0" />
+  </ItemGroup>
+</Project>

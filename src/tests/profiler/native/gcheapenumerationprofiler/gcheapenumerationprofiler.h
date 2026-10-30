@@ -15,7 +15,10 @@ public:
         _failures(0),
         _expectedExceptions(0),
         _threadList(),
-        _gcStartSleeping(false)
+        _gcStartSleeping(false),
+        _referenceOnly(false),
+        _referenceWalkValidated(false),
+        _referenceHandle(nullptr)
     {}
 
     // Profiler callbacks override
@@ -23,12 +26,14 @@ public:
     virtual HRESULT STDMETHODCALLTYPE Initialize(IUnknown* pICorProfilerInfoUnk);
     virtual HRESULT STDMETHODCALLTYPE GarbageCollectionStarted(int cGenerations, BOOL generationCollected[], COR_PRF_GC_REASON reason);
     virtual HRESULT STDMETHODCALLTYPE GarbageCollectionFinished();
+    virtual HRESULT STDMETHODCALLTYPE ObjectAllocated(ObjectID objectId, ClassID classId);
     virtual HRESULT STDMETHODCALLTYPE Shutdown();
 
     // Helper methods
     bool IsGCStartSleeping();
     void IncrementFailures();
     HRESULT ValidateEnumerateGCHeapObjects(HRESULT expected);
+    HRESULT ValidateObjectReferences();
 
 private:
     std::atomic<int> _objectsCount;
@@ -37,6 +42,9 @@ private:
     std::atomic<int> _expectedExceptions;
     std::vector<std::thread> _threadList;
     bool _gcStartSleeping;
+    bool _referenceOnly;
+    bool _referenceWalkValidated;
+    ObjectHandleID _referenceHandle;
 
     HRESULT EnumerateGCHeapObjects();
 };

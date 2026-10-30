@@ -29,6 +29,21 @@
 
 #include "common.h"
 #include "../gc.h"
+#include "../../inc/satoriconstants.h"
+
+// ForwardGCSafeCopy/BackwardGCSafeCopy below use SSE intrinsics on amd64.
+// MSVC gets these via <intrin.h> (included by gcenv.base.h), clang/gcc need
+// <xmmintrin.h> explicitly. The condition must match the uses below.
+#if defined(HOST_AMD64) && defined(__GNUC__)
+#include <xmmintrin.h>
+#endif
+
+#if defined(HOST_ARM64) && defined(_MSC_VER)
+// the virtual counter of the ARM generic timer
+#ifndef ARM64_CNTVCT_EL0
+#define ARM64_CNTVCT_EL0 ARM64_SYSREG(3, 3, 14, 0, 2)
+#endif
+#endif
 
 namespace Satori
 {
@@ -39,7 +54,7 @@ namespace Satori
     };
 
     // page granularity is 1 Gb, but they can be bigger
-    static const int PAGE_BITS = 30;
+    static const int PAGE_BITS = SATORI_PAGE_BITS;
     static const size_t PAGE_SIZE_GRANULARITY = (size_t)1 << PAGE_BITS;
 
     // regions are aligned at 2 Mb
@@ -56,6 +71,15 @@ namespace Satori
 
     // object starts are aligned to this
     static const size_t OBJECT_ALIGNMENT = sizeof(size_t);
+
+    // the unit of false sharing - what to align a hot field to, and how much to pad
+    // around it. 128 where the hardware pairs lines or the line is simply wider.
+    // NB: not CACHE_LINE_SIZE - that is a macro in the VM's per-arch cgencpu.h.
+#if defined(TARGET_AMD64) || defined(TARGET_X86)
+    static const size_t CACHE_LINE_GRANULARITY = 64;
+#else
+    static const size_t CACHE_LINE_GRANULARITY = 128;
+#endif
 
     // minimal free size that can be made parseable.
     // we use a trivial array object to fill holes, thus this is the size of a shortest array object.
@@ -78,6 +102,18 @@ namespace Satori
 
     // if we allocated this much, check if help is needed
     const static int PACE_BUDGET = REGION_SIZE_GRANULARITY / 16;
+
+    // allocated bytes of small objects are counted in a shared counter per this many processors.
+    // (see SatoriAllocator::PublishAllocatedBytes)
+    const static int ALLOCATED_BYTES_COUNTER_PROCESSORS = 16;
+    const static int MAX_ALLOCATED_BYTES_COUNTERS = 64;
+
+    // allocation tick event is fired after at least this much is allocated since the last tick.
+    // (same as etw_allocation_tick in the regular GC)
+    // NB: this is typically silent. Allocated bytes are published in batches of PACE_BUDGET, which is larger,
+    //     so ticks are already further apart than this. The purpose of this is to be a floor on the distance
+    //     between ticks (i.e. to cap how often they happen), in case pacing is made more frequent.
+    const static size_t ALLOCATION_TICK_BYTES = 100 * 1024;
 
     // address bits set to track finalizable that needs to be scheduled to F-queue
     const static size_t FINALIZATION_PENDING = 1;
@@ -103,6 +139,9 @@ namespace Satori
     // When 1/4 escapes, we stop tracking escapes.
     static const int MAX_ESCAPE_SIZE = REGION_SIZE_GRANULARITY / 4;
 
+    // A thread-local collection proceeds only if at least this much of the region will be free after it.
+    static const int TLGC_MIN_FREE_PERCENT = 70;
+
     // objects smaller than this go into regular region.
     static const int LARGE_OBJECT_THRESHOLD = 32 * 1024;
 
@@ -127,12 +166,21 @@ public:
     {
         _ASSERTE(value > 0);
         DWORD highestBit;
-#ifdef HOST_64BIT
         BitScanReverse64(&highestBit, value);
-#else
-        BitScanReverse(&highestBit, value);
-#endif
         return (size_t)1 << highestBit;
+    }
+
+    static size_t RoundUpPwr2(size_t value)
+    {
+        _ASSERTE(value > 0);
+        if (value == 1)
+        {
+            return 1;
+        }
+
+        DWORD highestBit;
+        BitScanReverse64(&highestBit, value - 1);
+        return (size_t)2 << highestBit;
     }
 
     static int32_t BucketForAlloc(size_t allocSize)
@@ -145,7 +193,7 @@ public:
         {
             // skip buckets that could not possibly fit allocSize
             DWORD bucket;
-            BitScanReverse64(&bucket, allocSize);
+            BitScanReverse64(&bucket, allocSize - 1);
             bucket = bucket - Satori::MIN_FREELIST_CAPACITY_BITS;
 
             // this bucket may be able to fit allocSize or may be not,
@@ -166,7 +214,7 @@ public:
         return (size_t)__readgsqword(0x30);
 #endif
 
-#elif defined(TARGET_OSX)
+#elif defined(TARGET_APPLE)
 
         size_t tag;
 #if defined(TARGET_ARM64)
@@ -204,13 +252,342 @@ public:
 #endif
     }
 
-    // TUNING: Needs tuning?
+    // A cheap monotonically increasing timestamp, for deadline checks and similar heuristics.
+    // This reads the hardware counter inline - typically just a few instructions.
+    //
+    // The counter may be slightly out of sync between cores and some parts are known to be
+    // unreliable, so do not use this where an occasional wrong reading is not tolerated.
+    // Durations that are reported or feed into heuristics should use the OS timer instead.
+    // The read is not serialized either, so it may drift within the out-of-order window.
+    //
+    // The unit is 1/GetTimeStampFrequency() of a second.
+    static FORCEINLINE int64_t GetTimeStamp()
+    {
+        // until the rate of the hardware counter is known, ask the OS instead.
+        if (s_timeStampFrequency == 0)
+        {
+            return GetTimeStampSlow();
+        }
+
+        return ReadHwTimeStamp();
+    }
+
+    // The number of GetTimeStamp() ticks per second.
+    static int64_t GetTimeStampFrequency()
+    {
+        return s_timeStampFrequency != 0 ? s_timeStampFrequency : s_osTimeStampFrequency;
+    }
+
+    // GetTimeStamp() ticks in one microsecond, for spinning in units of wall time.
+    // Never 0, so it can be used as a divisor.
+    static int64_t TimeStampTicksPerUsec()
+    {
+        return s_ticksPerUsec;
+    }
+
+    // Chooses between the hardware counter and the OS timer and measures the rate of
+    // the former. Takes ~100 usec. Must be called before GetTimeStamp()/GetTimeStampFrequency().
+    static void Initialize();
+
+    // Copies of InlinedForwardGCSafeCopyHelper/InlinedBackwardGCSafeCopyHelper from
+    // vm/arraynative.inl - the VM headers are not reachable from the (standalone) GC.
+    //
+    // Unlike memmove these copy in pointer-sized chunks, so that a reference is never
+    // torn and could be observed by another thread only as old or new value.
+    //
+    // Requirements:
+    //   dest, src and len must be pointer-aligned, len != 0, dest != src.
+    //   Forward: the destination must not start inside the source  (dest < src or no overlap).
+    //   Backward: the source must not start inside the destination (dest > src or no overlap).
+    //   NB: the checks below are unsigned, thus a "negative" difference passes.
+    static FORCEINLINE void ForwardGCSafeCopy(void* dest, const void* src, size_t len)
+    {
+        _ASSERTE(dest != nullptr);
+        _ASSERTE(src != nullptr);
+        _ASSERTE(dest != src);
+        _ASSERTE(len != 0);
+
+        // To be able to copy forwards, the destination buffer cannot start inside the source buffer
+        _ASSERTE((size_t)dest - (size_t)src >= len);
+
+        _ASSERTE(((size_t)dest & (sizeof(size_t) - 1)) == 0);
+        _ASSERTE(((size_t)src & (sizeof(size_t) - 1)) == 0);
+        _ASSERTE((len & (sizeof(size_t) - 1)) == 0);
+
+        size_t* dptr = (size_t*)dest;
+        size_t* sptr = (size_t*)src;
+
+        while (true)
+        {
+            if ((len & sizeof(size_t)) != 0)
+            {
+                *dptr = *sptr;
+
+                len ^= sizeof(size_t);
+                if (len == 0)
+                {
+                    return;
+                }
+                ++sptr;
+                ++dptr;
+            }
+
+#if defined(HOST_AMD64) && (defined(_MSC_VER) || defined(__GNUC__))
+            if ((len & (2 * sizeof(size_t))) != 0)
+            {
+                __m128 v = _mm_loadu_ps((float*)sptr);
+                _mm_storeu_ps((float*)dptr, v);
+
+                len ^= 2 * sizeof(size_t);
+                if (len == 0)
+                {
+                    return;
+                }
+                sptr += 2;
+                dptr += 2;
+            }
+
+            // Align the destination pointer to 16 bytes for the next set of 16-byte copies
+            if (((size_t)dptr & sizeof(size_t)) != 0)
+            {
+                *dptr = *sptr;
+
+                ++sptr;
+                ++dptr;
+                len -= sizeof(size_t);
+                if (len < 4 * sizeof(size_t))
+                {
+                    continue;
+                }
+            }
+
+            // Copy 32 bytes at a time
+            _ASSERTE(len >= 4 * sizeof(size_t));
+            do
+            {
+                __m128 v = _mm_loadu_ps((float*)sptr);
+                _mm_store_ps((float*)dptr, v);
+                v = _mm_loadu_ps((float*)(sptr + 2));
+                _mm_store_ps((float*)(dptr + 2), v);
+
+                sptr += 4;
+                dptr += 4;
+                len -= 4 * sizeof(size_t);
+            } while (len >= 4 * sizeof(size_t));
+            if (len == 0)
+            {
+                return;
+            }
+#else
+            if ((len & (2 * sizeof(size_t))) != 0)
+            {
+                // Read two values and write two values to hint the use of wide loads and stores
+                size_t p0 = sptr[0];
+                size_t p1 = sptr[1];
+                dptr[0] = p0;
+                dptr[1] = p1;
+
+                len ^= 2 * sizeof(size_t);
+                if (len == 0)
+                {
+                    return;
+                }
+                sptr += 2;
+                dptr += 2;
+            }
+
+            // Copy 16 (on 32-bit systems) or 32 (on 64-bit systems) bytes at a time
+            _ASSERTE(len >= 4 * sizeof(size_t));
+            while (true)
+            {
+                // Read two values and write two values to hint the use of wide loads and stores
+                size_t p0 = sptr[0];
+                size_t p1 = sptr[1];
+                dptr[0] = p0;
+                dptr[1] = p1;
+                p0 = sptr[2];
+                p1 = sptr[3];
+                dptr[2] = p0;
+                dptr[3] = p1;
+
+                len -= 4 * sizeof(size_t);
+                if (len == 0)
+                {
+                    return;
+                }
+                sptr += 4;
+                dptr += 4;
+            }
+#endif
+        }
+    }
+
+    static FORCEINLINE void BackwardGCSafeCopy(void* dest, const void* src, size_t len)
+    {
+        _ASSERTE(dest != nullptr);
+        _ASSERTE(src != nullptr);
+        _ASSERTE(dest != src);
+        _ASSERTE(len != 0);
+
+        // To be able to copy backwards, the source buffer cannot start inside the destination buffer
+        _ASSERTE((size_t)src - (size_t)dest >= len);
+
+        _ASSERTE(((size_t)dest & (sizeof(size_t) - 1)) == 0);
+        _ASSERTE(((size_t)src & (sizeof(size_t) - 1)) == 0);
+        _ASSERTE((len & (sizeof(size_t) - 1)) == 0);
+
+        size_t* dptr = (size_t*)((uint8_t*)dest + len);
+        size_t* sptr = (size_t*)((uint8_t*)src + len);
+
+        while (true)
+        {
+            if ((len & sizeof(size_t)) != 0)
+            {
+                --sptr;
+                --dptr;
+
+                *dptr = *sptr;
+
+                len ^= sizeof(size_t);
+                if (len == 0)
+                {
+                    return;
+                }
+            }
+
+#if defined(HOST_AMD64) && (defined(_MSC_VER) || defined(__GNUC__))
+            if ((len & (2 * sizeof(size_t))) != 0)
+            {
+                sptr -= 2;
+                dptr -= 2;
+
+                __m128 v = _mm_loadu_ps((float*)sptr);
+                _mm_storeu_ps((float*)dptr, v);
+
+                len ^= 2 * sizeof(size_t);
+                if (len == 0)
+                {
+                    return;
+                }
+            }
+
+            // Align the destination pointer to 16 bytes for the next set of 16-byte copies
+            if (((size_t)dptr & sizeof(size_t)) != 0)
+            {
+                --sptr;
+                --dptr;
+
+                *dptr = *sptr;
+
+                len -= sizeof(size_t);
+                if (len < 4 * sizeof(size_t))
+                {
+                    continue;
+                }
+            }
+
+            // Copy 32 bytes at a time
+            _ASSERTE(len >= 4 * sizeof(size_t));
+            do
+            {
+                sptr -= 4;
+                dptr -= 4;
+
+                __m128 v = _mm_loadu_ps((float*)(sptr + 2));
+                _mm_store_ps((float*)(dptr + 2), v);
+                v = _mm_loadu_ps((float*)sptr);
+                _mm_store_ps((float*)dptr, v);
+
+                len -= 4 * sizeof(size_t);
+            } while (len >= 4 * sizeof(size_t));
+            if (len == 0)
+            {
+                return;
+            }
+#else
+            if ((len & (2 * sizeof(size_t))) != 0)
+            {
+                sptr -= 2;
+                dptr -= 2;
+
+                // Read two values and write two values to hint the use of wide loads and stores
+                size_t p1 = sptr[1];
+                size_t p0 = sptr[0];
+                dptr[1] = p1;
+                dptr[0] = p0;
+
+                len ^= 2 * sizeof(size_t);
+                if (len == 0)
+                {
+                    return;
+                }
+            }
+
+            // Copy 16 (on 32-bit systems) or 32 (on 64-bit systems) bytes at a time
+            _ASSERTE(len >= 4 * sizeof(size_t));
+            do
+            {
+                sptr -= 4;
+                dptr -= 4;
+
+                // Read two values and write two values to hint the use of wide loads and stores
+                size_t p0 = sptr[2];
+                size_t p1 = sptr[3];
+                dptr[2] = p0;
+                dptr[3] = p1;
+                p0 = sptr[0];
+                p1 = sptr[1];
+                dptr[0] = p0;
+                dptr[1] = p1;
+
+                len -= 4 * sizeof(size_t);
+            } while (len != 0);
+            return;
+#endif
+        }
+    }
+
     // When doing regular allocation we clean this much memory
     // if we do cleaning, and if available.
-    // Set to 1/2 of a typical 32K L1 cache for now
+    // Zeroing a contiguous range takes a fraction of every set in L1, so we aim for no more than
+    // about half of L1 per thread, to leave room for whatever else the thread is working with.
+    //  - x64 has 32-48K L1D, typically shared by 2 SMT threads.
+    //    Other architectures that we may run on have 32-64K L1D, some with SMT.
+    //  - arm64 currently has no SMT, and 64K+ L1D on Apple, Neoverse (Graviton, Cobalt), Oryon
+    //    and current big Cortex cores.
     static const size_t MinZeroInitSize()
     {
+#if defined(TARGET_ARM64)
+        return 32 * 1024;
+#else
         return 16 * 1024;
+#endif
+    }
+
+    // Zeroes memory that allocations are about to use, from the start up.
+    // We zero in blocks, from the last block to the first one, so that the start is written last
+    // and is the most likely to be still in cache when used. Whatever the cache size, the part
+    // that fits stays hot, instead of losing all of it once the range does not fit.
+    // Within a block we use memset, which knows the best way to zero on the given hardware.
+    // Bigger ranges are object-sized zeroing rather than zeroing ahead. We leave them to memset,
+    // which may choose to not pollute the cache with them.
+    static void ZeroInitForAllocation(size_t start, size_t end)
+    {
+        const size_t blockSize = 4 * 1024;
+
+        _ASSERTE(start <= end);
+        if (end - start > 2 * MinZeroInitSize())
+        {
+            memset((void*)start, 0, end - start);
+            return;
+        }
+
+        while (end > start)
+        {
+            size_t blockStart = max(start, ALIGN_DOWN(end - 1, blockSize));
+            memset((void*)blockStart, 0, end - blockStart);
+            end = blockStart;
+        }
     }
 
     // DOTNET_gcConservative
@@ -273,6 +650,20 @@ public:
         return (GCConfig::GetPacingGC());
     }
 
+    // DOTNET_gcTrackBackoff
+    // After a thread's escape-tracked region ends without a productive thread-local GC,
+    // the thread allocates the next 1, 2, 4 ... up to this many eligible regions untracked.
+    static int TrackBackoffCap()
+    {
+        int64_t cap = GCConfig::GetTrackBackoff();
+        if (cap < 0)
+        {
+            return 16;
+        }
+
+        return (int)min(cap, (int64_t)64);
+    }
+
     // DOTNET_GCLatencyMode
     static bool IsLowLatencyMode()
     {
@@ -306,7 +697,7 @@ public:
             // minimum rate-limiting in debug
             return 0;
 #else
-            return 3;
+            return 2;
 #endif
         }
 
@@ -323,6 +714,28 @@ public:
         }
 
         return gcSpin;
+    }
+
+    // DOTNET_gcReusableTarget
+    // How much free space may be parked in reusable regions, as a percentage of expected
+    // gen1 allocation. Reusables are drained into ephemeral queues when a blocking GC starts,
+    // so holding much more than the mutator consumes before then only adds to that drain.
+    static int ReusableTarget()
+    {
+        int target = (int)GCConfig::GetReusableTarget();
+        if (target < 0)
+        {
+            return 200;
+        }
+
+        return target;
+    }
+
+    // DOTNET_GCHighMemPercent
+    static uint32_t HighMemoryPercent()
+    {
+        uint32_t percent = (uint32_t)GCConfig::GetGCHighMemPercent();
+        return percent == 0 ? 99 : min(99u, percent);
     }
 
     // DOTNET_gcGen2Target
@@ -377,6 +790,41 @@ public:
 
         return result;
     }
+
+private:
+    // the rate of the inline hardware counter, in Hz. 0 if we are not using it.
+    static int64_t s_timeStampFrequency;
+    static int64_t s_osTimeStampFrequency;
+    static int64_t s_ticksPerUsec;
+
+    static int64_t MeasureTimeStampFrequency();
+
+    static FORCEINLINE int64_t ReadHwTimeStamp()
+    {
+#if defined(HOST_X86) || defined(HOST_AMD64)
+#ifdef _MSC_VER
+        return (int64_t)__rdtsc();
+#else
+        uint32_t lo, hi;
+        __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
+        return (int64_t)(((uint64_t)hi << 32) | lo);
+#endif
+#elif defined(HOST_ARM64)
+#ifdef _MSC_VER
+        return (int64_t)_ReadStatusReg(ARM64_CNTVCT_EL0);
+#else
+        int64_t t;
+        __asm__ __volatile__("mrs %0, cntvct_el0" : "=r"(t));
+        return t;
+#endif
+#else
+        // unreachable - s_timeStampFrequency stays 0 when there is no inline counter.
+        return 0;
+#endif
+    }
+
+    NOINLINE
+    static int64_t GetTimeStampSlow();
 };
 
 #endif

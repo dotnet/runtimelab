@@ -86,6 +86,7 @@ public:
     virtual int EndNoGCRegion() override;
     virtual size_t GetTotalBytesInUse() override;
     virtual uint64_t GetTotalAllocatedBytes() override;
+    virtual uint64_t GetTotalAllocatedBytesPrecise() override;
     virtual HRESULT GarbageCollect(int generation = -1, bool low_memory_p = false, int mode = collection_blocking) override;
     virtual unsigned GetMaxGeneration() override;
     virtual void SetFinalizationRun(Object* obj) override;
@@ -177,9 +178,6 @@ public:
     virtual void GetFastGCFunctions(FastGCFunctions* functions) override;
 
     virtual GCHeapType GetGCHeapType() override;
-
-    // Gets the precise total number of allocated bytes.
-    virtual uint64_t GetTotalAllocatedBytesPrecise() override;
 
     // Gets custom assign-reference helpers and their access violation locations.
     virtual void GetAssignRefFunctions(void** assignRef, size_t* assignRefSize, void** assignRefChecked, size_t* assignRefCheckedSize, uintptr_t** avLocationsList, GCWriteBarrierPatchableValue** patchableValues) override;

@@ -108,6 +108,19 @@ inline bool SatoriObject::IsFree()
     return RawGetMethodTable() == s_emptyObjectMt;
 }
 
+FORCEINLINE bool SatoriObject::HasEphemeralCollectibleAllocator()
+{
+    if (!RawGetMethodTable()->Collectible())
+    {
+        return false;
+    }
+
+    SatoriObject* loaderAllocator = (SatoriObject*)GCToEEInterface::GetLoaderAllocatorObjectForGC(this);
+    return loaderAllocator &&
+        !loaderAllocator->IsExternal() &&
+        loaderAllocator->ContainingRegion()->Generation() < 2;
+}
+
 #ifndef HOST_64BIT
 
 32bit is NYI
@@ -200,8 +213,7 @@ inline void SatoriObject::ClearMarkCompactStateForRelocation()
 
     SatoriRegion* r = ContainingRegion();
     _ASSERTE(!r->IsEscaped(this));
-    r->ClearMarked(this);
-    r->ClearPinned(this);
+    r->ClearMarkedAndPinned(this);
 }
 
 inline SatoriObject* SatoriObject::RelocatedToUnchecked()
@@ -213,7 +225,7 @@ inline SatoriObject* SatoriObject::RelocatedToUnchecked()
 }
 
 template <bool notExternal>
-FORCEINLINE bool SatoriObject::IsRelocatedTo(SatoriObject** newLocation)
+FORCEINLINE bool SatoriObject::IsRelocated()
 {
     if (notExternal)
     {
@@ -224,7 +236,13 @@ FORCEINLINE bool SatoriObject::IsRelocatedTo(SatoriObject** newLocation)
         return false;
     }
 
-    if (this->ContainingRegion()->IsRelocated())
+    return this->ContainingRegion()->IsRelocated();
+}
+
+template <bool notExternal>
+FORCEINLINE bool SatoriObject::IsRelocatedTo(SatoriObject** newLocation)
+{
+    if (IsRelocated<notExternal>())
     {
         *newLocation = RelocatedToUnchecked();
         return true;
@@ -256,108 +274,50 @@ inline bool SatoriObject::IsUnmovable()
     return *((DWORD*)this - 1) & BIT_SBLK_GC_RESERVE;
 }
 
-// #define BIT_SBLK_UNUSED                     0x80000000
-#define BIT_SBLK_UNFINISHED                     0x80000000
-
-// used by shared allocations
-inline void SatoriObject::CleanSyncBlockAndSetUnfinished()
+template <typename F>
+FORCEINLINE void SatoriObject::ReportCollectibleAllocator(MethodTable* mt, F lambda)
 {
-    *((size_t*)this - 1) = (size_t)BIT_SBLK_UNFINISHED << 32;
-}
-
-inline bool SatoriObject::IsUnfinished()
-{
-    return *((DWORD*)this - 1) & BIT_SBLK_UNFINISHED;
-}
-
-inline void SatoriObject::UnsetUnfinished()
-{
-    *((DWORD*)this - 1) &= ~BIT_SBLK_UNFINISHED;
+    if (mt->Collectible())
+    {
+        uint8_t* loaderAllocator = GCToEEInterface::GetLoaderAllocatorObjectForGC(this);
+        // NB: Allocator ref location is fake. The allocator is accessed via a handle indirection.
+        //     It is ok to "update" the ref, but it will have no effect.
+        //     The real update is when the handle is updated, which should happen separately.
+        //     Callers that do arithmetic on the ref location must not ask for this.
+        lambda((SatoriObject**)&loaderAllocator);
+    }
 }
 
 template <typename F>
 inline void SatoriObject::ForEachObjectRef(F lambda, bool includeCollectibleAllocator)
 {
-    MethodTable* mt = RawGetMethodTable();
+    // The Java bridge tags method tables while walking the unreachable graph.
+    MethodTable* mt = GetGCSafeMethodTable();
 
-    if (includeCollectibleAllocator && mt->Collectible())
+    // NB: not Size(), that reads the method table without removing the tag.
+    size_t size = mt->GetBaseSize();
+    if (mt->HasComponentSize())
     {
-        uint8_t* loaderAllocator = GCToEEInterface::GetLoaderAllocatorObjectForGC(this);
-        // NB: Allocator ref location is fake. The actual location is a handle).
-        //     For that same reason relocation callers should not care about the location.
-        lambda((SatoriObject**)&loaderAllocator);
+        size += (size_t)((ArrayBase*)this)->GetNumComponents() * mt->RawGetComponentSize();
+        size = ALIGN_UP(size, Satori::OBJECT_ALIGNMENT);
     }
 
-    if (!mt->ContainsGCPointers())
-    {
-        return;
-    }
-
-    CGCDesc* map = CGCDesc::GetCGCDescFromMT(mt);
-    CGCDescSeries* cur = map->GetHighestSeries();
-
-    // GetNumSeries is actually signed.
-    // Negative value means the pattern repeats componentNum times (struct arrays)
-    ptrdiff_t numSeries = (ptrdiff_t)map->GetNumSeries();
-    if (numSeries >= 0)
-    {
-        CGCDescSeries* last = map->GetLowestSeries();
-
-        // series size is offset by the object size, so need to compensate for that.
-        size_t size = mt->GetBaseSize();
-        if (mt->HasComponentSize())
-        {
-            size += (size_t)((ArrayBase*)this)->GetNumComponents() * mt->RawGetComponentSize();
-        }
-
-        do
-        {
-            size_t refPtr = (size_t)this + cur->GetSeriesOffset();
-            size_t refPtrStop = refPtr + size + cur->GetSeriesSize();
-
-            // top check loop. this could be a zero-element array
-            while (refPtr < refPtrStop)
-            {
-                lambda((SatoriObject**)refPtr);
-                refPtr += sizeof(size_t);
-            }
-            cur--;
-        } while (cur >= last);
-    }
-    else
-    {
-        // repeating patern - an array
-        size_t refPtr = (size_t)this + cur->GetSeriesOffset();
-        uint32_t componentNum = ((ArrayBase*)this)->GetNumComponents();
-        while (componentNum-- > 0)
-        {
-            for (ptrdiff_t i = 0; i > numSeries; i--)
-            {
-                val_serie_item item = *(cur->val_serie + i);
-                size_t refPtrStop = refPtr + item.nptrs * sizeof(size_t);
-                do
-                {
-                    lambda((SatoriObject**)refPtr);
-                    refPtr += sizeof(size_t);
-                } while (refPtr < refPtrStop);
-
-                refPtr += item.skip;
-            }
-        }
-    }
+    ForEachObjectRefCore(mt, size, lambda, includeCollectibleAllocator);
 }
 
 template <typename F>
 inline void SatoriObject::ForEachObjectRef(F lambda, size_t size, bool includeCollectibleAllocator)
 {
-    MethodTable* mt = RawGetMethodTable();
+    _ASSERTE(size == Size());
+    ForEachObjectRefCore(RawGetMethodTable(), size, lambda, includeCollectibleAllocator);
+}
 
-    if (includeCollectibleAllocator && mt->Collectible())
+template <typename F>
+FORCEINLINE void SatoriObject::ForEachObjectRefCore(MethodTable* mt, size_t size, F lambda, bool includeCollectibleAllocator)
+{
+    if (includeCollectibleAllocator)
     {
-        uint8_t* loaderAllocator = GCToEEInterface::GetLoaderAllocatorObjectForGC(this);
-        // NB: Allocator ref location is fake. The actual location is a handle).
-        //     For that same reason relocation callers should not care about the location.
-        lambda((SatoriObject**)&loaderAllocator);
+        ReportCollectibleAllocator(mt, lambda);
     }
 
     if (!mt->ContainsGCPointers())
@@ -387,14 +347,15 @@ inline void SatoriObject::ForEachObjectRef(F lambda, size_t size, bool includeCo
                 lambda((SatoriObject**)refPtr);
                 refPtr += sizeof(size_t);
             }
+
             cur--;
         } while (cur >= last);
     }
     else
     {
-        // repeating patern - an array
+        // repeating pattern - an array of structs
+        ptrdiff_t componentNum = ((ArrayBase*)this)->GetNumComponents();
         size_t refPtr = (size_t)this + cur->GetSeriesOffset();
-        uint32_t componentNum = ((ArrayBase*)this)->GetNumComponents();
         while (componentNum-- > 0)
         {
             for (ptrdiff_t i = 0; i > numSeries; i--)
@@ -414,17 +375,15 @@ inline void SatoriObject::ForEachObjectRef(F lambda, size_t size, bool includeCo
 }
 
 template <typename F>
-inline void SatoriObject::ForEachObjectRef(F lambda, size_t start, size_t end)
+inline void SatoriObject::ForEachObjectRef(F lambda, size_t size, size_t start, size_t end, bool includeCollectibleAllocator)
 {
+    _ASSERTE(size == Size());
     MethodTable* mt = RawGetMethodTable();
 
-    if (start <= Start() && mt->Collectible())
+    // report the allocator once - with the range that includes the start of the object.
+    if (includeCollectibleAllocator && start <= Start())
     {
-        uint8_t* loaderAllocator = GCToEEInterface::GetLoaderAllocatorObjectForGC(this);
-        // NB: Allocator ref location is fake. The allocator is accessed via a handle indirection.
-        //     It is ok to "update" the ref, but it will have no effect.
-        //     The real update is when the handle is updated, which should happen separately.
-        lambda((SatoriObject**)&loaderAllocator);
+        ReportCollectibleAllocator(mt, lambda);
     }
 
     if (!mt->ContainsGCPointers())
@@ -437,35 +396,37 @@ inline void SatoriObject::ForEachObjectRef(F lambda, size_t start, size_t end)
 
     // GetNumSeries is actually signed.
     // Negative value means the pattern repeats componentNum times (struct arrays)
-    ptrdiff_t cnt = (ptrdiff_t)map->GetNumSeries();
-    if (cnt >= 0)
+    ptrdiff_t numSeries = (ptrdiff_t)map->GetNumSeries();
+    if (numSeries >= 0)
     {
         CGCDescSeries* last = map->GetLowestSeries();
 
-        // series size is offset by the object size, so need to compensate for that.
-        size_t size = mt->GetBaseSize();
-        if (mt->HasComponentSize())
-        {
-            size += (size_t)((ArrayBase*)this)->GetNumComponents() * mt->RawGetComponentSize();
-        }
-
+        // NB: the series are sorted by offset, and walking from the highest series down visits them
+        //     in address order. Once a series reaches "end", there is nothing more in the range.
         do
         {
             size_t refPtr = (size_t)this + cur->GetSeriesOffset();
+            // series size is offset by the object size, so need to compensate for that.
             size_t refPtrStop = refPtr + size + cur->GetSeriesSize();
+
+            bool reachedEnd = refPtrStop >= end;
+            if (reachedEnd)
+            {
+                refPtrStop = end;
+            }
 
             refPtr = max(refPtr, start);
 
             // top check loop. this could be a zero-element array
             while (refPtr < refPtrStop)
             {
-                if (refPtr >= end)
-                {
-                    return;
-                }
-
                 lambda((SatoriObject**)refPtr);
                 refPtr += sizeof(size_t);
+            }
+
+            if (reachedEnd)
+            {
+                return;
             }
 
             cur--;
@@ -473,7 +434,7 @@ inline void SatoriObject::ForEachObjectRef(F lambda, size_t start, size_t end)
     }
     else
     {
-        // repeating patern - an array of structs
+        // repeating pattern - an array of structs
         ptrdiff_t componentNum = ((ArrayBase*)this)->GetNumComponents();
         size_t elementSize = mt->RawGetComponentSize();
         size_t refPtr = (size_t)this + cur->GetSeriesOffset();
@@ -487,7 +448,7 @@ inline void SatoriObject::ForEachObjectRef(F lambda, size_t start, size_t end)
 
         while (componentNum-- > 0)
         {
-            for (ptrdiff_t i = 0; i > cnt; i--)
+            for (ptrdiff_t i = 0; i > numSeries; i--)
             {
                 val_serie_item item = *(cur->val_serie + i);
                 size_t refPtrStop = refPtr + item.nptrs * sizeof(size_t);
@@ -499,18 +460,25 @@ inline void SatoriObject::ForEachObjectRef(F lambda, size_t start, size_t end)
                 }
                 else
                 {
-                    refPtr = max(refPtr, start);
-                    do
+                    bool reachedEnd = refPtrStop >= end;
+                    if (reachedEnd)
                     {
-                        if (refPtr >= end)
-                        {
-                            return;
-                        }
+                        refPtrStop = end;
+                    }
 
+                    refPtr = max(refPtr, start);
+
+                    // top check loop. the range could end before this serie
+                    while (refPtr < refPtrStop)
+                    {
                         lambda((SatoriObject**)refPtr);
                         refPtr += sizeof(size_t);
-                    } while (refPtr < refPtrStop);
+                    }
 
+                    if (reachedEnd)
+                    {
+                        return;
+                    }
                 }
 
                 refPtr += item.skip;

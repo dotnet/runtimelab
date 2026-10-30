@@ -4,6 +4,28 @@
 .intel_syntax noprefix
 #include "unixasmmacros.inc"
 
+// The patchable values are the imm64 operands of "mov reg, imm64" instructions. The EE updates them with
+// single 8-byte stores (see UpdateCustomWriteBarrierGlobals), so each imm64 must be 8-byte aligned.
+//
+// Each one is aligned by construction: it follows a .p2align 3 with only fixed-size code in between (padding,
+// the opcode, and in one case a store). No jump may sit in between, since jump encodings differ between ELF
+// and Mach-O, where a jump across an .alt_entry symbol is not relaxed to its short form.
+// The first two values follow a LEAF_ENTRY, which aligns to 16 bytes, and 6 bytes of padding.
+
+// An alternate entry in the middle of a helper. Apple's linkers attribute unwind info to the symbol that a range
+// starts at, so the range from an .alt_entry symbol has no unwind info unless an unwind region also starts there
+// (see https://github.com/dotnet/runtime/pull/114982#discussion_r2083272768). This ends the current region and
+// starts a new one at the entry, on Apple platforms only.
+.macro ALTERNATE_ENTRY_WITH_UNWIND Name
+#if defined(__APPLE__)
+    .cfi_endproc
+#endif
+    ALTERNATE_ENTRY \Name
+#if defined(__APPLE__)
+    .cfi_startproc
+#endif
+.endm
+
 //
 //   rdi - dest address 
 //   rsi - object
@@ -12,15 +34,15 @@ LEAF_ENTRY RhpCheckedAssignRef, _TEXT
     // See if dst is in GCHeap
     NOP_6_BYTE
     .byte   0x48, 0xB8              // mov rax, imm64 (REX.W B8+rax)
-ALTERNATE_ENTRY PatchableValue_CheckedAssignRef_CardBundleTable
+ALTERNATE_ENTRY_WITH_UNWIND PatchableValue_CheckedAssignRef_CardBundleTable
     .quad   0x0F0F0F0F0F0F0F0F0      // fetch the page byte map value (patched; see GetAssignRefFunctions)
     mov     r8,  rdi
     shr     r8,  30                    // dst page index
     cmp     byte ptr [rax + r8], 0
     jne     LOCAL_LABEL(RhpCheckedEntry)
 
-NotInHeap:
-ALTERNATE_ENTRY RhpCheckedAssignRefAVLocation
+LOCAL_LABEL(NotInHeap):
+ALTERNATE_ENTRY_WITH_UNWIND RhpCheckedAssignRefAVLocation
     mov     [rdi], rsi
     ret
 LEAF_END_MARKED RhpCheckedAssignRef, _TEXT
@@ -34,14 +56,14 @@ LEAF_ENTRY RhpAssignRef, _TEXT
 #ifdef FEATURE_SATORI_EXTERNAL_OBJECTS
     NOP_6_BYTE
     .byte   0x48, 0xB8              // mov rax, imm64 (REX.W B8+rax)
-    ALTERNATE_ENTRY PatchableValue_AssignRef_CardBundleTable
+    ALTERNATE_ENTRY_WITH_UNWIND PatchableValue_AssignRef_CardBundleTable
     .quad   0x0F0F0F0F0F0F0F0F0      // fetch the page byte map value (patched; see GetAssignRefFunctions)
     //ALTERNATE_ENTRY RhpCheckedEntry
 LOCAL_LABEL(RhpCheckedEntry):
     mov     r8,  rsi
     shr     r8,  30                    // src page index
     cmp     byte ptr [rax + r8], 0
-    je      JustAssign              // src not in heap
+    je      LOCAL_LABEL(JustAssign)              // src not in heap
 #else
     //ALTERNATE_ENTRY RhpCheckedEntry
 LOCAL_LABEL(RhpCheckedEntry):
@@ -53,49 +75,51 @@ LOCAL_LABEL(RhpCheckedEntry):
     and     rdx, 0xFFFFFFFFFFE00000  // source region
 
 #ifndef FEATURE_SATORI_EXTERNAL_OBJECTS
-    jz      JustAssign              // assigning null
+    jz      LOCAL_LABEL(JustAssign)              // assigning null
 #endif
 
-#ifdef TARGET_OSX
+#ifdef TARGET_APPLE
     mov     rax,  gs:[0]            // thread tag
 #else
     mov     rax,  fs:[0]            // thread tag
 #endif
     cmp     qword ptr [rdx], rax     
-    jne     AssignAndMarkCards      // no card marking, src is not a heap object
+    jne     LOCAL_LABEL(AssignAndMarkCards)      // not local to this thread
 
     // 2) check if the src and dst are from the same region
     mov     rax, rdi
     and     rax, 0xFFFFFFFFFFE00000
     cmp     rax, rdx
-    jnz     RecordEscape            // cross region assignment. definitely escaping
+    jnz     LOCAL_LABEL(RecordEscape)            // cross region assignment. definitely escaping
 
     // 3) check if the target is exposed
     mov     rax, rdi
     and     rax, 0x1FFFFF
     shr     rax, 3
     bt      qword ptr [rdx], rax
-    jb      RecordEscape            // target is exposed. record an escape.
+    jb      LOCAL_LABEL(RecordEscape)            // target is exposed. record an escape.
 
-JustAssign:
-    ALTERNATE_ENTRY RhpAssignRefAVLocationNotHeap
-    mov     [rdi], rsi              // no card marking, src is not a heap object
+LOCAL_LABEL(JustAssign):
+    ALTERNATE_ENTRY_WITH_UNWIND RhpAssignRefAVLocationNotHeap
+    mov     [rdi], rsi              // src is external/null, or the assignment is completely threadlocal
     // set rdi, rsi per contract with JIT_ByRefWriteBarrier
     //add     rdi, 8
     //mov     rsi, r10
     ret
     ////nop
 
-AssignAndMarkCards:
-    ALTERNATE_ENTRY RhpAssignRefAVLocation
+    // Not executed. Aligns the imm64 below: 3 bytes of padding, the 3-byte store and the 2-byte opcode
+    // end on an 8-byte boundary (see the top of the file).
+    .p2align 3
+    NOP_3_BYTE
+LOCAL_LABEL(AssignAndMarkCards):
+    ALTERNATE_ENTRY_WITH_UNWIND RhpAssignRefAVLocation
     mov     [rdi], rsi
 
     // TUNING: barriers in different modes could be separate pieces of code, but barrier switch 
     //         needs to suspend EE, not sure if skipping mode check would worth that much.
-    // No padding needed here: the preceding code already leaves the opcode start 8-byte-aligned
-    // (mod 8) at the required offset; see note above PatchableValue_CheckedAssignRef_CardBundleTable.
     .byte   0x49, 0xBB              // mov r11, imm64 (REX.WB B8+(r11&7))
-    ALTERNATE_ENTRY PatchableValue_AssignAndMarkCards_WriteBarrierState
+    ALTERNATE_ENTRY_WITH_UNWIND PatchableValue_AssignAndMarkCards_WriteBarrierState
     .quad   0x0F0F0F0F0F0F0F0F0      // fetch the barrier state value (patched; see GetAssignRefFunctions)
 
     // set rdi per contract with JIT_ByRefWriteBarrier
@@ -105,36 +129,36 @@ AssignAndMarkCards:
     // check the barrier state. this must be done after the assignment (in program order)
     // if state == 2 we do not set or dirty cards.
     cmp     r11, 2
-    jne     DoCards
+    jne     LOCAL_LABEL(DoCards)
     // set rsi per contract with JIT_ByRefWriteBarrier
     //mov     rsi, r10
-Exit:
+LOCAL_LABEL(Exit):
     ret
 
-    NOP_2_BYTE
-    NOP_2_BYTE
-    NOP_3_BYTE
-
-DoCards:
+LOCAL_LABEL(DoCards):
     // if same region, just check if barrier is not concurrent
     xor     rsi, rax
     shr     rsi, 21
     // set rsi per contract with JIT_ByRefWriteBarrier
     //mov     rsi, r10
-    jz      CheckConcurrent         // same region, just check if barrier is not concurrent
+    jz      LOCAL_LABEL(CheckConcurrent)         // same region, just check if barrier is not concurrent
 
     // if src is in gen2/3 and the barrier is not concurrent we do not need to mark cards
     cmp     dword ptr [rdx + 16], 2
-    jl      MarkCards
+    jl      LOCAL_LABEL(MarkCards)
 
-    CheckConcurrent:
+LOCAL_LABEL(CheckConcurrent):
     // if concurrent, load card location
     cmp     r11, 0
-    je      Exit
+    je      LOCAL_LABEL(Exit)
 
-MarkCards:
+    // Aligns the imm64 below: the padding and the 2-byte opcode end on an 8-byte boundary.
+    // It is ahead of the label, so only the fall-through from CheckConcurrent runs it.
+    .p2align 3
+    NOP_6_BYTE
+LOCAL_LABEL(MarkCards):
     .byte   0x49, 0xB9              // mov r9, imm64 (REX.WB B8+(r9&7))
-    ALTERNATE_ENTRY PatchableValue_MarkCards_CardTable
+    ALTERNATE_ENTRY_WITH_UNWIND PatchableValue_MarkCards_CardTable
     .quad   0x0F0F0F0F0F0F0F0F0      // fetch the page map value (patched; see GetAssignRefFunctions)
     mov     rdx, rax
     shr     rax, 30
@@ -147,48 +171,50 @@ MarkCards:
 
      // check if concurrent marking is in progress
     cmp     r11, 0
-    jne     DirtyCard
+    jne     LOCAL_LABEL(DirtyCard)
 
      // SETTING CARD
-SetCard:
+LOCAL_LABEL(SetCard):
     cmp     byte ptr [rax + rdx], 0
-    jne     Exit
+    jne     LOCAL_LABEL(Exit)
     mov     byte ptr [rax + rdx], 1
-SetGroup:
+LOCAL_LABEL(SetGroup):
     cmp     byte ptr [r8], 0
-    jne     CardSet
+    jne     LOCAL_LABEL(CardSet)
     mov     byte ptr [r8], 1
-SetPage:
+LOCAL_LABEL(SetPage):
     cmp     byte ptr [rax], 0
-    jne     CardSet
+    jne     LOCAL_LABEL(CardSet)
     mov     byte ptr [rax], 1
 
-CardSet:
+    // Aligns the imm64 below: the padding and the 2-byte opcode end on an 8-byte boundary.
+    // It is ahead of the label, so only the fall-through from SetPage runs it.
+    .p2align 3
+    NOP_6_BYTE
+LOCAL_LABEL(CardSet):
     // check if concurrent marking is still not in progress
-    // 3 bytes of padding needed here; see note above PatchableValue_CheckedAssignRef_CardBundleTable.
-    NOP_3_BYTE
     .byte   0x49, 0xB9              // mov r9, imm64 (REX.WB B8+(r9&7))
-    ALTERNATE_ENTRY PatchableValue_CardSet_WriteBarrierState
+    ALTERNATE_ENTRY_WITH_UNWIND PatchableValue_CardSet_WriteBarrierState
     .quad   0x0F0F0F0F0F0F0F0F0      // fetch the barrier state value (patched; see GetAssignRefFunctions)
     cmp     r9, 0
-    jne     DirtyCard
+    jne     LOCAL_LABEL(DirtyCard)
     ret
 
     // DIRTYING CARD
-DirtyCard:
+LOCAL_LABEL(DirtyCard):
     mov     byte ptr [rax + rdx], 4
-DirtyGroup:
+LOCAL_LABEL(DirtyGroup):
     cmp     byte ptr [r8], 4
-    je      Exit
+    je      LOCAL_LABEL(Exit)
     mov     byte ptr [r8], 4
-DirtyPage:
+LOCAL_LABEL(DirtyPage):
     cmp     byte ptr [rax], 4
-    je      Exit
+    je      LOCAL_LABEL(Exit)
     mov     byte ptr [rax], 4
     ret
 
     // this is expected to be rare.
-RecordEscape:
+LOCAL_LABEL(RecordEscape):
 
     // 4) check if the source is escaped
     mov     rax, rsi
@@ -196,7 +222,7 @@ RecordEscape:
     and     rax, 0x1FFFFF
     shr     rax, 3
     bt      qword ptr [rdx], rax
-    jb      AssignAndMarkCards            // source is already escaped.
+    jb      LOCAL_LABEL(AssignAndMarkCards)    // source is already escaped.
 
     // Align rsp
     mov  r9, rsp
@@ -226,5 +252,5 @@ RecordEscape:
     pop     rsi
     pop     rdi
     pop     rsp
-    jmp     AssignAndMarkCards
+    jmp     LOCAL_LABEL(AssignAndMarkCards)
 LEAF_END_MARKED RhpAssignRef, _TEXT

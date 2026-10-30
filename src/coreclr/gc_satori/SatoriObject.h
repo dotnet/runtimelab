@@ -46,7 +46,10 @@ public:
     SatoriObject() = delete;
     ~SatoriObject() = delete;
 
-    static SatoriObject* FormatAsFree(size_t location, size_t size);
+    // zeroedEnd, when above the location, tells that the memory from the location up to zeroedEnd
+    // contains zeroes. That is recorded in the free object (see SatoriFreeListObject::ZeroedEnd)
+    // and the memory after the header is kept that way (it matters for debug junk-filling).
+    static SatoriObject* FormatAsFree(size_t location, size_t size, size_t zeroedEnd = 0);
 
     SatoriRegion* ContainingRegion();
     size_t Start();
@@ -72,13 +75,31 @@ public:
     bool IsUnmovable();
 
     template <bool notExternal = false>
+    bool IsRelocated();
+    template <bool notExternal = false>
     bool IsRelocatedTo(SatoriObject** newLocation);
     SatoriObject * RelocatedToUnchecked();
 
-    void CleanSyncBlockAndSetUnfinished();
-    bool IsUnfinished();
-    void UnsetUnfinished();
+    // #define BIT_SBLK_UNUSED                     0x80000000
+    static const uint32_t BIT_SBLK_UNFINISHED = 0x80000000;
 
+    // used by shared and huge allocations
+    void CleanSyncBlockAndSetUnfinished()
+    {
+        *((size_t*)this - 1) = (size_t)BIT_SBLK_UNFINISHED << 32;
+    }
+
+    bool IsUnfinished()
+    {
+        return *((uint32_t*)this - 1) & BIT_SBLK_UNFINISHED;
+    }
+
+    void UnsetUnfinished()
+    {
+        *((uint32_t*)this - 1) &= ~BIT_SBLK_UNFINISHED;
+    }
+
+    bool HasEphemeralCollectibleAllocator();
     void DirtyCardsForContent();
 
     void EscapeCheckOnHandleCreation();
@@ -98,6 +119,10 @@ public:
 
     void Validate();
 
+    // Calls "lambda" with the location of every reference field.
+    // The size, if given, must be the Size() of the object. The ranged version visits only the fields in [start, end).
+    // NB: the ranged version takes the size too. The callers that walk objects one after another need it
+    //     to get to the next object anyways, and the walk needs it too, so it is computed once.
     template <typename F>
     void ForEachObjectRef(F lambda, bool includeCollectibleAllocator = false);
 
@@ -105,9 +130,20 @@ public:
     void ForEachObjectRef(F lambda, size_t size, bool includeCollectibleAllocator = false);
 
     template <typename F>
-    void ForEachObjectRef(F lambda, size_t start, size_t end);
+    void ForEachObjectRef(F lambda, size_t size, size_t start, size_t end, bool includeCollectibleAllocator);
+
+    // The ranged version used to be "lambda, start, end". Make sure that a call written that way
+    // does not quietly bind to the sized overload with "end" converted to bool.
+    template <typename F> void ForEachObjectRef(F lambda, size_t, size_t) = delete;
 
 private:
+    // the walk of the whole object, shared by the overloads above that differ in how they get the method table and the size.
+    template <typename F>
+    void ForEachObjectRefCore(MethodTable* mt, size_t size, F lambda, bool includeCollectibleAllocator);
+
+    template <typename F>
+    void ReportCollectibleAllocator(MethodTable* mt, F lambda);
+
     static MethodTable* s_emptyObjectMt;
     static void Initialize();
 };
@@ -117,13 +153,25 @@ class SatoriFreeListObject : public SatoriObject
 {
 private:
     uint32_t       m_Length;
-#if defined(HOST_64BIT)
-    uint32_t       m_uAlignpad;
-#endif // HOST_64BIT
+    // Array alignment padding, not a part of the length.
+    // FormatAsFree uses it to record how much of the free space is known to contain zeroes, if anything.
+    uint32_t       m_zeroedSize;
 
 public:
     SatoriFreeListObject() = delete;
     ~SatoriFreeListObject() = delete;
+
+    // The memory after this header and up to ZeroedEnd() is known to contain zeroes.
+    // When ZeroedEnd() is not above the header, nothing is known.
+    size_t ZeroedEnd()
+    {
+        return (size_t)this + m_zeroedSize;
+    }
+
+    void SetZeroedEnd(size_t zeroedEnd)
+    {
+        m_zeroedSize = zeroedEnd > (size_t)this ? (uint32_t)(zeroedEnd - (size_t)this) : 0;
+    }
 
     SatoriFreeListObject* m_nextInFreeList;
 };

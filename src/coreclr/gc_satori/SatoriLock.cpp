@@ -80,7 +80,7 @@ bool SatoriLock::EnterSlow(bool noBlock)
 
                     // now we can estimate how busy the lock is and adjust spinning accordingly
                     uint16_t spinLimit = _spinCount;
-                    if (ownerChanged != 0)
+                    if (ownerChanged > OwnerChangedThreshold)
                     {
                         // The lock has changed ownership while we were trying to acquire it.
                         // It is a signal that we might want to spin less next time.
@@ -121,8 +121,18 @@ bool SatoriLock::EnterSlow(bool noBlock)
                 // Ideally we will retry right when the lock becomes free, but we cannot know when that will happen.
                 // We will use a pause that doubles up on every iteration. It will not be more than 2x worse
                 // than the ideal guess, while minimizing the number of retries.
-                // We will allow pauses up to 64~128 spinwaits.
-                IterationBackoff(min(iteration, 6));
+                // Once the pause has doubled up to 64~128 spinwaits we keep going in fixed
+                // amounts of wall time instead, so that the budget means the same thing
+                // regardless of what YieldProcessor() costs on the target.
+                if (iteration <= MaxBackoffIteration)
+                {
+                    IterationBackoff(iteration);
+                }
+                else
+                {
+                    IterationBackoffLong();
+                }
+
                 iteration++;
                 continue;
             }

@@ -14,9 +14,12 @@
   <ItemGroup>
     <!-- Runtime Async is a preview feature enabled per-process at startup. -->
     <CLRTestEnvironmentVariable Include="DOTNET_RuntimeAsync" Value="1" />
+    <!-- AnyJitOptimizationStress excludes tiering here too; keep continuation-type validation active in default runs. -->
+    <CLRTestEnvironmentVariable Include="DOTNET_TieredCompilation" Value="0" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildProjectName).cs" />
+    <Compile Include="../common/HeapDumpGcTrackerTests.cs" Link="HeapDumpGcTrackerTests.cs" />
     <ProjectReference Include="../common/eventpipe_common.csproj" />
     <ProjectReference Include="../common/Microsoft.Diagnostics.NETCore.Client/Microsoft.Diagnostics.NETCore.Client.csproj" />
     <ProjectReference Include="$(TestLibraryProjectPath)" />

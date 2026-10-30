@@ -85,6 +85,10 @@ public:
     INT_CONFIG   (GCSpin,                    "gcSpin",                    NULL,                                -1,                 "Spin")                                                                                   \
     INT_CONFIG   (Gen2Target,                "gcGen2Target",              NULL,                                -1,                 "Specifies target for Gen2 GC (in terms of % of the last known size)")                    \
     INT_CONFIG   (Gen1Target,                "gcGen1Target",              NULL,                                -1,                 "Specifies target for Gen1 GC (in terms of % of the last known size)")                    \
+    INT_CONFIG   (ReusableTarget,            "gcReusableTarget",          NULL,                                -1,                 "Specifies how much free space may be held in reusable regions (in terms of % of expected gen1 allocation)") \
+    INT_CONFIG   (TrackBackoff,              "gcTrackBackoff",            NULL,                                -1,                 "Specifies max number of regions a thread allocates untracked after unproductive escape tracking (hex). 0 - disabled, -1 - default") \
+    INT_CONFIG   (LOHThreshold,              "GCLOHThreshold",            "System.GC.LOHThreshold",            LARGE_OBJECT_SIZE,  "Specifies the size that will make objects go on LOH")                                    \
+    INT_CONFIG   (GCHighMemPercent,          "GCHighMemPercent",          "System.GC.HighMemoryPercent",       0,                  "The percent for GC to consider as high memory")                                           \
 
 #else
 

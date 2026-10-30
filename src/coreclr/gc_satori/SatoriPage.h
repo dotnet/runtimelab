@@ -41,8 +41,19 @@ public:
     SatoriPage() = delete;
     ~SatoriPage() = delete;
 
-    static SatoriPage* InitializeAt(size_t address, size_t pageSize, SatoriHeap* heap);
-    SatoriRegion* MakeInitialRegion();
+    enum class InitStatus
+    {
+        Success,
+        // the address range is taken by another mapping, another location may work.
+        Occupied,
+        // the OS refused to reserve for other reasons (out of address space, limits, ...)
+        ReserveRefused,
+        // could not commit the initial part of the page.
+        CommitFailed,
+    };
+
+    static SatoriPage* InitializeAt(size_t address, size_t pageSize, SatoriHeap* heap, InitStatus& status);
+    SatoriRegion* InitialRegion();
 
     void OnRegionInitialized(SatoriRegion* region);
 
@@ -111,7 +122,19 @@ public:
         }
     }
 
-    void SetCardForAddressOnly(size_t address);
+    // Only sets the card, not the card group or the page state.
+    // Used when refreshing cards, where the group and the page are already in the right state.
+    inline void SetCardForAddressOnly(size_t address)
+    {
+        size_t offset = address - (size_t)this;
+        size_t cardByteOffset = offset / Satori::BYTES_PER_CARD_BYTE;
+
+        _ASSERTE(cardByteOffset >= m_cardTableStart);
+        _ASSERTE(cardByteOffset < m_cardTableSize);
+
+        m_cardTable[cardByteOffset] = Satori::CardState::REMEMBERED;
+    }
+
     void DirtyCardForAddress(size_t address);
     void SetCardsForRange(size_t start, size_t end);
     void DirtyCardsForRange(size_t start, size_t length);
@@ -119,6 +142,10 @@ public:
 
     void WipeGroupsForRange(size_t start, size_t end);
     void ResetCardsForRange(size_t start, size_t end, bool isTenured);
+    bool CardGroupsAreWipedForRange(size_t start, size_t end);
+#if _DEBUG
+    bool CardsAreBlankForRange(size_t start, size_t end);
+#endif
 
     volatile int8_t& CardState();
     volatile uint8_t& ScanTicket();

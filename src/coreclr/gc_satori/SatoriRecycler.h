@@ -53,6 +53,21 @@ class SatoriRecycler
     friend class MarkContext;
 
 public:
+    // Toggling the barrier to concurrent involves a process-wide fence, which is expensive.
+    // Only the thread that claims BARRIER_STATE_SWITCHING does it, the rest just leave and
+    // come back later, since they may not mark until the barrier is concurrent.
+    //
+    // NB: except for SWITCHING, which is internal to the GC, the values match what is
+    //     published to the barriers in the g_write_watch_table slot.
+    //     (see: ToggleWriteBarrier)
+    static const int BARRIER_STATE_NOT_CONCURRENT = 0;
+    static const int BARRIER_STATE_CONCURRENT = 1;
+    // Not concurrent and the next GC is a full GC, thus cards are not needed.
+    static const int BARRIER_STATE_SKIPPING_CARDS = 2;
+    // Transient, while a thread is toggling the barrier. The published barrier may already
+    // be concurrent before the toggle's process-wide fence completes.
+    static const int BARRIER_STATE_SWITCHING = 3;
+
     void Initialize(SatoriHeap* heap);
 
     void AddEphemeralRegion(SatoriRegion* region);
@@ -63,16 +78,17 @@ public:
 
     bool& IsLowLatencyMode();
 
-    void Collect(int generation, bool force, bool blocking);
+    void Collect(int generation, bool force, bool blocking, bool compact = false, bool aggressive = false);
     int GetCondemnedGeneration();
     int GetRootScanTicket();
     size_t IncrementGen0Count();
     int64_t GetCollectionCount(int gen);
 
     void TryStartGC(int generation, gc_reason reason);
-    void HelpOnce();
+    bool HelpOnce(bool waitForGC = false);
     void MaybeTriggerGC(gc_reason reason);
     bool IsBlockingPhase();
+    void WaitForTrimmerToStop();
 
     bool ShouldDoConcurrent(int generation);
     void ConcurrentWorkerFn();
@@ -82,11 +98,8 @@ public:
     void BlockingMarkForConcurrent();
     void MaybeAskForHelp();
 
-    SatoriRegion* TryGetReusable();
+    SatoriRegion* TryGetReusable(size_t minFree);
     SatoriRegion* TryGetReusableForLarge();
-
-    void ReportThreadAllocBytes(int64_t bytes, bool isLive);
-    int64_t GetTotalAllocatedBytes();
 
     void RecordOccupancy(int generation, size_t size);
     void RecordDemotedOccupancy(ptrdiff_t demotedOccupancy);
@@ -99,12 +112,27 @@ public:
 
     int64_t GlobalGcIndex();
 
+    SatoriWorkChunk* TakeObjectRange(SatoriWorkChunk* chunk, SatoriObject*& o, size_t& start, size_t& end, size_t scanSize);
     void ScheduleMarkAsChildRanges(SatoriObject* o);
     bool ScheduleUpdateAsChildRanges(SatoriObject* o);
 
-    inline bool IsBarrierConcurrent()
+    inline bool IsBarrierConcurrent(bool includeSwitching = false)
     {
-        return m_isBarrierConcurrent;
+        // Markers must wait for the toggle; writers must conservatively dirty cards during it.
+        int barrierState = m_barrierState;
+        return barrierState == BARRIER_STATE_CONCURRENT ||
+            (includeSwitching && barrierState == BARRIER_STATE_SWITCHING);
+    }
+
+    // Tells if the barrier needs to deal with cards.
+    // Cards are not needed when the next GC is a full GC - it will not use the remembered set.
+    // However, concurrent marking needs cards regardless, so that the writes that happen
+    // while marking are not missed.
+    // NB: both conditions are folded into the barrier state, which is updated atomically,
+    //     so that they could not be observed in an inconsistent combination.
+    inline bool CardsAreNeeded()
+    {
+        return m_barrierState != BARRIER_STATE_SKIPPING_CARDS;
     }
 
     inline bool IsNextGcFullGc()
@@ -134,39 +162,46 @@ public:
             &m_lastEphemeralGcInfo;
     };
 
+    // Two scenarios when worker threads should rather suspend thancontinue helping/pacing
+    bool AppThreadsShouldSuspend()
+    {
+        return m_gcState == GC_STATE_BLOCKING ||
+            m_ccStackMarkState == CC_MARK_STATE_SUSPENDING_EE;
+    }
+
 private:
     SatoriHeap* m_heap;
 
     int m_rootScanTicket;
     uint8_t m_cardScanTicket;
 
-    SatoriWorkList* m_workList;
+    SatoriShardedWorkList* m_workList;
     SatoriTrimmer* m_trimmer;
 
     // regions owned by recycler
-    SatoriRegionQueue* m_ephemeralRegions;
-    SatoriRegionQueue* m_ephemeralFinalizationTrackingRegions;
-    SatoriRegionQueue* m_ephemeralWithUnmarkedDemoted;
+    SatoriShardedRegionQueue* m_ephemeralRegions;
+    SatoriShardedRegionQueue* m_ephemeralFinalizationTrackingRegions;
+    SatoriShardedRegionQueue* m_ephemeralWithUnmarkedDemoted;
 
-    SatoriRegionQueue* m_tenuredRegions;
-    SatoriRegionQueue* m_tenuredFinalizationTrackingRegions;
+    SatoriShardedRegionQueue* m_tenuredRegions;
+    SatoriShardedRegionQueue* m_tenuredFinalizationTrackingRegions;
 
     // temporary store while processing finalizables
-    SatoriRegionQueue* m_finalizationPendingRegions;
+    SatoriShardedRegionQueue* m_finalizationPendingRegions;
 
     // temporary store for planning and relocating
-    SatoriRegionQueue* m_stayingRegions;
-    SatoriRegionQueue* m_relocatingRegions;
-    SatoriRegionQueue* m_relocationTargets[Satori::FREELIST_COUNT];
-    SatoriRegionQueue* m_relocatedRegions;
+    SatoriShardedRegionQueue* m_stayingRegions;
+    SatoriShardedRegionQueue* m_relocatingRegions;
+    SatoriShardedRegionQueue* m_relocationTargets[Satori::FREELIST_COUNT];
+    SatoriShardedRegionQueue* m_relocatedRegions;
     SatoriRegionQueue* m_relocatedToHigherGenRegions;
 
     // store regions for concurrent sweep
-    SatoriRegionQueue* m_deferredSweepRegions;
+    SatoriShardedRegionQueue* m_deferredSweepRegions;
 
     // regions that could be reused for Gen1
-    SatoriRegionQueue* m_reusableRegions;
-    SatoriRegionQueue* m_reusableRegionsAlternate;
+    SatoriShardedRegionQueue* m_reusableRegions;
+    SatoriShardedRegionQueue* m_reusableRegionsAlternate;
 
     static const int GC_STATE_NONE = 0;
     static const int GC_STATE_CONCURRENT = 1;
@@ -174,6 +209,19 @@ private:
     static const int GC_STATE_BLOCKED = 3;
 
     volatile int m_gcState;
+
+    // Requests name the earliest GC-start sequence that may satisfy them.
+    struct CollectionRequest
+    {
+        size_t m_requested;
+        size_t m_started;
+        size_t m_completed;
+    };
+
+    CollectionRequest m_compactionRequests[2];
+    CollectionRequest m_trimRequest;
+    CollectionRequest m_blockingRequests[2];
+    size_t m_gcStartSequence;
 
     static const int CC_MARK_STATE_NONE = 0;
     static const int CC_MARK_STATE_SUSPENDING_EE = 1;
@@ -189,6 +237,10 @@ private:
     volatile int m_ccStackMarkState;
     volatile int m_ccStackMarkingThreadsNum;
 
+    // threads filtering m_reusableRegions concurrently. prep waits for these to leave
+    // before it may swap the queues.
+    volatile int m_reusableFilterThreadsNum;
+
     volatile int m_ccHelpersNum;
 
     int m_syncBlockCacheScanDone;
@@ -200,9 +252,14 @@ private:
     volatile int m_concurrentCleaningState;
 
     bool m_isRelocating;
+    // the current GC accepted a compaction request, see TryStartGC
+    bool m_forceCompact;
+    // the current GC accepted a trim request, see TryStartGC
+    bool m_forceTrim;
+    bool m_forceBlocking;
     bool m_isLowLatencyMode;
     bool m_promoteAllRegions;
-    volatile bool m_isBarrierConcurrent;
+    volatile int m_barrierState;
 
     int m_prevCondemnedGeneration;
 
@@ -212,12 +269,22 @@ private:
     int64_t m_gcStartMillis[3];
     int64_t m_gcDurationUsecs[3];
     int64_t m_gcAccmulatingDurationUsecs[3];
+    // when the current blocking GC finished its work. The reported pause ends there (see BlockingCollectImpl).
+    int64_t m_blockingWorkEndTicks;
 
     int64_t m_totalTimeAtLastGcEnd;
     int m_percentTimeInGcSinceLastGc;
 
     size_t m_gen1Budget;
+    size_t m_prevGen1Budget;
+    size_t m_gen1OverrunPerCycle;
+    size_t m_availableMemory;
     size_t m_totalLimit;
+
+    // how much more free space may be parked in reusable regions. set in Plan once the gen1
+    // budget and cycle allocations are known, and spent as regions are parked. 0 stops parking any more.
+    int m_reusableTargetPercent;
+    int64_t m_reusableLimit;
     bool m_nextGcIsFullGc;
 
     size_t m_condemnedRegionsCount;
@@ -236,16 +303,18 @@ private:
     size_t m_estimatedTenuredReclaim;
     size_t m_promotionEstimate;
 
-    int64_t m_currentAllocBytesLiveThreads;
-    int64_t m_currentAllocBytesDeadThreads;
-    int64_t m_totalAllocBytes;
-
-    int64_t m_perfCounterTicksPerMilli;
-    int64_t m_perfCounterTicksPerMicro;
+    int64_t m_osTicksPerMilli;
+    int64_t m_osTicksPerMicro;
+    int64_t m_timeStampTicksPerMilli;
 
     SatoriGate* m_workerGate;
 
+    // Idle workers poll this while spinning. Keep it on a cache line of its own, away from the counters
+    // below, which are updated with interlocked operations. (the next field starts a new line)
+    DECLSPEC_ALIGN(Satori::CACHE_LINE_GRANULARITY)
     volatile int m_gateSignaled;
+
+    DECLSPEC_ALIGN(Satori::CACHE_LINE_GRANULARITY)
     volatile int m_workerWoken;
     volatile int m_activeWorkers;
     volatile int m_totalWorkers;
@@ -279,7 +348,8 @@ private:
 
     static void WorkerThreadMainLoop(void* param);
     int MaxWorkers();
-    int64_t HelpQuantum();
+    int64_t HelpQuantumTimeStampTicks();
+    int64_t HelpQuantumOsTicks();
     void AskForHelp();
     void RunWithHelp(void(SatoriRecycler::* method)());
     bool HelpOnceCore(bool minQuantum);
@@ -290,6 +360,7 @@ private:
 
     void AdjustHeuristics();
     void DeactivateAllocatingRegions();
+    void RequestCollection(CollectionRequest* request, size_t requestNumber);
 
     void IncrementRootScanTicket();
     void IncrementCardScanTicket();
@@ -299,6 +370,7 @@ private:
     void MarkThroughCards();
     bool MarkThroughCardsConcurrent(int64_t deadline);
     void MarkDemoted(SatoriRegion* curRegion, MarkContext* markContext);
+    void MarkDemotedInReusable(SatoriRegion* curRegion, MarkContext* markContext);
     void MarkAllStacksFinalizationAndDemotedRoots();
 
     void PushToMarkQueuesSlow(SatoriWorkChunk*& currentWorkChunk, SatoriObject* o);
@@ -306,6 +378,7 @@ private:
     void MarkOwnStackAndDrainQueues();
     void MarkOwnStackOrDrainQueuesConcurrent(int64_t deadline);
     bool MarkDemotedAndDrainQueuesConcurrent(int64_t deadline);
+    bool MarkDemotedInReusableConcurrent(int64_t deadline);
     void PushOrReturnWorkChunk(SatoriWorkChunk * srcChunk);
     bool DrainMarkQueuesConcurrent(SatoriWorkChunk* srcChunk = nullptr, int64_t deadline = 0);
 
@@ -319,7 +392,7 @@ private:
     void LongWeakPtrScanWorker();
 
     void ScanFinalizables();
-    void ScanFinalizableRegions(SatoriRegionQueue* regions, MarkContext* markContext);
+    void ScanFinalizableRegions(SatoriShardedRegionQueue* regions, MarkContext* markContext, SatoriShardedRegionQueue::Batch* pending, SatoriShardedRegionQueue::Batch* eph, SatoriShardedRegionQueue::Batch* ten);
     void ScanAllFinalizableRegionsWorker();
     void QueueCriticalFinalizablesWorker();
 
@@ -340,13 +413,16 @@ private:
     void DrainAndCleanWorker();
     void MarkStrongReferences();
     void MarkStrongReferencesWorker();
+#ifdef FEATURE_JAVAMARSHAL
+    void MarkBridgeObjects();
+#endif
 
     void Plan();
     void PlanWorker();
-    void PlanRegions(SatoriRegionQueue* regions);
+    void PlanRegions(SatoriShardedRegionQueue* regions);
     void DenyRelocation();
 
-    void AddTenuredRegionsToPlan(SatoriRegionQueue* regions);
+    void AddTenuredRegionsToPlan(SatoriShardedRegionQueue* regions);
     void AddRelocationTarget(SatoriRegion* region);
     SatoriRegion* TryGetRelocationTarget(size_t size, bool existingRegionOnly);
     SatoriRegion* GetOrAddRelocationTarget(SatoriRegion * region, size_t allocSize);
@@ -354,7 +430,7 @@ private:
     void Relocate();
     void RelocateWorker();
     void RelocateRegion(SatoriRegion* region);
-    void FreeLogicallyEmptyRegion(SatoriRegion* curRegion, bool hasMarks, bool noLock);
+    void FreeLogicallyEmptyRegion(SatoriRegion* curRegion, bool hasMarks);
     void FreeRelocatedRegionsWorker();
 
     void PromoteHandlesAndFreeRelocatedRegions();
@@ -366,10 +442,12 @@ private:
     void UpdatePointersThroughCards();
     void UpdatePointersInObjectRanges();
     void UpdatePointersInPromotedObjects();
-    void UpdateRegions(SatoriRegionQueue* queue);
+    void UpdateRegions(SatoriShardedRegionQueue* queue, SatoriShardedRegionQueue::Batch* deferredFirst, SatoriShardedRegionQueue::Batch* deferredRest);
 
     void KeepRegion(SatoriRegion* curRegion);
+    bool ShouldReuse(SatoriRegion* curRegion);
     void DrainDeferredSweepQueue();
+    void DrainReusableQueue();
     bool DrainDeferredSweepQueueConcurrent(int64_t deadline = 0);
     void DrainDeferredSweepQueueWorkerFn();
     void SweepAndReturnRegion(SatoriRegion* curRegion);
