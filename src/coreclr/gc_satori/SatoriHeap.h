@@ -82,19 +82,28 @@ public:
         _ASSERTE((address & (sizeof(size_t) - 1)) == 0);
 
         size_t mapIndex = address >> Satori::PAGE_BITS;
+#ifdef TARGET_ARM64
+        // Ignore native pointer tags for the lookup; managed pointers are untagged.
+        mapIndex &= (size_t(1) << SATORI_PAGE_MAP_BITS) - 1;
+#endif
         return s_pageByteMap[mapIndex] != 0;
     }
 
     SatoriRegion* RegionForAddressChecked(size_t address);
 
+    // A large page occupies several consecutive map entries, we visit it only at its first entry.
+    static bool IsFirstMapEntryOfPage(SatoriPage* page, size_t mapIndex)
+    {
+        return (size_t)page == (mapIndex << Satori::PAGE_BITS);
+    }
+
     template <typename F>
     void ForEachPage(F lambda)
     {
-        size_t mapIndex = m_usedMapLength - 1;
-        while (mapIndex > 0)
+        for (size_t mapIndex = m_usedMapLength - 1; mapIndex > 0; mapIndex--)
         {
-            SatoriPage* page = m_pageMap[mapIndex--];
-            if (page && page != m_pageMap[mapIndex])
+            SatoriPage* page = m_pageMap[mapIndex];
+            if (page && IsFirstMapEntryOfPage(page, mapIndex))
             {
                 lambda(page);
             }
@@ -104,11 +113,10 @@ public:
     template <typename F>
     void ForEachPageUntil(F lambda)
     {
-        size_t mapIndex = m_usedMapLength - 1;
-        while (mapIndex > 0)
+        for (size_t mapIndex = m_usedMapLength - 1; mapIndex > 0; mapIndex--)
         {
-            SatoriPage* page = m_pageMap[mapIndex--];
-            if (page && page != m_pageMap[mapIndex])
+            SatoriPage* page = m_pageMap[mapIndex];
+            if (page && IsFirstMapEntryOfPage(page, mapIndex))
             {
                 if (lambda(page))
                 {
@@ -143,7 +151,7 @@ private:
     // - we can eventually support 53 bit (4 PB) and 57 bit (??) extensions, it is too early to worry about that.
     //
     // For consistency and uniform testing, we will default to 48 bit VA.
-    static const int availableAddressSpaceBits = 48;
+    static const int availableAddressSpaceBits = SATORI_ADDRESS_SPACE_BITS;
     static const int pageCountBits = availableAddressSpaceBits - Satori::PAGE_BITS;
 
     SatoriAllocator m_allocator;
@@ -152,6 +160,8 @@ private:
     size_t m_committedMapSize;
     size_t m_usedMapLength;
     size_t m_nextPageIndex;
+    // pages are placed below this map index, where the process can map memory.
+    size_t m_maxPageIndex;
     SatoriLock m_mapLock;
 
     size_t m_committedBytes;

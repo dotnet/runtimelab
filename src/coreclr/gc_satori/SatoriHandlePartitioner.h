@@ -89,7 +89,7 @@ public:
                     {
                         lambda(partition);
 
-                        if (deadline && (minipal_hires_ticks() - deadline > 0))
+                        if (deadline && (SatoriUtil::GetTimeStamp() - deadline > 0))
                         {
                             // timed out, there could be more work
                             return true;

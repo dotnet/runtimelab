@@ -59,12 +59,13 @@ void SatoriObject::EscapeCheckOnHandleCreation()
     }
 }
 
-SatoriObject* SatoriObject::FormatAsFree(size_t location, size_t size)
+SatoriObject* SatoriObject::FormatAsFree(size_t location, size_t size, size_t zeroedEnd)
 {
     _ASSERTE(location == ALIGN_UP(location, Satori::OBJECT_ALIGNMENT));
     _ASSERTE(size == ALIGN_UP(size, Satori::OBJECT_ALIGNMENT));
     _ASSERTE(size >= Satori::MIN_FREE_SIZE);
     _ASSERTE(size < Satori::REGION_SIZE_GRANULARITY);
+    _ASSERTE(zeroedEnd <= location + size);
 
     SatoriObject* o = (SatoriObject*)location;
     _ASSERTE(o->ContainingRegion()->m_used > (location + 2 * sizeof(size_t)));
@@ -75,7 +76,20 @@ SatoriObject* SatoriObject::FormatAsFree(size_t location, size_t size)
     {
         dirtySize = size;
     }
-    memset((void*)(location - sizeof(size_t)), 0xAC, dirtySize);
+
+    size_t junkStart = location - sizeof(size_t);
+    size_t junkEnd = junkStart + dirtySize;
+    // do not junk-fill what is known to be zeroed.
+    // the header part will be overwritten below anyways.
+    if (zeroedEnd > junkStart)
+    {
+        junkStart = zeroedEnd;
+    }
+
+    if (junkEnd > junkStart)
+    {
+        memset((void*)junkStart, 0xAC, junkEnd - junkStart);
+    }
 #endif
 
     o->CleanSyncBlock();
@@ -84,6 +98,10 @@ SatoriObject* SatoriObject::FormatAsFree(size_t location, size_t size)
 
     // deduct the size of Array header + syncblock and set the size of the free bytes.
     ((size_t*)o)[1] = size - Satori::MIN_FREE_SIZE;
+
+    // The length is 32-bit, the rest of that word is padding. Record there whether the free space
+    // is known to be zeroed. Set explicitly, the store above clears it only on little-endian.
+    ((SatoriFreeListObject*)o)->SetZeroedEnd(zeroedEnd);
     return o;
 }
 
@@ -128,10 +146,14 @@ void SatoriObject::Validate()
         }
         else
         {
+            // a non-escaped object, including free space, has no exposed fields.
+            // the first words hold the object's own mark, escaped and pinned bits. A non-escaped object
+            // can be marked or pinned during thread-local GC, so only the words after those are checked.
+            size_t exposedOffset = (SatoriRegion::MarkOffset::Pinned + 1) * sizeof(size_t);
             size_t size = Size();
-            for (size_t i = Start(); i < size; i++)
+            if (size > exposedOffset)
             {
-                _ASSERTE(!((SatoriObject*)i)->IsMarked());
+                _ASSERTE(!ContainingRegion()->AnyExposed(Start() + exposedOffset, size - exposedOffset));
             }
         }
     }

@@ -88,8 +88,8 @@ void SatoriTrimmer::Loop()
                 break;
             }
 
-            Interlocked::CompareExchange(&m_state, TRIMMER_STATE_STOPPED, TRIMMER_STATE_RUNNING);
-            // we are not running here, so we can sleep a bit before continuing.
+            // Idle throttling must not revoke a GC's run permission. Only a GC-requested stop
+            // needs another SetOkToRun before the trimmer can continue.
             Pause(5000);
             StopAndWait();
         }
@@ -109,34 +109,13 @@ void SatoriTrimmer::Loop()
                 page->ForEachRegion(
                     [&](SatoriRegion* region)
                     {
-                        SatoriQueue<SatoriRegion>* queue = region->ContainingQueue();
-                        if (queue && queue->Kind() == QueueKind::Allocator)
+                        if (TryTrimRegion(region, /* drainsAreDone */ false))
                         {
-                            if (region->CanDecommit() || region->CanCoalesceWithNext())
+                            // limit the decommit/coalesce rate to 1 region/10 msec.
+                            Pause(10);
+                            if (m_state != TRIMMER_STATE_RUNNING)
                             {
-                                if (queue->TryRemove(region))
-                                {
-                                    bool didSomeWork = region->TryCoalesceWithNext();
-                                    if (region->TryDecommit())
-                                    {
-                                        m_heap->Allocator()->AddRegion(region);
-                                        didSomeWork = true;
-                                    }
-                                    else
-                                    {
-                                        m_heap->Allocator()->ReturnRegion(region);
-                                    }
-
-                                    if (didSomeWork)
-                                    {
-                                        // limit the decommit/coalesce rate to 1 region/10 msec.
-                                        Pause(10);
-                                        if (m_state != TRIMMER_STATE_RUNNING)
-                                        {
-                                            StopAndWait();
-                                        }
-                                    }
-                                }
+                                StopAndWait();
                             }
                         }
 
@@ -158,6 +137,59 @@ void SatoriTrimmer::Loop()
             }
         );
     }
+}
+
+// Coalesces a free region with the free region after it and decommits the result.
+// Returns true if it did anything.
+bool SatoriTrimmer::TryTrimRegion(SatoriRegion* region, bool drainsAreDone)
+{
+    SatoriQueue<SatoriRegion>* queue = region->ContainingQueue();
+    if (queue && queue->Kind() == QueueKind::Allocator)
+    {
+        if (region->CanDecommit() || region->CanCoalesceWithNext())
+        {
+            if (queue->TryRemove(region))
+            {
+                bool didSomeWork = region->TryCoalesceWithNext(drainsAreDone);
+                if (region->TryDecommit())
+                {
+                    m_heap->Allocator()->AddRegion(region);
+                    didSomeWork = true;
+                }
+                else
+                {
+                    m_heap->Allocator()->ReturnRegion(region);
+                }
+
+                return didSomeWork;
+            }
+        }
+    }
+
+    return false;
+}
+
+// Trims all free regions on the current thread, without any throttling.
+// This is for a blocking GC that was asked to release as much memory as it can.
+// The GC must be done with all its drains, so that coalescing is safe, see TryCoalesceWithNext.
+void SatoriTrimmer::TrimNow()
+{
+    _ASSERTE(m_heap->Recycler()->IsBlockingPhase());
+
+    // The trimmer was asked to stop when the GC started. Make sure it did, so that we do not run two things at once.
+    WaitForStop();
+
+    m_heap->ForEachPage(
+        [&](SatoriPage* page)
+        {
+            page->ForEachRegion(
+                [&](SatoriRegion* region)
+                {
+                    TryTrimRegion(region, /* drainsAreDone */ true);
+                }
+            );
+        }
+    );
 }
 
 void SatoriTrimmer::StopAndWait()
@@ -201,20 +233,31 @@ void SatoriTrimmer::StopAndWait()
 
 void SatoriTrimmer::SetOkToRun()
 {
-    int state = m_state;
-    switch (state)
+    while (true)
     {
-    case TRIMMER_STATE_BLOCKED:
-        // trimmer can't get out of BlOCKED by itself, ordinary assignment is ok
-        m_state = TRIMMER_STATE_OK_TO_RUN;
-        m_event->Set();
-        break;
-    case TRIMMER_STATE_STOPPED:
-        Interlocked::CompareExchange(&m_state, TRIMMER_STATE_OK_TO_RUN, state);
-        break;
-    case TRIMMER_STATE_STOP_SUGGESTED:
-        Interlocked::CompareExchange(&m_state, TRIMMER_STATE_RUNNING, state);
-        break;
+        int state = m_state;
+        switch (state)
+        {
+        case TRIMMER_STATE_BLOCKED:
+            // trimmer can't get out of BLOCKED by itself, ordinary assignment is ok
+            m_state = TRIMMER_STATE_OK_TO_RUN;
+            m_event->Set();
+            return;
+        case TRIMMER_STATE_STOPPED:
+            if (Interlocked::CompareExchange(&m_state, TRIMMER_STATE_OK_TO_RUN, state) == state)
+            {
+                return;
+            }
+            break;
+        case TRIMMER_STATE_STOP_SUGGESTED:
+            if (Interlocked::CompareExchange(&m_state, TRIMMER_STATE_RUNNING, state) == state)
+            {
+                return;
+            }
+            break;
+        default:
+            return;
+        }
     }
 }
 

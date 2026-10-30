@@ -37,8 +37,13 @@
 #include "SatoriHeap.h"
 #include "SatoriRegion.h"
 #include "SatoriPage.h"
+#include "SatoriPage.inl"
 #include "SatoriRegion.inl"
 #include "../gceventstatus.h"
+#include "../gcscan.h"
+
+static uint64_t g_totalPhysicalMem;
+static bool g_isRestrictedPhysicalMem;
 
 bool SatoriGC::IsValidSegmentSize(size_t size)
 {
@@ -60,7 +65,8 @@ size_t SatoriGC::GetValidSegmentSize(bool large_seg)
 
 void SatoriGC::SetReservedVMLimit(size_t vmlimit)
 {
-    // NYI
+    // N/A. This appears to be dead code - nothing in the runtime calls it,
+    // so no implementation is needed.
 }
 
 void SatoriGC::WaitUntilConcurrentGCComplete()
@@ -239,14 +245,22 @@ size_t SatoriGC::GetCurrentObjSize()
 uint64_t SatoriGC::GetTotalAllocatedBytes()
 {
     // monotonically increasing number produced by allocator when allocating objects.
-    // threads know their number and we update the total when doing GCs
-    return m_heap->Recycler()->GetTotalAllocatedBytes();
+    // threads count their allocations and publish the counts to shared counters as they allocate.
+    // this is the sum of those counters, or the last precise total, whichever is greater.
+    // it can lag behind live allocations by up to PACE_BUDGET or so per thread and kind of allocations.
+    // (see SatoriAllocator::PublishAllocatedBytes)
+    return m_heap->Allocator()->GetTotalAllocatedBytes();
 }
 
 uint64_t SatoriGC::GetTotalAllocatedBytesPrecise()
 {
-    GarbageCollect(1);
-    return GetTotalAllocatedBytes();
+    // allocation contexts have precise counts of what their threads have allocated,
+    // but the counts change as threads allocate. with EE suspended they cannot change.
+    // NB: this is not a GC, but like other suspensions that are not GCs, we suspend "for GC prep".
+    GCToEEInterface::SuspendEE(SUSPEND_FOR_GC_PREP);
+    uint64_t allocated = m_heap->Allocator()->GetTotalAllocatedBytesPrecise();
+    GCToEEInterface::RestartEE(false);
+    return allocated;
 }
 
 HRESULT SatoriGC::GarbageCollect(int generation, bool low_memory_p, int mode)
@@ -255,12 +269,13 @@ HRESULT SatoriGC::GarbageCollect(int generation, bool low_memory_p, int mode)
     generation = (generation < 0) ? 2 : min(generation, 2);
     generation = max(1, generation);
 
-    // NYI: forced compaction
-
+    // collection_aggressive implies compaction, same as in the stock GC.
     m_heap->Recycler()->Collect(
         generation,
         !(mode & collection_mode::collection_optimized),
-        mode & collection_mode::collection_blocking
+        mode & collection_mode::collection_blocking,
+        mode & collection_mode::collection_compacting,
+        mode & collection_mode::collection_aggressive
     );
 
     return S_OK;
@@ -459,6 +474,11 @@ GCHeapType SatoriGC::GetGCHeapType()
 
 HRESULT SatoriGC::Initialize()
 {
+    g_totalPhysicalMem = GCToOSInterface::GetPhysicalMemoryLimit(&g_isRestrictedPhysicalMem);
+    GCConfig::SetGCHighMemPercent(SatoriUtil::HighMemoryPercent());
+    GCConfig::SetLOHThreshold(GetLOHThreshold());
+
+    SatoriUtil::Initialize();
     SatoriObject::Initialize();
     SatoriHandlePartitioner::Initialize();
     m_heap = SatoriHeap::Create();
@@ -561,8 +581,10 @@ uint32_t SatoriGC::WaitUntilGCComplete(bool bConsiderGCStart)
 void SatoriGC::FixAllocContext(gc_alloc_context* acontext, void* arg, void* heap)
 {
     // this is only called when thread is terminating and about to clear its context.
-    ((SatoriAllocationContext*)acontext)->Deactivate(m_heap->Recycler(), /*detach*/ true);
-    m_heap->Recycler()->ReportThreadAllocBytes(acontext->alloc_bytes + acontext->alloc_bytes_uoh, /*isLive*/ false);
+    // NB: it is called on the terminating thread itself.
+    SatoriAllocationContext* context = (SatoriAllocationContext*)acontext;
+    context->Deactivate(m_heap->Recycler(), /*detach*/ true);
+    m_heap->Allocator()->PublishAllocatedBytesOnThreadExit(context);
 }
 
 void SatoriGC::SetGCInProgress(bool fInProgress)
@@ -628,6 +650,7 @@ void SatoriGC::PublishObject(uint8_t* obj)
     if (region->Size() > Satori::REGION_SIZE_GRANULARITY)
     {
         _ASSERTE(!region->IsAttachedToAllocatingOwner() && region->Generation() == -1);
+        so->UnsetUnfinished();
 
         // promote to gen2 and take out of -1, since now the region is parseable
         region->SetGenerationRelease(2);
@@ -697,17 +720,89 @@ Object* SatoriGC::GetContainingObject(void* pInteriorPtr, bool fCollectedGenOnly
 
 void SatoriGC::DiagWalkObject(Object* obj, walk_fn fn, void* context)
 {
-    // NYI
+    if (obj == nullptr)
+    {
+        return;
+    }
+
+    bool keepWalking = true;
+    ((SatoriObject*)obj)->ForEachObjectRef(
+        [&](SatoriObject** ref)
+        {
+            if (keepWalking && *ref != nullptr)
+            {
+                keepWalking = fn(*ref, context);
+            }
+        },
+        /* includeCollectibleAllocator */ true
+    );
 }
 
 void SatoriGC::DiagWalkObject2(Object* obj, walk_fn2 fn, void* context)
 {
-    // NYI
+    if (obj == nullptr)
+    {
+        return;
+    }
+
+    bool keepWalking = true;
+    static_cast<SatoriObject*>(obj)->ForEachObjectRef(
+        [&](SatoriObject** ref)
+        {
+            if (keepWalking && *ref != nullptr)
+            {
+                keepWalking = fn(obj, reinterpret_cast<uint8_t**>(ref), context);
+            }
+        },
+        /* includeCollectibleAllocator */ true
+    );
 }
 
 void SatoriGC::DiagWalkHeap(walk_fn fn, void* context, int gen_number, bool walk_large_object_heap_p)
 {
-    // NYI
+    SatoriRecycler* recycler = m_heap->Recycler();
+    if (!recycler->IsBlockingPhase())
+    {
+        STRESS_LOG0(LF_GC, LL_WARNING, "DiagWalkHeap requires a blocking collection.\n");
+        _ASSERTE(!"DiagWalkHeap requires a blocking collection.");
+        return;
+    }
+    recycler->WaitForTrimmerToStop();
+    _ASSERTE(gen_number >= 0 && gen_number <= max_generation);
+
+    // Satori has no separate large-object heap to select.
+    UNREFERENCED_PARAMETER(walk_large_object_heap_p);
+
+    bool keepWalking = true;
+    m_heap->ForEachPageUntil(
+        [&](SatoriPage* page)
+        {
+            page->ForEachRegion(
+                [&](SatoriRegion* region)
+                {
+                    int generation = region->Generation();
+                    if (!keepWalking || generation < 0 ||
+                        (gen_number < max_generation && generation > gen_number))
+                    {
+                        return;
+                    }
+
+                    _ASSERTE(!region->IsAllocating());
+                    // Objects start only in the first granule; a huge object's tail may be uncommitted.
+                    size_t limit = region->Start() + Satori::REGION_SIZE_GRANULARITY;
+                    for (SatoriObject* object = region->FirstObject(); object->Start() < limit; object = object->Next())
+                    {
+                        if (!object->IsFree() && !fn(object, context))
+                        {
+                            keepWalking = false;
+                            break;
+                        }
+                    }
+                }
+            );
+            return !keepWalking;
+        }
+    );
 }
 
 void SatoriGC::DiagWalkSurvivorsWithType(void* gc_context, record_surv_fn fn, void* diag_context, walk_surv_type type, int gen_number)
@@ -722,17 +817,29 @@ void SatoriGC::DiagWalkFinalizeQueue(void* gc_context, fq_walk_fn fn)
 
 void SatoriGC::DiagScanFinalizeQueue(fq_scan_fn fn, ScanContext* context)
 {
-    // NYI
+    ScanContext localContext;
+    if (context == nullptr)
+    {
+        context = &localContext;
+    }
+
+    context->thread_number = 0;
+    m_heap->FinalizationQueue()->ForEachObjectRef(
+        [&](SatoriObject** ref)
+        {
+            fn(reinterpret_cast<Object**>(ref), context, 0);
+        }
+    );
 }
 
 void SatoriGC::DiagScanHandles(handle_scan_fn fn, int gen_number, ScanContext* context)
 {
-    // NYI
+    GCScan::GcScanHandlesForProfilerAndETW(gen_number, context, fn);
 }
 
 void SatoriGC::DiagScanDependentHandles(handle_scan_fn fn, int gen_number, ScanContext* context)
 {
-    // NYI
+    GCScan::GcScanDependentHandlesForProfilerAndETW(gen_number, context, fn);
 }
 
 void SatoriGC::DiagDescrGenerations(gen_walk_fn fn, void* context)
@@ -810,17 +917,12 @@ size_t SatoriGC::GetPromotedBytes(int heap_index)
     return 0;
 }
 
-static uint64_t g_totalLimit;
-
 void SatoriGC::GetMemoryInfo(uint64_t* highMemLoadThresholdBytes, uint64_t* totalAvailableMemoryBytes, uint64_t* lastRecordedMemLoadBytes, uint64_t* lastRecordedHeapSizeBytes, uint64_t* lastRecordedFragmentationBytes, uint64_t* totalCommittedBytes, uint64_t* promotedBytes, uint64_t* pinnedObjectCount, uint64_t* finalizationPendingCount, uint64_t* index, uint32_t* generation, uint32_t* pauseTimePct, bool* isCompaction, bool* isConcurrent, uint64_t* genInfoRaw, uint64_t* pauseInfoRaw, int kind)
 {
     LastRecordedGcInfo* lastGcInfo = m_heap->Recycler()->GetLastGcInfo((gc_kind)kind);
 
-    if (g_totalLimit == 0)
-        g_totalLimit = GCToOSInterface::GetPhysicalMemoryLimit();
-
-    uint64_t totalLimit = g_totalLimit;
-    *highMemLoadThresholdBytes = totalLimit * 99 / 100; // just say 99% for now
+    uint64_t totalLimit = g_totalPhysicalMem;
+    *highMemLoadThresholdBytes = totalLimit * SatoriUtil::HighMemoryPercent() / 100;
     *totalAvailableMemoryBytes = totalLimit;
 
     uint32_t memLoad = GetMemoryLoad();
@@ -858,7 +960,7 @@ uint32_t SatoriGC::GetMemoryLoad()
     if ((time >> 4) != (g_memLoadMsec >> 4))
     {
         uint64_t availPhysical, availPage;
-        GCToOSInterface::GetMemoryStatus(0, &g_memLoad, &availPhysical, &availPage);
+        GCToOSInterface::GetMemoryStatus(g_isRestrictedPhysicalMem ? g_totalPhysicalMem : 0, &g_memLoad, &availPhysical, &availPage);
         g_memLoadMsec = time;
     }
 
@@ -891,6 +993,11 @@ void SatoriGC::EnumerateConfigurationValues(void* context, ConfigurationValueFun
 
 bool SatoriGC::CheckEscapeSatoriRange(size_t dst, size_t src, size_t len)
 {
+    // Assigning outside of the heap (most likely to stack) is handled by the callers.
+    // Nothing can be formally shared that way, so there is nothing to escape
+    // and no ordering contract to worry about.
+    _ASSERTE(SatoriHeap::IsInHeap(dst));
+
     SatoriRegion* curRegion = (SatoriRegion*)GCToEEInterface::GetAllocContext()->gc_reserved_1;
     if (!curRegion || !curRegion->IsEscapeTracking())
     {
@@ -898,78 +1005,7 @@ bool SatoriGC::CheckEscapeSatoriRange(size_t dst, size_t src, size_t len)
         return false;
     }
 
-    _ASSERTE(curRegion->IsEscapeTrackedByCurrentThread());
-
-    // if dst is within the curRegion and is not exposed, we are done
-    if ((dst ^ curRegion->Start()) < Satori::REGION_SIZE_GRANULARITY)
-    {
-        if (!curRegion->AnyExposed(dst, len))
-        {
-            // thread-local assignment
-            return true;
-        }
-    }
-
-    if (!SatoriHeap::IsInHeap(dst))
-    {
-        // dest not in heap, must be stack, so, local
-        return true;
-    }
-
-    if ((src ^ curRegion->Start()) < Satori::REGION_SIZE_GRANULARITY)
-    {
-        // if src is in current region, the elements could be escaping
-        if (!curRegion->AnyExposed(src, len))
-        {
-            // one-element array copy is embarrasingly common. specialcase that.
-            if (len == sizeof(size_t))
-            {
-                SatoriObject* obj = *(SatoriObject**)src;
-                if (obj->SameRegion(curRegion))
-                {
-                    curRegion->EscapeRecursively(obj);
-                }
-            }
-            else
-            {
-                SatoriObject* containingSrcObj = curRegion->FindObject(src);
-                containingSrcObj->ForEachObjectRef(
-                    [&](SatoriObject** ref)
-                    {
-                        SatoriObject* child = *ref;
-                        if (child->SameRegion(curRegion))
-                        {
-                            curRegion->EscapeRecursively(child);
-                        }
-                    },
-                    src,
-                    src + len
-                );
-            }
-        }
-
-        return false;
-    }
-
-    if (SatoriHeap::IsInHeap(src))
-    {
-        // src is not in current region but in heap,
-        // it can't escape anything that belongs to the current thread, but it is not a local assignment.
-        return false;
-    }
-
-    // This is a very rare case where we are copying refs out of non-heap area like stack or native heap.
-    // We do not have a containing type and that is somewhat inconvenient.
-    // 
-    // There are not many scenarios that lead here. In particular, boxing uses a newly
-    // allocated and not yet escaped target, so it does not end up here.
-    // One possible way to get here is a copy-back after a reflection call with a boxed nullable
-    // argument that happen to escape.
-    // 
-    // We could handle this is by conservatively escaping any value that matches an unescaped pointer in curRegion.
-    // However, considering how uncommon this is, we will just give up tracking.
-    curRegion->StopEscapeTracking();
-    return false;
+    return curRegion->CheckEscapeRange(dst, src, len);
 }
 
 void SatoriGC::SetCardsAfterBulkCopy(size_t dst, size_t src, size_t len)
@@ -978,12 +1014,12 @@ void SatoriGC::SetCardsAfterBulkCopy(size_t dst, size_t src, size_t len)
     if (page)
     {
         SatoriRecycler* recycler = m_heap->Recycler();
-        if (!recycler->IsBarrierConcurrent())
+        if (!recycler->IsBarrierConcurrent(/* includeSwitching */ true))
         {
             page->SetCardsForRange(dst, dst + len);
         }
 
-        if (recycler->IsBarrierConcurrent())
+        if (recycler->IsBarrierConcurrent(/* includeSwitching */ true))
         {
             page->DirtyCardsForRangeConcurrent(dst, dst + len);
         }
@@ -992,20 +1028,22 @@ void SatoriGC::SetCardsAfterBulkCopy(size_t dst, size_t src, size_t len)
 
 void SatoriGC::BulkMoveWithWriteBarrier(void* dst, const void* src, size_t byteCount)
 {
-    if (dst == src || byteCount == 0)
-        return;
+    // callers filter out empty and trivial moves
+    _ASSERTE(dst != src);
+    _ASSERTE(byteCount != 0);
+
+    // callers handle the case when the destination is not in the heap
+    _ASSERTE(SatoriHeap::IsInHeap((size_t)dst));
 
     // Make sure everything is pointer aligned
     _ASSERTE(((size_t)dst & (sizeof(size_t) - 1)) == 0);
     _ASSERTE(((size_t)src & (sizeof(size_t) - 1)) == 0);
     _ASSERTE(((size_t)byteCount & (sizeof(size_t) - 1)) == 0);
 
-    bool localAssignment = false;
-    if (byteCount >= sizeof(size_t))
-    {
-        localAssignment = CheckEscapeSatoriRange((size_t)dst, (size_t)src, byteCount);
-    }
+    // nonzero and pointer-aligned, thus at least one pointer in size
+    _ASSERTE(byteCount >= sizeof(size_t));
 
+    bool localAssignment = CheckEscapeSatoriRange((size_t)dst, (size_t)src, byteCount);
     if (!localAssignment)
     {
 #if !defined(TARGET_X86) && !defined(TARGET_AMD64)
@@ -1013,17 +1051,26 @@ void SatoriGC::BulkMoveWithWriteBarrier(void* dst, const void* src, size_t byteC
 #endif
     }
 
-    // NOTE! memmove needs to copy with size_t granularity
-    // I do not see how it would not, since everything is aligned.
-    // If we need to handle unaligned moves, we may need to write our own memmove
-    memmove(dst, src, byteCount);
-
-    if (byteCount >= sizeof(size_t) &&
-       (!(localAssignment || m_heap->Recycler()->IsNextGcFullGc()) ||
-           m_heap->Recycler()->IsBarrierConcurrent()))
+    // Copy with size_t granularity, so that references are never torn.
+    // The ranges may overlap, so the direction matters - when moving to a lower
+    // address we must copy forward, otherwise backward.
+    // NB: the comparison is unsigned, so nonoverlapping cases pass either check.
+    if ((size_t)dst - (size_t)src >= byteCount)
     {
-        SetCardsAfterBulkCopy((size_t)dst, (size_t)src, byteCount);
+        SatoriUtil::ForwardGCSafeCopy(dst, src, byteCount);
     }
+    else
+    {
+        SatoriUtil::BackwardGCSafeCopy(dst, src, byteCount);
+    }
+
+    // A thread-local assignment needs no cards.
+    if (localAssignment || !m_heap->Recycler()->CardsAreNeeded())
+    {
+        return;
+    }
+
+    SetCardsAfterBulkCopy((size_t)dst, (size_t)src, byteCount);
 }
 
 int SatoriGC::RefreshMemoryLimit()
@@ -1050,7 +1097,7 @@ uint64_t SatoriGC::GetGenerationBudget(int generation)
 
 size_t SatoriGC::GetLOHThreshold()
 {
-    return Satori::LARGE_OBJECT_THRESHOLD;
+    return max((size_t)GCConfig::GetLOHThreshold(), LARGE_OBJECT_SIZE);
 }
 
 void SatoriGC::DiagWalkHeapWithACHandling(walk_fn fn, void *context, int gen_number, bool walk_large_object_heap_p)

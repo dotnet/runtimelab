@@ -32,11 +32,13 @@
 #include "SatoriHeap.h"
 #include "SatoriUtil.h"
 #include "SatoriObject.h"
+#include "SatoriPrefetchQueue.h"
 
 class SatoriAllocator;
 class SatoriRegionQueue;
 class SatoriObject;
 class SatoriAllocationContext;
+struct SatoriLocalRootCache;
 
 // The Region contains objects and their metadata.
 class SatoriRegion
@@ -56,6 +58,7 @@ public:
     bool ValidateBlank();
 
     void RearmCardsForTenured();
+    bool RearmCardsForStillTenured();
     void ResetCardsForEphemeral();
 
     SatoriRegion* TrySplit(size_t regionSize);
@@ -63,7 +66,7 @@ public:
     bool TryDecommit();
     void TryCommit();
     bool CanCoalesceWithNext();
-    bool TryCoalesceWithNext();
+    bool TryCoalesceWithNext(bool drainsAreDone);
 
     void ZeroInitAndLink(SatoriRegion* prev);
 
@@ -71,11 +74,17 @@ public:
 
     size_t GetAllocStart();
     size_t GetAllocRemaining();
+    size_t GetTlgcAllocRemaining();
+    bool ShouldCollectAtTlgcLimit(size_t allocBytes);
+    size_t GetAllocZeroedRemaining();
     size_t Allocate(size_t size, bool zeroInitialize);
+    size_t AllocateDirty(size_t size, size_t* dirtyStart, size_t* dirtyEnd);
     size_t AllocateHuge(size_t size, bool zeroInitialize);
 
-    size_t StartAllocating(size_t minSize);
-    void StopAllocating(size_t allocPtr);
+    size_t StartAllocating(size_t minSize, size_t allocBytes = 0);
+    // The caller may know that [allocPtr, zeroedEnd) contains zeroes,
+    // like the unused part of an allocation context does.
+    void StopAllocating(size_t allocPtr, size_t zeroedEnd = 0);
     void StopAllocating();
     bool IsAllocating();
 
@@ -86,14 +95,49 @@ public:
     bool HasFreeSpaceInTopBucket();
     size_t FreeSpaceInTopNBuckets(int n);
 
-    void StartEscapeTrackingRelease(size_t threadTag);
+    // Whether an allocation of the given size can be served from the current allocation span
+    // or is guaranteed to fit a free list object (a hint, no side effects).
+    bool CanFitAllocation(size_t size);
+
+    // Free space that allocations can use: the rest of the current allocation span and the free lists.
+    // (fragments that are too small for the free lists are not usable)
+    size_t UsableCapacity();
+
+    void StartEscapeTrackingRelease(size_t threadTag, size_t allocBytes = 0, size_t minAllocSize = 0);
     void StopEscapeTracking();
+    // NB: called from the write barrier - must not touch vector registers or TLS.
+    void StopEscapeTrackingFromBarrier();
+    // Clears marks left by StopEscapeTrackingFromBarrier, if any.
+    // Returns true if there were such marks.
+    bool ClearStaleEscapeMarks();
     bool IsEscapeTracking();
     bool MaybeEscapeTrackingAcquire();
     bool IsEscapeTrackedByCurrentThread();
 
+    // Per-thread history of escape tracking outcomes. A thread whose tracked regions keep
+    // ending without a productive thread-local GC backs off and allocates some regions untracked.
+    // Called by the owning thread when attaching an eligible region.
+    static bool ShouldStartEscapeTracking();
+    // Called by the owning thread when detaching a region that ran out of space while it was
+    // tracked, or when it finds that the barrier stopped tracking because of too many escapes.
+    // NB: not from the write barrier - uses TLS.
+    // When outOfSpace is true, the region ran out of space. If no thread-local GC was even attempted in it,
+    // that tells nothing about whether tracking pays off, so the history is left as is.
+    static void OnEscapeTrackingEnded(bool outOfSpace = false);
+
+    // Thread-local GC paid off in this region: in the current accounting period it returned at least
+    // REGION_SIZE_GRANULARITY / 4 of usable space to the free lists. (reclaimed fragments too small to reuse do not count)
+    bool IsTlgcProductive(size_t allocBytes);
+
+    // Attaching starts an accounting period for the gen1 budget. (see TakeBudgetCharge)
     void AttachToAllocatingOwner(SatoriRegion** attachementPoint);
     void DetachFromAlocatingOwnerRelease();
+    // Returns how much of the gen1 budget the region spent in the current accounting period.
+    // Called when the region is handed to the recycler. (see SatoriRecycler::AddEphemeralRegion)
+    size_t TakeBudgetCharge(bool gcIsStarting);
+    // Called by the allocating owner before it resumes allocating from the region.
+    // If a GC took the region while it stayed attached, starts a new accounting period.
+    void RebaselineUsableIfStale(size_t allocBytes);
     bool IsAttachedToAllocatingOwner();
     bool MaybeAllocatingAcquire();
     void SetHasFinalizables();
@@ -122,7 +166,11 @@ public:
     bool IsLarge();
 
     SatoriObject* FirstObject();
-    SatoriObject* FindObject(size_t location);
+    SatoriObject* FindObject(size_t location, SatoriObject* hint = nullptr);
+    // In a region that is being marked, finds the marked object that contains the location,
+    // or the first marked object after it, up to the limit. Uses only the mark bitmap and the index,
+    // except for reading the size of a candidate that starts before the location.
+    SatoriObject* FindMarkedObjectFrom(size_t location, size_t limit, SatoriObject* hint);
     size_t LocationToIndex(size_t location);
     void SetIndicesForObject(SatoriObject* o, size_t end);
     void SetIndicesForObjectCore(size_t start, size_t end);
@@ -132,14 +180,29 @@ public:
     void DecrementUnfinishedAlloc();
 
     SatoriObject* SkipUnmarked(SatoriObject* from);
+    SatoriObject* SkipUnmarkedThreadLocal(SatoriObject* from);
     SatoriObject* SkipUnmarkedAndClear(SatoriObject* from);
     SatoriObject* SkipUnmarked(SatoriObject* from, size_t upTo);
+
+    // Walks the mark bitmap ahead of a sweep and prefetches upcoming live objects.
+    // It moves by mark bytes - a mark byte covers one 64 byte cache line of the heap,
+    // thus it prefetches every line that has live objects once, and counts the distance in such lines.
+    struct SweepPrefetcher
+    {
+        size_t m_index;
+        size_t m_word;
+        // the heap cache line of the last live object the sweep has reached
+        size_t m_line;
+    };
+
+    void SweepPrefetchStart(SweepPrefetcher& prefetcher, SatoriObject* from);
+    void SweepPrefetchAdvance(SweepPrefetcher& prefetcher, SatoriObject* o);
 
     void TakeFinalizerInfoFrom(SatoriRegion* other);
     void IndividuallyPromote();
     void UpdateFinalizableTrackers();
     void UpdatePointers();
-    void UpdatePointersInObject(SatoriObject* o, size_t size);
+    void UpdatePointersInObject(SatoriObject* o, size_t size, SatoriRelocatedRefQueue<8>& updateQueue);
     void SetCardsForObject(SatoriObject* o, size_t size);
 
     template <bool promotingAllRegions>
@@ -154,6 +217,7 @@ public:
 
     bool IsExposed(SatoriObject** location);
     bool AnyExposed(size_t from, size_t length);
+    bool CheckEscapeRange(size_t dst, size_t src, size_t len);
     void EscapeRecursively(SatoriObject* obj);
     void EscapeAll();
     void EscapeShallow(SatoriObject* o, size_t size);
@@ -178,11 +242,11 @@ public:
     void SetOccupancy(size_t occupancy, int32_t objCount);
     void SetOccupancy(size_t occupancy);
     size_t Occupancy();
-    int32_t& OccupancyAtReuse();
     int32_t ObjCount();
     size_t DemotedOccupancy();
 
     bool& HasPinnedObjects();
+    void SetHasPinnedObjects();
     bool& DoNotSweep();
     bool& IsPreSwept();
     bool& IsRelocated();
@@ -214,7 +278,7 @@ public:
 
     // we tell where we are in terms of alloc bytes, so we do not collect too soon
     // returns true if it actually did a collection.
-    bool ThreadLocalCollect(size_t allocBytes);
+    bool ThreadLocalCollect(size_t allocBytes, bool atTlgcLimit = false);
 
     SatoriPage* ContainingPage();
     SatoriRegion* NextInPage();
@@ -227,8 +291,13 @@ public:
 private:
     static const int BITMAP_LENGTH = Satori::REGION_SIZE_GRANULARITY / sizeof(size_t) / sizeof(size_t) / 8;
 
+    static const int SWEEP_PREFETCH_LINES = 8;
+
+    void SweepPrefetchNext(SweepPrefetcher& prefetcher);
+
     // The first actually useful index is offsetof(m_firstObject) / sizeof(size_t) / 8,
-    static const int BITMAP_START = (BITMAP_LENGTH + (Satori::INDEX_LENGTH + 2) / 2 + 1) / sizeof(size_t) / 8;
+    // which is the map itself (BITMAP_LENGTH + 1 words), the index and the syncblock.
+    static const int BITMAP_START = (BITMAP_LENGTH + 1 + (Satori::INDEX_LENGTH + 2) / 2 + 1) / sizeof(size_t) / 8;
 
     union
     {
@@ -250,13 +319,22 @@ private:
             void (*m_escapeFunc)(SatoriObject**, SatoriObject*, SatoriRegion*);
             int m_generation;
             // above fields are accessed from asm helpers
+            // NB: the write barrier reads this cache line on nearly every reference store, and concurrent marking
+            //     reads it for every child. Keep it free of frequently written fields, even though there is room
+            //     after m_generation. (e.g. m_unfinishedAllocationCount, which is updated with interlocked operations
+            //     while allocating in shared regions, would cause false sharing here)
 
-            // the following 5 fields change rarely or not at all.
+            // the following fields change rarely or not at all.
             size_t m_end;
             SatoriPage* m_containingPage;
 
             ReuseLevel m_reusableFor;
-            int32_t m_occupancyAtReuse;
+            // escape tracking was stopped by the barrier and the mark bitmap still has escape bits.
+            // concurrent marking must treat the region as escape tracking until the owner clears the marks.
+            // NB: MaybeEscapeTrackingAcquire reads this, m_reusableFor and m_ownerThreadTag for every child that
+            //     concurrent marking looks at. Keep them in the same cache line. (this one fits in the padding)
+            //     It changes when escape tracking stops, together with m_ownerThreadTag.
+            bool m_staleEscapeMarks;
 
             SatoriRegion** m_allocatingOwnerAttachmentPoint;
             SatoriWorkChunk* m_gen2Objects;
@@ -268,6 +346,9 @@ private:
             // The range is in terms of objects, there is embedded off-by-one error for syncblocks.
             size_t m_allocStart;
             size_t m_allocEnd;
+            // While allocating, [m_allocStart, m_allocZeroedEnd) is known to contain zeroes
+            // in addition to everything above m_used. Allocations do not need to zero that again.
+            size_t m_allocZeroedEnd;
 
             // dirty and comitted watermarks
             size_t m_used;
@@ -285,6 +366,10 @@ private:
             int m_finalizableTrackersLock;
 
             uint32_t m_sweepsSinceLastAllocation;
+            // Bit N is set when free list N is not empty.
+            uint16_t m_nonEmptyFreeLists;
+            // Number of thread-local collections performed in this region, drives the dyadic window schedule.
+            uint16_t m_tlgcCount;
 
             // ===== 128  bytes boundary
             SatoriRegion* m_prev;
@@ -293,6 +378,20 @@ private:
 
             size_t m_occupancy;
             size_t m_demotedOccupancy;
+            // End of the current dyadic allocation window (<= m_allocEnd) when escape-tracking.
+            size_t m_tlgcAllocEnd;
+            // Upper bound on the end of all non-free objects in the region, bounds thread-local bitmap and index scans.
+            size_t m_maxParseableEnd;
+            // Bytes in [FirstObject(), m_maxParseableEnd) not in >= MinZeroInitSize() free spans after the last collect.
+            size_t m_unusableInPrefix;
+            // Usable capacity at the start of the current accounting period for the gen1 budget - when the region
+            // was attached to an allocating owner, or when the owner resumed allocating after a GC.
+            // (see TakeBudgetCharge)
+            size_t m_usableAtAttach;
+            // The owner's alloc bytes at the start of the current accounting period. (see IsTlgcProductive)
+            size_t m_allocBytesAtAttach;
+            uint32_t m_escapedSizeAtCollect;
+            uint32_t m_lastStackSlots;
             int32_t m_objCount;
 
             int32_t m_unfinishedAllocationCount;
@@ -307,6 +406,9 @@ private:
             bool m_acceptedPromotedObjects;
             bool m_individuallyPromoted;
             bool m_hasUnmarkedDemotedObjects;
+            // A GC took the region while it stayed attached to an allocating owner.
+            // The owner starts a new accounting period when it resumes allocating. (see RebaselineUsableIfStale)
+            bool m_usableBaselineStale;
             // TODO: VS can fold with m_doNotSweep?
             bool m_hasMarksSet;
 
@@ -322,6 +424,10 @@ private:
     SatoriObject m_firstObject;
 
 private:
+    static size_t CurrentStackDepth();
+    size_t ComputeTlgcWindow();
+    size_t ComputeTlgcAllocEnd(size_t minAllocSize, size_t allocBytes);
+    size_t ParseableBitmapLimit();
     bool CanSplitWithoutCommit(size_t size);
     void SplitCore(size_t regionSize, size_t& newStart, size_t& newCommitted, size_t& newZeroInitedAfter);
     void UndoSplitCore(size_t regionSize, size_t nextStart, size_t nextCommitted, size_t nextUsed);
@@ -333,12 +439,13 @@ private:
     static void UpdateFn(PTR_PTR_Object ppObject, ScanContext* sc, uint32_t flags);
 
     static void EscapeFn(SatoriObject** dst, SatoriObject* src, SatoriRegion* region);
+    NOINLINE void EscapeReachable(SatoriObject* o);
 
-    bool ThreadLocalMark();
+    bool ThreadLocalMark(SatoriLocalRootCache* rootCache);
+    void ThreadLocalPropagateMarks(size_t maxSurv);
     void ThreadLocalPlan();
-    void ThreadLocalUpdatePointers();
+    void ThreadLocalUpdatePointers(SatoriLocalRootCache* rootCache);
     void ThreadLocalCompact();
-    NOINLINE void ClearPinned(SatoriObject* o);
     void ThreadLocalPendFinalizables();
 
     void PushToMarkStackIfHasPointers(SatoriObject* obj);
@@ -361,7 +468,8 @@ private:
 
     bool IsPinned(SatoriObject* o);
     void SetPinned(SatoriObject* o);
-    void ClearPinnedAndMarked(SatoriObject* o);
+    void ClearMarkedAndPinned(SatoriObject* o);
+    void ClearMarkedAndPinnedUnlessEscaped(SatoriObject* o);
     bool IsEscaped(SatoriObject* o);
     void SetEscaped(SatoriObject* o);
     bool IsEscapedOrPinned(SatoriObject* o);

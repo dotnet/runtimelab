@@ -35,14 +35,19 @@
 #include "SatoriRegion.h"
 #include "SatoriRegion.inl"
 
-SatoriPage* SatoriPage::InitializeAt(size_t address, size_t pageSize, SatoriHeap* heap)
+SatoriPage* SatoriPage::InitializeAt(size_t address, size_t pageSize, SatoriHeap* heap, InitStatus& status)
 {
     _ASSERTE(pageSize % Satori::PAGE_SIZE_GRANULARITY == 0);
 
-    SatoriPage* result = (SatoriPage*)GCToOSInterface::VirtualReserve((void*)address, pageSize, SatoriUtil::UseTHP());
+    VirtualReserveStatus reserveStatus = VirtualReserveStatus::Refused;
+    SatoriPage* result = (SatoriPage*)GCToOSInterface::VirtualReserve((void*)address, pageSize, SatoriUtil::UseTHP(), &reserveStatus);
     if (result == nullptr)
     {
-        return result;
+        status = reserveStatus == VirtualReserveStatus::Occupied ?
+            InitStatus::Occupied :
+            InitStatus::ReserveRefused;
+
+        return nullptr;
     }
 
     size_t cardTableSize = pageSize / Satori::BYTES_PER_CARD_BYTE;
@@ -58,6 +63,8 @@ SatoriPage* SatoriPage::InitializeAt(size_t address, size_t pageSize, SatoriHeap
 
     if (!GCToOSInterface::VirtualCommit((void*)address, commitSize))
     {
+        GCToOSInterface::VirtualRelease(result, pageSize);
+        status = InitStatus::CommitFailed;
         return nullptr;
     }
 
@@ -98,14 +105,26 @@ SatoriPage* SatoriPage::InitializeAt(size_t address, size_t pageSize, SatoriHeap
 
     // make sure the first useful card word is beyond the header.
     _ASSERTE(result->Start() + cardTableStart > (size_t)(result->m_regionMap) + regionCount);
+
+    // Initialize the first region before publishing the page in the heap map.
+    // Until then a failed commit can safely release the entire reservation.
+    size_t used = (size_t)&result->m_cardTable[cardTableSize];
+    if (SatoriRegion::InitializeAt(result, result->m_firstRegion, result->m_end - result->m_firstRegion,
+        result->m_initialCommit, used) == nullptr)
+    {
+        heap->DecBytesCommitted(commitSize);
+        GCToOSInterface::VirtualRelease(result, pageSize);
+        status = InitStatus::CommitFailed;
+        return nullptr;
+    }
+
+    status = InitStatus::Success;
     return result;
 }
 
-SatoriRegion* SatoriPage::MakeInitialRegion()
+SatoriRegion* SatoriPage::InitialRegion()
 {
-    // page memory should be considered dirtied up to the end of the card table, the rest is clear.
-    size_t used = (size_t)&m_cardTable[m_cardTableSize];
-    return SatoriRegion::InitializeAt(this, m_firstRegion, m_end - m_firstRegion, m_initialCommit, used);
+    return (SatoriRegion*)m_firstRegion;
 }
 
 void SatoriPage::OnRegionInitialized(SatoriRegion* region)
@@ -171,19 +190,6 @@ SatoriRegion* SatoriPage::RegionForCardGroup(size_t group)
     }
 
     return (SatoriRegion*)((mapIndex << Satori::REGION_BITS) + Start());
-}
-
-// only set cards, does not set card groups and page state
-// used in card refreshing
-void SatoriPage::SetCardForAddressOnly(size_t address)
-{
-    size_t offset = address - Start();
-    size_t cardByteOffset = offset / Satori::BYTES_PER_CARD_BYTE;
-
-    _ASSERTE(cardByteOffset >= m_cardTableStart);
-    _ASSERTE(cardByteOffset < m_cardTableSize);
-
-    m_cardTable[cardByteOffset] = Satori::CardState::REMEMBERED;
 }
 
 // setting cards is never concurent with unsetting (unlike dirtying)
@@ -345,3 +351,36 @@ void SatoriPage::ResetCardsForRange(size_t start, size_t end, bool isTenured)
 
     WipeGroupsForRange(start, end);
 }
+
+// Tells if the card groups for the range are as WipeGroupsForRange leaves them - blank and with no scan ticket.
+bool SatoriPage::CardGroupsAreWipedForRange(size_t start, size_t end)
+{
+    size_t firstGroup = (start - Start()) / Satori::BYTES_PER_CARD_GROUP;
+    size_t lastGroup = (end - Start() - 1) / Satori::BYTES_PER_CARD_GROUP;
+    for (size_t i = firstGroup; i <= lastGroup; i++)
+    {
+        if (m_cardGroups[i * 2] != Satori::CardState::BLANK || m_cardGroups[i * 2 + 1] != 0)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+#if _DEBUG
+bool SatoriPage::CardsAreBlankForRange(size_t start, size_t end)
+{
+    size_t firstCard = (start - Start()) / Satori::BYTES_PER_CARD_BYTE;
+    size_t lastCard = (end - Start() - 1) / Satori::BYTES_PER_CARD_BYTE;
+    for (size_t i = firstCard; i <= lastCard; i++)
+    {
+        if (m_cardTable[i] != Satori::CardState::BLANK)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+#endif
