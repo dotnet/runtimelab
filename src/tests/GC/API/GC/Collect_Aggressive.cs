@@ -4,10 +4,15 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using Xunit;
 
 public class AggressiveCollect
 {
+    private const long MinimumReclaimedBytes = 2000 * 4000;
+
+    public static bool IsSatori => GC.GetConfigurationVariables().TryGetValue("SatoriGC", out object value) && value is true;
+
     [Fact]
     public static int TestEntryPoint()
     {
@@ -15,8 +20,7 @@ public class AggressiveCollect
         GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
         long after = GC.GetGCMemoryInfo().TotalCommittedBytes;
         long reclaimed = before - after;
-        long reclaimedAtLeast = 2000 * 4000;
-        if (reclaimed < reclaimedAtLeast)
+        if (reclaimed < MinimumReclaimedBytes)
         {
             // If we reach this case, the aggressive GC is not releasing as much memory as
             // we wished, something is wrong.
@@ -31,6 +35,53 @@ public class AggressiveCollect
                 CreateGarbage();
             }
             return 100;
+        }
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public static void CompactingCollectWithoutRelocationCompletes(int generation)
+    {
+        int before = GC.CollectionCount(generation);
+        GC.Collect(generation, GCCollectionMode.Forced, blocking: true, compacting: true);
+        Assert.True(GC.CollectionCount(generation) > before);
+    }
+
+    // Another thread running back-to-back collections starves the allocating thread under the default GC.
+    [ConditionalFact(typeof(AggressiveCollect), nameof(IsSatori))]
+    public static void ConcurrentAggressiveCollectReclaimsMemory()
+    {
+        int stop = 0;
+        using var started = new ManualResetEventSlim();
+        var collector = new Thread(() =>
+        {
+            started.Set();
+            while (Volatile.Read(ref stop) == 0)
+            {
+                GC.Collect(1, GCCollectionMode.Forced, blocking: true);
+                GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+                Thread.Yield();
+            }
+        });
+        collector.IsBackground = true;
+        collector.Start();
+
+        try
+        {
+            Assert.True(started.Wait(TimeSpan.FromSeconds(30)));
+            for (int iteration = 0; iteration < 20; iteration++)
+            {
+                long before = CreateGarbage();
+                GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+                long reclaimed = before - GC.GetGCMemoryInfo().TotalCommittedBytes;
+                Assert.True(reclaimed >= MinimumReclaimedBytes, $"Iteration {iteration}: reclaimed {reclaimed} bytes.");
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref stop, 1);
+            Assert.True(collector.Join(TimeSpan.FromSeconds(30)));
         }
     }
 
