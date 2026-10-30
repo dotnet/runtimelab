@@ -111,8 +111,12 @@ namespace Tracing.Tests.EventSourceError
         private static Action _eventGeneratingAction = () =>
         {
             Assert.True(_gcStopReceived.WaitOne(30000), "The diagnostic collection did not finish.");
-            // The heap-dump keyword alone must not make ordinary collections produce another snapshot.
-            GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+            // NativeAOT dumps every blocking collection while the heap-dump keyword is enabled.
+            if (!Utilities.IsNativeAot)
+            {
+                // The heap-dump keyword alone must not make ordinary collections produce another snapshot.
+                GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+            }
         };
 
         private static Func<EventPipeEventSource, Func<int>> _DoesRundownContainMethodEvents = (source) =>
