@@ -17,8 +17,6 @@
 #ifdef __APPLE__
 #include <stdlib.h>
 #include <mach/thread_state.h>
-#include <mach/mach_time.h>
-#include <minipal/cpufeatures.h>
 
 #define CHECK_MACH(_msg, machret) do {                                      \
         if (machret != KERN_SUCCESS)                                        \
@@ -81,56 +79,10 @@ static bool s_flushUsingMemBarrier = false;
 // Helper memory page used by the fallback path
 static uint8_t* g_helperPage = NULL;
 
-static size_t s_pageSize = 0;
-#else // HOST_APPLE
-// Set when running under the Apple Rosetta x64 emulator, where the thread_get_state
-// based implementation cannot be used at all.
-// See the comment in minipal_initialize_memory_barrier_process_wide.
-static bool s_flushByWaiting = false;
-
-// How long to wait, in microseconds, for other cores to drain their store buffers.
-//
-// Store buffers drain on their own and continuously - nothing has to poke a core to
-// make that happen, and no store can sit in one indefinitely. The drain is bounded by
-// memory system latency, which is tens to low hundreds of nanoseconds even when the
-// line has to be pulled from another core. Five microseconds is more than an order of
-// magnitude beyond that, and it is a hard lower bound on our side: we do not return
-// early, so the margin cannot be eroded by anything the other threads are doing.
-#define FLUSH_BARRIER_WAIT_USECS 5
-
-// The wait above expressed in mach ticks, so that the loop is an integer compare.
-//
-// mach_absolute_time is the cheapest monotonic source available here - it is a vDSO
-// style read of the same counter clock_gettime is built on, at 17ns per call under
-// Rosetta versus 29ns for clock_gettime_nsec_np and 36ns for clock_gettime. Thread
-// CPU time would be cheaper conceptually, since only this thread's progress matters,
-// but CLOCK_THREAD_CPUTIME_ID is a real syscall at 312ns and is 18x worse.
-// CLOCK_UPTIME_RAW_APPROX is cheaper still at 8ns, but it is a cached value: under
-// Rosetta it advances only about every 65us, which cannot express a 5us wait at all.
-static uint64_t s_flushWaitTicks = 0;
-
-static void FlushBarrierPause(void)
-{
-#if defined(HOST_X86) || defined(HOST_AMD64)
-    __asm__ __volatile__(
-        "rep\n"
-        "nop");
-#elif defined(HOST_ARM)
-    __asm__ __volatile__( "yield");
-#elif defined(HOST_ARM64)
-    __asm__ __volatile__(
-        "dmb ishst\n"
-        "yield"
-        );
-#endif
-}
-#endif // !HOST_APPLE
-
-#ifndef HOST_APPLE
-// Mutex to make the fallback path thread safe.
-// The Apple paths need no serialization: thread_get_state does not mutate anything,
-// and neither does waiting.
+// Mutex to make the fallback path thread safe
 static pthread_mutex_t g_flushProcessWriteBuffersMutex;
+
+static size_t s_pageSize = 0;
 #endif // !HOST_APPLE
 #endif // !HOST_WASM
 
@@ -146,52 +98,7 @@ bool minipal_initialize_memory_barrier_process_wide(void)
 #ifdef HOST_WASM
     // browser/wasm is currently single threaded
 #elif defined(HOST_APPLE)
-    // Apple platforms do not support membarrier, so we normally use thread_get_state.
-    //
-    // That does not work under the Rosetta x64 emulator. Servicing thread_get_state for a
-    // translated thread requires Rosetta to reconstruct the guest x86 state from the host
-    // arm64 state, and it cannot always do so - notably while another thread is forking,
-    // when the task is quiesced. Such a call never completes and hangs both threads.
-    // thread_suspend fails the same way, for the same reason.
-    //
-    // None of the usual alternatives work here either:
-    //
-    //  - The mprotect helper page trick used on other Unix platforms relies on the kernel
-    //    sending an IPI to every core to shoot down TLBs, and it is that interrupt which
-    //    serializes the other cores. On arm64 TLB invalidation is a broadcast instruction
-    //    handled in hardware, so no IPI is sent and no core is ever interrupted. Measured,
-    //    it produces 0.003 interruptions per barrier per thread versus 2.4 for
-    //    thread_get_state - it is a no-op, which is worse than a hang because it is silent.
-    //
-    //  - Interrupting each thread with a signal does work, but it cannot be relied on:
-    //    a thread that has signals blocked is still reported as running yet cannot run the
-    //    handler, so the wait has no exit. System.Native blocks all signals across
-    //    fork+exec, which stalled the barrier for 3ms in testing, and spinning at such a
-    //    thread steals the core it needs to get out of the masked region.
-    //
-    // So under Rosetta simply wait instead. Rosetta executes translated code with the core
-    // in TSO mode, so the only thing that can delay one thread's store from being seen by
-    // another is that thread's store buffer - and store buffers drain autonomously and
-    // continuously. Nothing needs to poke a core to make it happen, which is precisely why
-    // waiting is more robust here than any mechanism that has to reach the other threads:
-    // there is no thread state to reconstruct, no signal to be blocked, no lock to be held
-    // by a thread that is not running, and nothing to deadlock against.
-    if (minipal_detect_rosetta())
-    {
-        mach_timebase_info_data_t timebase;
-
-        if (mach_timebase_info(&timebase) != KERN_SUCCESS)
-        {
-            return false;
-        }
-
-        // ticks = usecs * 1000 * denom / numer, computed once so the wait loop below
-        // is a plain integer compare with no conversion in it.
-        s_flushWaitTicks =
-            ((uint64_t)FLUSH_BARRIER_WAIT_USECS * 1000ull * timebase.denom + timebase.numer - 1) / timebase.numer;
-
-        s_flushByWaiting = true;
-    }
+    // Apple platforms do not support membarrier, so we use a different mechanism
 #else
 #if HAVE_SYS_MEMBARRIER_H
     if (CanFlushUsingMembarrier())
@@ -248,49 +155,32 @@ void minipal_memory_barrier_process_wide(void)
 #ifdef HOST_WASM
     // browser/wasm is currently single threaded
 #elif defined(HOST_APPLE)
-    if (s_flushByWaiting)
+    mach_msg_type_number_t cThreads;
+    thread_act_t *pThreads;
+    kern_return_t machret = task_threads(mach_task_self(), &pThreads, &cThreads);
+    CHECK_MACH("task_threads()", machret);
+
+    uintptr_t sp;
+    uintptr_t registerValues[128];
+
+    // Iterate through each of the threads in the list.
+    for (mach_msg_type_number_t i = 0; i < cThreads; i++)
     {
-        // See the comment in minipal_initialize_memory_barrier_process_wide.
-        //
-        // Wait out the store buffers rather than trying to reach the other threads.
-        // mach_absolute_time is monotonic and does not stop while the machine is awake,
-        // so if this thread is itself descheduled we only ever wait longer, never less.
-        uint64_t start = mach_absolute_time();
+        // Request the threads pointer values to force the thread to emit a memory barrier
+        size_t registers = 128;
+        machret = thread_get_register_pointer_values(pThreads[i], &sp, &registers, registerValues);
 
-        while ((mach_absolute_time() - start) < s_flushWaitTicks)
+        if (machret == KERN_INSUFFICIENT_BUFFER_SIZE)
         {
-            FlushBarrierPause();
+            CHECK_MACH("thread_get_register_pointer_values()", machret);
         }
+
+        machret = mach_port_deallocate(mach_task_self(), pThreads[i]);
+        CHECK_MACH("mach_port_deallocate()", machret);
     }
-    else
-    {
-        mach_msg_type_number_t cThreads;
-        thread_act_t *pThreads;
-        kern_return_t machret = task_threads(mach_task_self(), &pThreads, &cThreads);
-        CHECK_MACH("task_threads()", machret);
-
-        uintptr_t sp;
-        uintptr_t registerValues[128];
-
-        // Iterate through each of the threads in the list.
-        for (mach_msg_type_number_t i = 0; i < cThreads; i++)
-        {
-            // Request the threads pointer values to force the thread to emit a memory barrier
-            size_t registers = 128;
-            machret = thread_get_register_pointer_values(pThreads[i], &sp, &registers, registerValues);
-
-            if (machret == KERN_INSUFFICIENT_BUFFER_SIZE)
-            {
-                CHECK_MACH("thread_get_register_pointer_values()", machret);
-            }
-
-            machret = mach_port_deallocate(mach_task_self(), pThreads[i]);
-            CHECK_MACH("mach_port_deallocate()", machret);
-        }
-        // Deallocate the thread list now we're done with it.
-        machret = vm_deallocate(mach_task_self(), (vm_address_t)pThreads, cThreads * sizeof(thread_act_t));
-        CHECK_MACH("vm_deallocate()", machret);
-    }
+    // Deallocate the thread list now we're done with it.
+    machret = vm_deallocate(mach_task_self(), (vm_address_t)pThreads, cThreads * sizeof(thread_act_t));
+    CHECK_MACH("vm_deallocate()", machret);
 #else // !HOST_APPLE && !HOST_WASM
 #if HAVE_SYS_MEMBARRIER_H
     if (s_flushUsingMemBarrier)
