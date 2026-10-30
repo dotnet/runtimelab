@@ -82,8 +82,9 @@ LOCAL_LABEL(NotInHeap):
 //   x17  : trashed (ip1)
 #if defined(__APPLE__)
     // An .alt_entry, so that RhpAssignRef stays in the atom of RhpCheckedAssignRef (see the top of the file).
-    // As with LEAF_ENTRY, it has its own unwind info.
-    .global C_FUNC(RhpAssignRef)
+    // Private, like the other alternate entries: it is only referenced from this library (see
+    // GetAssignRefFunctions). As with LEAF_ENTRY, it has its own unwind info.
+    .private_extern C_FUNC(RhpAssignRef)
     .alt_entry C_FUNC(RhpAssignRef)
 C_FUNC(RhpAssignRef):
     .cfi_startproc
