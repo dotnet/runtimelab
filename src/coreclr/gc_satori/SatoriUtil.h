@@ -29,7 +29,7 @@
 
 #include "common.h"
 #include "../gc.h"
-#include "../../inc/satoriconstants.h"
+#include "satoriconstants.h"
 
 // ForwardGCSafeCopy/BackwardGCSafeCopy below use SSE intrinsics on amd64.
 // MSVC gets these via <intrin.h> (included by gcenv.base.h), clang/gcc need

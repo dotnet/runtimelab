@@ -109,6 +109,7 @@ if (CLR_CMAKE_TARGET_WIN32)
     SatoriUtil.h
     SatoriLock.h
     SatoriGate.h
+    satoriconstants.h
   )
 else()
   set(GC_WRITE_BARRIER_SOURCES

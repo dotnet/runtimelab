@@ -4,7 +4,7 @@
 #ifndef __SATORI_CONSTANTS_H__
 #define __SATORI_CONSTANTS_H__
 
-// Shared by the GC, runtime helpers, and assembly write barriers.
+// Shared by the GC and its assembly write barriers.
 // User VA must fit in SATORI_ADDRESS_SPACE_BITS; the top byte may hold a tag.
 #define SATORI_PAGE_BITS            30
 #define SATORI_ADDRESS_SPACE_BITS   48

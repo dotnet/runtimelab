@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 #include "unixasmmacros.inc"
-#include "../../inc/satoriconstants.h"
+#include "../satoriconstants.h"
 
 // The EE copies RhpCheckedAssignRef and RhpAssignRef as one block (see InitJITWriteBarrierHelpers), and
 // RhpCheckedAssignRef reaches into RhpAssignRef with PC-relative instructions: the branch to RhpCheckedEntry

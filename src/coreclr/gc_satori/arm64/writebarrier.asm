@@ -4,7 +4,7 @@
 #include "ksarm64.h"
 #include "asmconstants.h"
 #include "asmmacros.h"
-#include "../../inc/satoriconstants.h"
+#include "../satoriconstants.h"
 
     TEXTAREA
 
