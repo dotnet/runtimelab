@@ -1705,6 +1705,8 @@ static bool ThreadLocalCollectionEventEnabled()
 
 bool SatoriRegion::ThreadLocalCollect(size_t allocBytes, bool atTlgcLimit)
 {
+    size_t escapedBytesBefore = m_escapedSize;
+
     if (m_escapedSize > Satori::MAX_ESCAPE_SIZE)
     {
         return false;
@@ -1760,7 +1762,8 @@ bool SatoriRegion::ThreadLocalCollect(size_t allocBytes, bool atTlgcLimit)
     if (eventStartTicks != 0)
     {
         double durationNs = (double)(minipal_hires_ticks() - eventStartTicks) * 1e9 / (double)minipal_hires_tick_frequency();
-        FIRE_EVENT(GCThreadLocalCollection, (uint32_t)count, shouldCollect, (uint64_t)occupancyBefore, (uint64_t)m_occupancy, durationNs);
+        size_t escapedBytesAfter = m_escapedSize;
+        FIRE_EVENT(GCThreadLocalCollection, (uint32_t)count, shouldCollect, (uint64_t)occupancyBefore, (uint64_t)m_occupancy, durationNs, (uint64_t)escapedBytesBefore, (uint64_t)escapedBytesAfter);
     }
 
     return shouldCollect;

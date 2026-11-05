@@ -290,11 +290,13 @@ void GCToCLREventSink::FireGCThreadLocalCollection(uint32_t count,
                                                    bool collected,
                                                    uint64_t occupancyBefore,
                                                    uint64_t occupancyAfter,
-                                                   double durationNs)
+                                                   double durationNs,
+                                                   uint64_t escapedBytesBefore,
+                                                   uint64_t escapedBytesAfter)
 {
     LIMITED_METHOD_CONTRACT;
 
-    FireEtwGCThreadLocalCollection(GetClrInstanceId(), count, collected, occupancyBefore, occupancyAfter, durationNs);
+    FireEtwGCThreadLocalCollection(GetClrInstanceId(), count, collected, occupancyBefore, occupancyAfter, durationNs, escapedBytesBefore, escapedBytesAfter);
 }
 
 void GCToCLREventSink::FireBGCBegin()

@@ -191,8 +191,10 @@ public:
     void FirePrvDestroyGCHandle(void *handleID) PURE_VIRTUAL
 
     // Added in EE_INTERFACE_MAJOR_VERSION 6
+    // Escaped sizes are region totals in bytes, sampled at collection entry
+    // and after publishing pending finalizers.
     virtual
-    void FireGCThreadLocalCollection(uint32_t count, bool collected, uint64_t occupancyBefore, uint64_t occupancyAfter, double durationNs) PURE_VIRTUAL
+    void FireGCThreadLocalCollection(uint32_t count, bool collected, uint64_t occupancyBefore, uint64_t occupancyAfter, double durationNs, uint64_t escapedBytesBefore, uint64_t escapedBytesAfter) PURE_VIRTUAL
 };
 
 // This interface provides the interface that the GC will use to speak to the rest
