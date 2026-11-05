@@ -130,6 +130,30 @@ Section ends
 
         endm
 
+;
+; Hot leaf helpers (allocation and write barriers) start on a cache line boundary, in a 64-byte aligned
+; part of .text. Otherwise their placement depends on the size of all the code that is linked before them,
+; and a short helper that straddles two cache lines runs measurably slower.
+;
+LEAF_ENTRY_ALIGN64 macro Name
+
+_TEXT$HOT segment align(64) 'CODE'
+
+        align   64
+
+        public  Name
+Name    proc
+
+        endm
+
+LEAF_END_ALIGN64 macro Name
+
+Name    endp
+
+_TEXT$HOT ends
+
+        endm
+
 LEAF_END_MARKED macro Name, section
         public Name&_End
 Name&_End label qword
