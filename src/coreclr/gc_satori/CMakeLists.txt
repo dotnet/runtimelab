@@ -96,6 +96,7 @@ if (CLR_CMAKE_TARGET_WIN32)
     SatoriRegion.inl
     SatoriObject.h
     SatoriObject.inl
+    SatoriPrefetchQueue.h
     SatoriQueue.h
     SatoriRegionQueue.h
     SatoriAllocator.h
@@ -108,6 +109,7 @@ if (CLR_CMAKE_TARGET_WIN32)
     SatoriUtil.h
     SatoriLock.h
     SatoriGate.h
+    satoriconstants.h
   )
 else()
   set(GC_WRITE_BARRIER_SOURCES
@@ -152,6 +154,11 @@ target_include_directories(satori_writebarrier PRIVATE
   ${ARCH_SOURCES_DIR}
   ../vm/${ARCH_SOURCES_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}/../vm/wks)
+
+if (CLR_CMAKE_TARGET_WIN32 AND NOT CLR_CMAKE_HOST_ARCH_ARM AND NOT CLR_CMAKE_HOST_ARCH_ARM64)
+  # writebarrier.asm includes the generated AsmConstants.inc
+  add_dependencies(satori_writebarrier asmconstants_inc)
+endif()
 
 if(FEATURE_STANDALONE_GC)
   add_library_clr(satorigc SHARED ${GC_SOURCES} $<TARGET_OBJECTS:satori_writebarrier>)

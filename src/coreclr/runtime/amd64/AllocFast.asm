@@ -7,7 +7,7 @@ include AsmMacros_Shared.inc
 ;; Allocate non-array, non-finalizable object. If the allocation doesn't fit into the current thread's
 ;; allocation context then automatically fallback to the slow allocation path.
 ;;  RCX == MethodTable
-LEAF_ENTRY RhpNewFast, _TEXT
+LEAF_ENTRY_ALIGN64 RhpNewFast
 
         ;; rdx = ee_alloc_context pointer, TRASHES rax
         INLINE_GET_ALLOC_CONTEXT_BASE rdx, rax
@@ -42,9 +42,10 @@ LEAF_ENTRY RhpNewFast, _TEXT
 
 RhpNewFast_RarePath:
         xor         edx, edx
-        jmp         RhpNewObject
+        ;; RhpNewObject is in a different section. A near jump is needed to get a relocation, a short one would not.
+        jmp         near ptr RhpNewObject
 
-LEAF_END RhpNewFast, _TEXT
+LEAF_END_ALIGN64 RhpNewFast
 
 
 ;; Allocate non-array object with finalizer
@@ -115,7 +116,8 @@ NEW_ARRAY_FAST MACRO
         ; r8 == array size
         ; r10 == ee_alloc_context pointer
         cmp         r8, r9
-        ja          RhpNewVariableSizeObject
+        ;; RhpNewVariableSizeObject is in a different section, use a near jump to get a relocation.
+        ja          near ptr RhpNewVariableSizeObject
 
         add         r8, rax
         mov         [rax + OFFSETOF__Object__m_pEEType], rcx
@@ -129,7 +131,7 @@ ENDM ; NEW_ARRAY_FAST
 ;; Allocate a string.
 ;;  RCX == MethodTable
 ;;  RDX == character/element count
-LEAF_ENTRY RhNewString, _TEXT
+LEAF_ENTRY_ALIGN64 RhNewString
 
         ; we want to limit the element count to the non-negative 32-bit int range
         cmp         rdx, MAX_STRING_LENGTH
@@ -150,13 +152,13 @@ StringSizeOverflow:
         xor         edx, edx            ; Indicate that we should throw OOM.
         jmp         RhExceptionHandling_FailedAllocation
 
-LEAF_END RhNewString, _TEXT
+LEAF_END_ALIGN64 RhNewString
 
 
 ;; Allocate one dimensional, zero based array (SZARRAY).
 ;;  RCX == MethodTable
 ;;  EDX == element count
-LEAF_ENTRY RhpNewArrayFast, _TEXT
+LEAF_ENTRY_ALIGN64 RhpNewArrayFast
 
         ; we want to limit the element count to the non-negative 32-bit int range
         cmp         rdx, 07fffffffh
@@ -179,13 +181,13 @@ ArraySizeOverflow:
         mov         edx, 1              ; Indicate that we should throw OverflowException
         jmp         RhExceptionHandling_FailedAllocation
 
-LEAF_END RhpNewArrayFast, _TEXT
+LEAF_END_ALIGN64 RhpNewArrayFast
 
 
 ;; Allocate one dimensional, zero based array (SZARRAY) of pointer sized elements.
 ;;  RCX == MethodTable
 ;;  EDX == element count
-LEAF_ENTRY RhpNewPtrArrayFast, _TEXT
+LEAF_ENTRY_ALIGN64 RhpNewPtrArrayFast
 
         ; Delegate overflow handling to the generic helper conservatively
 
@@ -203,7 +205,7 @@ LEAF_ENTRY RhpNewPtrArrayFast, _TEXT
 
         NEW_ARRAY_FAST
 
-LEAF_END RhpNewPtrArrayFast, _TEXT
+LEAF_END_ALIGN64 RhpNewPtrArrayFast
 
 
 NESTED_ENTRY RhpNewVariableSizeObject, _TEXT

@@ -29,10 +29,15 @@ namespace Tracing.Tests.GCDumpRuntimeAsync
     {
         private static bool _seenGCStart = false;
         private static bool _seenGCStop = false;
+        private static readonly HeapDumpGcTracker _gcTracker = new HeapDumpGcTracker();
         private static int _bulkTypeCount = 0;
         private static int _bulkNodeCount = 0;
         private static int _emptyTypeNameCount = 0;
         private static bool _sawContinuationType = false;
+        private static readonly bool _nativeAot = TestLibrary.Utilities.IsNativeAot;
+        private static readonly HashSet<ulong> _expectedPayloadSizes = new HashSet<ulong>();
+        private static readonly HashSet<ulong> _observedPayloadSizes = new HashSet<ulong>();
+        private static readonly ulong _byteArrayTypeId = (ulong)(nuint)typeof(byte[]).TypeHandle.Value;
 
         private static ManualResetEvent _gcStopReceived = new ManualResetEvent(false);
 
@@ -75,7 +80,7 @@ namespace Tracing.Tests.GCDumpRuntimeAsync
             s_liveContinuations = new List<Task<long>>(ContinuationCount);
             for (int i = 0; i < ContinuationCount; i++)
             {
-                byte[] payload = new byte[128];
+                byte[] payload = CreatePayload(4096 + i * 16);
                 payload[0] = (byte)i;
                 s_liveContinuations.Add(Suspended(payload));
             }
@@ -99,10 +104,19 @@ namespace Tracing.Tests.GCDumpRuntimeAsync
             // This space intentionally left blank
         };
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static byte[] CreatePayload(int length)
+        {
+            byte[] payload = new byte[length];
+            // NativeAOT array base size is SyncBlock + MethodTable pointer + length/padding.
+            _expectedPayloadSizes.Add((ulong)(3 * IntPtr.Size + length));
+
+            return payload;
+        }
+
         private static Action _eventGeneratingAction = () =>
         {
-            // Wait up to 10 seconds to receive the GCStop event for the heap snapshot.
-            _gcStopReceived.WaitOne(10000);
+            Assert.True(_gcStopReceived.WaitOne(30000), "The diagnostic collection did not finish.");
         };
 
         private static Func<EventPipeEventSource, Func<int>> _Validate = (source) =>
@@ -110,6 +124,7 @@ namespace Tracing.Tests.GCDumpRuntimeAsync
             source.Clr.GCStart += (GCStartTraceData data) =>
             {
                 _seenGCStart = true;
+                _gcTracker.GCStarted(data.Count);
             };
 
             source.Clr.TypeBulkType += (GCBulkTypeTraceData data) =>
@@ -131,13 +146,34 @@ namespace Tracing.Tests.GCDumpRuntimeAsync
 
             source.Clr.GCBulkNode += delegate (GCBulkNodeTraceData data)
             {
+                _gcTracker.HeapEvent();
+                if (_gcTracker.IsComplete)
+                {
+                    _seenGCStop = true;
+                    _gcStopReceived.Set();
+                }
                 _bulkNodeCount += data.Count;
+                if (_nativeAot)
+                {
+                    for (int i = 0; i < data.Count; i++)
+                    {
+                        GCBulkNodeValues node = data.Values(i);
+                        if (node.TypeID == _byteArrayTypeId)
+                        {
+                            _observedPayloadSizes.Add(node.Size);
+                        }
+                    }
+                }
             };
 
             source.Clr.GCStop += (GCEndTraceData data) =>
             {
-                _seenGCStop = true;
-                _gcStopReceived.Set();
+                _gcTracker.GCStopped(data.Count);
+                if (_gcTracker.IsComplete)
+                {
+                    _seenGCStop = true;
+                    _gcStopReceived.Set();
+                }
             };
 
             return () =>
@@ -149,9 +185,23 @@ namespace Tracing.Tests.GCDumpRuntimeAsync
                     && _seenGCStop
                     && _bulkTypeCount > 50
                     && _bulkNodeCount > 50
-                    && _sawContinuationType
-                    && _emptyTypeNameCount == 0)
+                    && (_nativeAot || (_sawContinuationType && _emptyTypeNameCount == 0))
+                    && !_gcTracker.HasInvalidHeapEvent)
                 {
+                    if (_nativeAot)
+                    {
+                        // NativeAOT omits type names; captured payloads verify continuation traversal instead.
+                        Assert.Equal(128, _expectedPayloadSizes.Count);
+                        foreach (ulong size in _expectedPayloadSizes)
+                        {
+                            Assert.Contains(size, _observedPayloadSizes);
+                        }
+                        Console.WriteLine($"Runtime Async heap dump: types={_bulkTypeCount}, nodes={_bulkNodeCount}, all 128 continuation payloads found (NativeAOT omits type names).");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Runtime Async heap dump: types={_bulkTypeCount}, nodes={_bulkNodeCount}, continuation type found, no empty type names.");
+                    }
                     return 100;
                 }
 
@@ -161,6 +211,7 @@ namespace Tracing.Tests.GCDumpRuntimeAsync
                 Console.WriteLine($"_bulkTypeCount =       {_bulkTypeCount}");
                 Console.WriteLine($"_bulkNodeCount =       {_bulkNodeCount}");
                 Console.WriteLine($"_sawContinuationType = {_sawContinuationType}");
+                Console.WriteLine($"Snapshot GC count =   {_gcTracker.SnapshotGCCount}; invalid heap event = {_gcTracker.HasInvalidHeapEvent}");
                 Console.WriteLine($"_emptyTypeNameCount =  {_emptyTypeNameCount} (expected 0; a non-zero count means " +
                                   "metadata-less Runtime Async continuations were logged without a type name -- dotnet/runtime#120800)");
                 return -1;

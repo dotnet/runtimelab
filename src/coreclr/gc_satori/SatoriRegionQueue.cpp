@@ -36,6 +36,11 @@
 
 SatoriRegion* SatoriRegionQueue::TryPopWithSize(size_t regionSize, SatoriRegion*& putBack)
 {
+    if (IsEmpty())
+    {
+        return nullptr;
+    }
+
     m_lock.Enter();
 
     SatoriRegion* result = m_head;
@@ -87,33 +92,103 @@ SatoriRegion* SatoriRegionQueue::TryPopWithSize(size_t regionSize, SatoriRegion*
         if (result->Size() > regionSize)
         {
             // if there is a diff, split what is needed and put the rest back to appropriate queue.
-            putBack = result;
-            result = putBack->TrySplit(regionSize);
+            SatoriRegion* remainder = result;
+            result = remainder->TrySplit(regionSize);
+            if (result != nullptr)
+            {
+                putBack = remainder;
+            }
+            else
+            {
+                result = TryRemoveWithSize(
+                    regionSize,
+                    putBack,
+                    /* maxRegions */ 64,
+                    /* preferCommitted */ true,
+                    /* maxRegionSize */ SIZE_MAX,
+                    /* requireCommitted */ true);
+                Push(remainder);
+            }
         }
     }
 
     return result;
 }
 
-SatoriRegion* SatoriRegionQueue::TryRemoveWithSize(size_t regionSize, SatoriRegion*& putBack)
+SatoriRegion* SatoriRegionQueue::TryRemoveWithSize(
+    size_t regionSize,
+    SatoriRegion*& putBack,
+    size_t maxRegions,
+    bool preferCommitted,
+    size_t maxRegionSize,
+    bool requireCommitted,
+    size_t* outBestCandidateSize,
+    bool* outBestCandidateNeedsCommit)
 {
+    if (outBestCandidateSize != nullptr)
+    {
+        *outBestCandidateSize = SIZE_MAX;
+    }
+
+    if (outBestCandidateNeedsCommit != nullptr)
+    {
+        *outBestCandidateNeedsCommit = true;
+    }
+
+    if (IsEmpty())
+    {
+        return nullptr;
+    }
+
     m_lock.Enter();
 
-    SatoriRegion* result = m_head;
-    while (true)
+    // Limit the search unless the allocator could not get memory elsewhere.
+    // Freed regions are pushed to the head, so the recently freed ones are among them.
+    SatoriRegion* result = nullptr;
+    size_t resultSize = SIZE_MAX;
+    bool resultNeedsCommit = true;
+    size_t remaining = maxRegions;
+    for (SatoriRegion* cur = m_head; cur != nullptr && remaining > 0; cur = cur->m_next, remaining--)
     {
-        if (result == nullptr)
+        size_t curSize = cur->Size();
+        if (curSize < regionSize)
         {
-            m_lock.Leave();
-            return nullptr;
+            continue;
         }
 
-        if (result->Size() >= regionSize)
+        bool needsCommit = (preferCommitted || requireCommitted) && curSize != regionSize && !cur->CanSplitWithoutCommit(regionSize);
+        if (requireCommitted && needsCommit)
         {
-            break;
+            continue;
         }
 
-        result = result->m_next;
+        if ((resultNeedsCommit && !needsCommit) ||
+            (resultNeedsCommit == needsCommit && curSize < resultSize))
+        {
+            result = cur;
+            resultSize = curSize;
+            resultNeedsCommit = needsCommit;
+            if (curSize == regionSize)
+            {
+                break;
+            }
+        }
+    }
+
+    if (outBestCandidateSize != nullptr)
+    {
+        *outBestCandidateSize = resultSize;
+    }
+
+    if (outBestCandidateNeedsCommit != nullptr)
+    {
+        *outBestCandidateNeedsCommit = resultNeedsCommit;
+    }
+
+    if (result == nullptr || resultSize > maxRegionSize)
+    {
+        m_lock.Leave();
+        return nullptr;
     }
 
     _ASSERTE(result->ValidateBlank());
@@ -164,9 +239,29 @@ SatoriRegion* SatoriRegionQueue::TryRemoveWithSize(size_t regionSize, SatoriRegi
 
         if (result->Size() > regionSize)
         {
-             // if there is a diff, split what is needed and put the rest back to appropriate queue.
-            putBack = result;
-            result = putBack->TrySplit(regionSize);
+            // if there is a diff, split what is needed and put the rest back to appropriate queue.
+            SatoriRegion* remainder = result;
+            result = remainder->TrySplit(regionSize);
+            if (result != nullptr)
+            {
+                putBack = remainder;
+            }
+            else
+            {
+                _ASSERTE(!requireCommitted);
+                if (!preferCommitted)
+                {
+                    result = TryRemoveWithSize(
+                        regionSize,
+                        putBack,
+                        maxRegions,
+                        /* preferCommitted */ true,
+                        maxRegionSize,
+                        /* requireCommitted */ true);
+                }
+
+                Push(remainder);
+            }
         }
     }
 
@@ -209,14 +304,71 @@ SatoriRegion* SatoriRegionQueue::TryDequeueIfHasFreeSpaceInTopBucket()
     return result;
 }
 
+SatoriRegion* SatoriRegionQueue::TryPopFitting(size_t minFree, size_t maxScan)
+{
+    if (IsEmpty())
+    {
+        return nullptr;
+    }
+
+    m_lock.Enter();
+
+    SatoriRegion* result = m_head;
+    for (size_t i = 0; result != nullptr; i++)
+    {
+        if (i == maxScan)
+        {
+            result = nullptr;
+            break;
+        }
+
+        if (result->CanFitAllocation(minFree))
+        {
+            break;
+        }
+
+        result = result->m_next;
+    }
+
+    if (result == nullptr)
+    {
+        m_lock.Leave();
+        return nullptr;
+    }
+
+    SatoriRegion* prev = result->m_prev;
+    SatoriRegion* next = result->m_next;
+    if (prev != nullptr)
+    {
+        prev->m_next = next;
+    }
+    else
+    {
+        m_head = next;
+    }
+
+    if (next != nullptr)
+    {
+        next->m_prev = prev;
+    }
+    else
+    {
+        m_tail = prev;
+    }
+
+    m_count--;
+    result->m_containingQueue = nullptr;
+
+    m_lock.Leave();
+
+    result->m_prev = nullptr;
+    result->m_next = nullptr;
+    return result;
+}
+
 SatoriRegionQueue* SatoriRegionQueue::AllocAligned(QueueKind kind)
 {
-    const size_t align =
-#if defined(TARGET_AMD64)
-        64;
-#else
-        128;
-#endif
+    const size_t align = alignof(SatoriRegionQueue);
 
 #ifdef _MSC_VER
     void* buffer = _aligned_malloc(sizeof(SatoriRegionQueue), align);
@@ -225,5 +377,20 @@ SatoriRegionQueue* SatoriRegionQueue::AllocAligned(QueueKind kind)
     buffer = (void*)ALIGN_UP((size_t)buffer, align);
 #endif
     return new(buffer)SatoriRegionQueue(kind);
+}
+
+SatoriShardedRegionQueue* SatoriShardedRegionQueue::AllocAligned(QueueKind kind, size_t shardCount)
+{
+    _ASSERTE(shardCount > 0 && (shardCount & (shardCount - 1)) == 0);
+    const size_t align = alignof(SatoriShardedRegionQueue);
+    const size_t size = offsetof(SatoriShardedRegionQueue, m_shards) + shardCount * sizeof(SatoriRegionQueue);
+
+#ifdef _MSC_VER
+    void* buffer = _aligned_malloc(size, align);
+#else
+    void* buffer = malloc(size + align);
+    buffer = (void*)ALIGN_UP((size_t)buffer, align);
+#endif
+    return new(buffer)SatoriShardedRegionQueue(kind, shardCount);
 }
 

@@ -500,4 +500,36 @@ namespace Tracing.Tests.Common
             }
         }
     }
+
+    public sealed class HeapDumpGcTracker
+    {
+        private int _latestStartedGC = -1;
+        private int _highestStoppedGC = -1;
+        private readonly HashSet<int> _stoppedGCs = new HashSet<int>();
+
+        public int SnapshotGCCount { get; private set; } = -1;
+        public bool HasInvalidHeapEvent { get; private set; }
+        public bool IsComplete => SnapshotGCCount >= 0 && _stoppedGCs.Contains(SnapshotGCCount);
+
+        public void GCStarted(int count)
+        {
+            _latestStartedGC = count;
+        }
+
+        public void GCStopped(int count)
+        {
+            _stoppedGCs.Add(count);
+            _highestStoppedGC = Math.Max(_highestStoppedGC, count);
+        }
+
+        public void HeapEvent()
+        {
+            if (SnapshotGCCount < 0)
+            {
+                // Heap-dump events are emitted inside the current blocking collection.
+                SnapshotGCCount = _latestStartedGC;
+            }
+            HasInvalidHeapEvent |= SnapshotGCCount < 0 || _highestStoppedGC >= SnapshotGCCount;
+        }
+    }
 }

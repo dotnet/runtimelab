@@ -32,6 +32,7 @@
 #include "SatoriRegionQueue.h"
 
 class SatoriHeap;
+class SatoriRegion;
 
 class SatoriTrimmer
 {
@@ -42,6 +43,8 @@ public:
     void SetOkToRun();
     void WaitForStop();
     bool IsActive();
+
+    void TrimNow();
 
 private:
     static const int TRIMMER_STATE_BLOCKED = -1;
@@ -59,6 +62,7 @@ private:
 
     static void LoopFn(void* inst);
     void Loop();
+    bool TryTrimRegion(SatoriRegion* region, bool drainsAreDone);
     void StopAndWait();
     void Pause(int msec);
     void Unpause();

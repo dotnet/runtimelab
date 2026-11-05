@@ -78,6 +78,7 @@ GCStart_V2
 GCSuspendEEBegin_V1
 GCSuspendEEEnd_V1
 GCTerminateConcurrentThread_V1
+GCThreadLocalCollection
 GCTriggered
 GenAwareBegin
 GenAwareEnd

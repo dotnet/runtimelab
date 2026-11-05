@@ -57,6 +57,18 @@ struct VirtualReserveFlags
     };
 };
 
+// Outcome of GCToOSInterface::VirtualReserve at a requested location
+enum class VirtualReserveStatus
+{
+    // The range was reserved at the requested location.
+    Success,
+    // The range, or a part of it, is already mapped.
+    Occupied,
+    // The OS refused for a reason other than the range being mapped,
+    // such as running out of address space or hitting a mapping limit.
+    Refused,
+};
+
 // An event is a synchronization object whose state can be set and reset
 // indicating that an event has occurred. It is used pervasively throughout
 // the GC.
@@ -289,7 +301,16 @@ public:
     //  granularity.
     static void* VirtualReserve(size_t size, size_t alignment, uint32_t flags, uint16_t node = NUMA_NODE_UNDEFINED);
 
-    static void* VirtualReserve(void* location, size_t size, bool useTHP = false);
+    // Reserve virtual memory range at the given location.
+    // Parameters:
+    //  location  - requested starting address, or nullptr for any address
+    //  size      - size of the virtual memory range
+    //  useTHP    - hint that the range should be backed by transparent huge pages
+    //  status    - optional, receives the outcome when location is not nullptr
+    // Return:
+    //  Starting virtual address of the reserved range, or nullptr if the range could not be
+    //  reserved (when location is not nullptr, at that location)
+    static void* VirtualReserve(void* location, size_t size, bool useTHP = false, VirtualReserveStatus* status = nullptr);
 
     // Release virtual memory range previously reserved using VirtualReserve
     // Parameters:
@@ -447,6 +468,14 @@ public:
     // Return:
     //  non zero if it has succeeded, 0 if it has failed
     static size_t GetVirtualMemoryMaxAddress();
+
+    // Get the range of addresses where this process can map memory.
+    // Parameters:
+    //  start - receives the lowest address that can be mapped
+    //  end   - receives the address right after the highest address that can be mapped
+    // Return:
+    //  true if it has succeeded, false if the range is not known. On failure start and end are not modified.
+    static bool GetUserAddressRange(size_t* start, size_t* end);
 
     // Get the physical memory that this process can use.
     // Return:

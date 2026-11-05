@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
+    <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
+    <Nullable>enable</Nullable>
+    <WarningsAsErrors>nullable</WarningsAsErrors>
+    <CLRTestExecutionArguments>99</CLRTestExecutionArguments>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="HighMemoryPercent.cs" />
+  </ItemGroup>
+</Project>

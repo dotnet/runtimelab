@@ -8,6 +8,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildProjectName).cs" />
+    <Compile Include="../common/HeapDumpGcTrackerTests.cs" Link="HeapDumpGcTrackerTests.cs" />
+    <!-- The test excludes tiering through AnyJitOptimizationStress; disable it so default runs execute the validator. -->
+    <CLRTestEnvironmentVariable Include="DOTNET_TieredCompilation" Value="0" />
     <ProjectReference Include="../common/eventpipe_common.csproj" />
     <ProjectReference Include="../common/Microsoft.Diagnostics.NETCore.Client/Microsoft.Diagnostics.NETCore.Client.csproj" />
      <ProjectReference Include="$(TestLibraryProjectPath)" />

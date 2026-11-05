@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
+    <GCStressIncompatible>true</GCStressIncompatible>
+    <JitOptimizationSensitive>true</JitOptimizationSensitive>
+    <UnloadabilityIncompatible>true</UnloadabilityIncompatible>
+    <CLRTestPriority>1</CLRTestPriority>
+    <CLRTestTargetUnsupported Condition="'$(RuntimeFlavor)' != 'coreclr'">true</CLRTestTargetUnsupported>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+    <WarningsAsErrors>nullable</WarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildProjectName).cs" />
+    <EmbeddedResource Include="..\..\..\..\..\coreclr\vm\ClrEtwAll.man" LogicalName="SatoriEventManifest" />
+    <ProjectReference Include="..\..\..\..\tracing\eventpipe\common\eventpipe_common.csproj" />
+    <ProjectReference Include="..\..\..\..\tracing\eventpipe\common\Microsoft.Diagnostics.NETCore.Client\Microsoft.Diagnostics.NETCore.Client.csproj" />
+    <ProjectReference Include="$(TestLibraryProjectPath)" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcGen0" Value="1" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcConcurrent" Value="0" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcParallel" Value="0" />
+    <!-- Region selection must not depend on the adaptive escape-tracking backoff policy. -->
+    <CLRTestEnvironmentVariable Include="DOTNET_gcTrackBackoff" Value="0" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcRate" Value="0xEA60" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcRelocatingGen1" Value="0" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcRelocatingGen2" Value="0" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcTrim" Value="0" />
+  </ItemGroup>
+</Project>

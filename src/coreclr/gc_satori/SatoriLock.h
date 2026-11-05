@@ -32,7 +32,7 @@
 #include "SatoriUtil.h"
 #include "SatoriGate.h"
 
-#if defined(TARGET_OSX)
+#if defined(TARGET_APPLE)
 #include <time.h>
 #endif
 
@@ -98,8 +98,16 @@ private:
     // One iteration is mapped to 64 spin count units.
     static const int SpinCountScaleShift = 6;
 
-    static const uint16_t DefaultMaxSpinCount = 22 << SpinCountScaleShift;
+    static const uint16_t DefaultMaxSpinCount = 50 << SpinCountScaleShift;
     static const uint16_t DefaultMinSpinCount = 1 << SpinCountScaleShift;
+
+    // Past this the per-iteration pause stops doubling and becomes a fixed amount of wall
+    // time instead - see IterationBackoffLong.
+    static const int MaxBackoffIteration = 6;
+
+    // The lock changing hands this many times while we waited is ordinary contention.
+    // Only past that are we being passed over rather than narrowly missing.
+    static const uint32_t OwnerChangedThreshold = 8;
 
     // We will use exponential backoff in rare cases when we need to change state atomically and cannot
     // make progress due to concurrent state changes by other threads.
@@ -230,6 +238,17 @@ private:
         {
             YieldProcessor();
         }
+    }
+
+    // Once the exponential pause has grown to its limit, keep going in fixed amounts of
+    // wall time rather than fixed counts of YieldProcessor()
+    static void IterationBackoffLong()
+    {
+        int64_t deadline = SatoriUtil::GetTimeStamp() + SatoriUtil::TimeStampTicksPerUsec();
+        do
+        {
+            YieldProcessor();
+        } while (SatoriUtil::GetTimeStamp() - deadline < 0);
     }
 
     NOINLINE

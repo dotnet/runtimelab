@@ -3571,6 +3571,12 @@ void ThreadSuspend::ResumeAllThreads(BOOL SuspendSucceeded)
     // you may have to change routine GCHeapUtilities::SafeToRestartManagedThreads
     // as well.
     //
+    // Fire the "restart end" event right before the threads are released. Once they are released,
+    // this thread may be preempted for a long time under CPU load, which would be wrongly reported
+    // as a part of the EE suspension.
+    //
+    FireEtwGCRestartEEEnd_V1(GetClrInstanceId());
+
     ThreadStore::UnsetThreadTrapForSuspension();
     g_pSuspensionThread    = 0;
 
@@ -5479,8 +5485,6 @@ void ThreadSuspend::RestartEE(BOOL SuspendSucceeded)
             pCurThread->m_Priority = INVALID_THREAD_PRIORITY;
         }
     }
-
-    FireEtwGCRestartEEEnd_V1(GetClrInstanceId());
 
 #ifdef TIME_SUSPEND
     g_SuspendStatistics.EndRestart();

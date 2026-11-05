@@ -1,26 +1,26 @@
 # Satori Garbage Collector #
 
-A simple garbage collector that incorporates various ideas that I had over time. 
+A simple garbage collector that incorporates various ideas that I had over time.
 
 ### Short term goals: ###
-- auto-tuning, auto-scaling, mostly ìknoblessî design.
-- avoid long pauses when user threads are not making progress.  
+- auto-tuning, auto-scaling, mostly ‚Äúknobless‚Äù design.
+- avoid long pauses when user threads are not making progress.
 
 ### Supported Features: ###
 
-- [x] All features expected in a fully functional Garbage Collector: 
+- [x] All features expected in a fully functional Garbage Collector:
   - Mark-and-sweep,
   - Internal pointers,
-  - Premortem Finalization, 
-  - Weak References, 
-  - Dependent Handles, 
-  - Unloadable types, 
+  - Premortem Finalization,
+  - Weak References,
+  - Dependent Handles,
+  - Unloadable types,
   -  ... etc...
 - [x] Generational GC.
    - younger generations can be collected without touching older ones
 - [x] Compacting GC.
    - can optionally relocate objects to reduce fragmentation.
-- [x] Concurrent GC. 
+- [x] Concurrent GC.
    - all major phases, except optional relocation, can be done concurrently with user code.
 - [x] Parallel GC
   - GC can employ multiple threads as needed.
@@ -35,7 +35,7 @@ A simple garbage collector that incorporates various ideas that I had over time.
 - [x] Trimming of committed set.
   - lazy return of unused memory to the OS.
 
-### Supported Platforms: ### 
+### Supported Platforms: ###
 |         | x64                 | arm64               |
 | --------| ------------------- | ------------------- |
 | Windows | <ul><li>- [x] </li> | <ul><li>- [x] </li> |
@@ -43,10 +43,9 @@ A simple garbage collector that incorporates various ideas that I had over time.
 | macOS   | <ul><li>- [x] </li> | <ul><li>- [x] </li> |
 
 ### Roadmap: ###
-- [ ]  explicit memory limits
+- [x]  explicit memory limits
 - [x]  immortal allocations
 - [x]  preallocated objects
 - [ ]  perf tuning (possibly a lot of opportunities)
 - [ ]  more and better diagnostics (support for debuggers and profilers)
 - [ ]  NUMA awareness
-

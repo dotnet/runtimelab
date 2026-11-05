@@ -37,7 +37,7 @@ class SatoriRegion;
 class SatoriFinalizationQueue
 {
 public:
-    void Initialize(SatoriHeap* heap);
+    bool Initialize(SatoriHeap* heap);
     bool TryUpdateScanTicket(int currentScanTicket);
     bool TryScheduleForFinalization(SatoriObject* finalizable);
 

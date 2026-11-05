@@ -45,7 +45,6 @@ SatoriObject* SatoriAllocationContext::FinishAllocFromShared()
     SatoriRegion* containingRegion = freeObj->ContainingRegion();
     // this portion is now parsable
     freeObj->ContainingRegion()->DecrementUnfinishedAlloc();
-    freeObj->ContainingRegion()->Allocator()->AllocationTickDecrement(unused);
     // unclaim unused.
     alloc_bytes -= unused;
     alloc_ptr = alloc_limit = nullptr;
@@ -59,15 +58,16 @@ void SatoriAllocationContext::Deactivate(SatoriRecycler* recycler, bool detach)
     if (region != nullptr)
     {
         size_t allocPtr = (size_t)this->alloc_ptr;
+        size_t allocLimit = (size_t)this->alloc_limit;
 
         size_t unused = this->alloc_limit - this->alloc_ptr;
         this->alloc_bytes -= unused;
         this->alloc_limit = this->alloc_ptr = nullptr;
-        region->Allocator()->AllocationTickDecrement(unused);
 
         if (region->IsAllocating())
         {
-            region->StopAllocating(allocPtr);
+            // the unused part of the allocation context is zeroed.
+            region->StopAllocating(allocPtr, allocLimit);
         }
 
         if (detach ||

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
+    <GCStressIncompatible>true</GCStressIncompatible>
+    <CLRTestTargetUnsupported Condition="'$(RuntimeFlavor)' != 'coreclr'">true</CLRTestTargetUnsupported>
+    <Nullable>enable</Nullable>
+    <WarningsAsErrors>nullable</WarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="BlockingCollect.cs" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcConcurrent" Value="1" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcGen0" Value="0" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcPace" Value="0" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcParallel" Value="1" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcRate" Value="0xEA60" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcRelocatingGen1" Value="0" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcRelocatingGen2" Value="0" />
+    <CLRTestEnvironmentVariable Include="DOTNET_gcTrim" Value="0" />
+  </ItemGroup>
+</Project>

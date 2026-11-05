@@ -3,17 +3,20 @@
 using System;
 using System.Threading;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Java;
 using Xunit;
 
 public class Bridge
 {
+    public static List<Bridge> Roots;
     public List<object> Links;
 
     public unsafe Bridge()
     {
         Links = new List<object>();
+        Roots.Add(this);
         IntPtr *pContext = (IntPtr*)NativeMemory.Alloc(((nuint)sizeof(void*)));
         GCHandle handle = JavaMarshal.CreateReferenceTrackingHandle(this, pContext);
 
@@ -40,14 +43,14 @@ public unsafe class GCBridgeTests
     private static extern void SetBridgeProcessingFinishCallback(delegate* unmanaged<MarkCrossReferencesArgs*, void> callback);
 
     static bool releaseHandles;
-    static nuint expectedSccsLen, expectedCcrsLen;
+    static nuint sccsLen, ccrsLen;
 
     [UnmanagedCallersOnly]
     internal static unsafe void BridgeProcessingFinishCallback(MarkCrossReferencesArgs* mcr)
     {
         Console.WriteLine("Bridge processing finish SCCs {0}, CCRs {1}", mcr->ComponentCount, mcr->CrossReferenceCount);
-        Assert.Equal(expectedSccsLen, mcr->ComponentCount);
-        Assert.Equal(expectedCcrsLen, mcr->CrossReferenceCount);
+        sccsLen = mcr->ComponentCount;
+        ccrsLen = mcr->CrossReferenceCount;
 
         List<GCHandle> handlesToFree = new List<GCHandle>();
 
@@ -108,29 +111,45 @@ public unsafe class GCBridgeTests
         }
     }
 
-    private static void SetBPFinishArguments(bool rh, nuint expectedS, nuint expectedC)
+    private static void SetBPFinishArguments(bool rh)
     {
         releaseHandles = rh;
-        expectedSccsLen = expectedS;
-        expectedCcrsLen = expectedC;
+        sccsLen = 0;
+        ccrsLen = 0;
     }
 
     static void RunGraphTest(Func<List<WeakReference>> buildGraph, nuint expectedSCCs, nuint expectedCCRs)
     {
-        Assert.True(GC.TryStartNoGCRegion(10000000));
+        // Instead of relying on no-GC regions, detect GCs not induced by the test and retry.
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            if (TryRunGraphTest(buildGraph, expectedSCCs, expectedCCRs))
+            {
+                return;
+            }
+        }
+
+        Console.WriteLine("Skipped test {0} due to unexpected GCs", buildGraph.Method.Name);
+    }
+
+    static bool TryRunGraphTest(Func<List<WeakReference>> buildGraph, nuint expectedSCCs, nuint expectedCCRs)
+    {
         Console.WriteLine("Start test {0}", buildGraph.Method.Name);
-        List<WeakReference> weakRefs = buildGraph();
+        List<WeakReference> weakRefs = BuildGraph(buildGraph);
+
+        // Finish any GC in progress, then use the gen1 count to detect GCs not induced by the test.
+        GC.Collect();
+        int gcCount = GC.CollectionCount(1);
+
         // All objects produced by buildGraph are expected to be dead, so we can compute
         // the SCC graph.
-
         Console.WriteLine(" First GC");
-        SetBPFinishArguments(false, expectedSCCs, expectedCCRs);
-        GC.EndNoGCRegion();
+        SetBPFinishArguments(false);
+        Bridge.Roots = null;
         GC.Collect ();
         // The BP finish of first gc will not release any cross refs. We verify
         // that we computed the correct number of SCCs and CCRs for the object graph.
 
-        Assert.True(GC.TryStartNoGCRegion(100000));
         Thread.Sleep (100);
 
         // BP might have finished or not at this point, WeakRef check should wait for
@@ -138,28 +157,66 @@ public unsafe class GCBridgeTests
         // should be alive because we haven't released any handles.
         CheckWeakRefs(weakRefs, true);
 
+        // Read the results before checking that no other GC could have produced them.
+        nuint sccs = sccsLen, ccrs = ccrsLen;
+        if (GC.CollectionCount(1) != gcCount + 1)
+        {
+            ReleaseGraph(weakRefs);
+            return false;
+        }
+
+        Assert.Equal(expectedSCCs, sccs);
+        Assert.Equal(expectedCCRs, ccrs);
+
         Console.WriteLine(" Second GC");
-        SetBPFinishArguments(true, expectedSCCs, expectedCCRs);
-        GC.EndNoGCRegion();
+        SetBPFinishArguments(true);
         GC.Collect ();
+        if (GC.CollectionCount(1) != gcCount + 2)
+        {
+            ReleaseGraph(weakRefs);
+            return false;
+        }
+
         // The BP finish of first gc will release all cross refs. The bridge object graph
         // should be the same, since it is computed before the cross ref handles are released.
 
         // This should wait for bridge processing to finish, detecting that the bridge objects
         // are freed on the java/client side.
         CheckWeakRefs(weakRefs, false);
+        Assert.Equal(expectedSCCs, sccsLen);
+        Assert.Equal(expectedCCRs, ccrsLen);
 
-        Assert.True(GC.TryStartNoGCRegion(100000));
         Console.WriteLine(" Third GC");
-        SetBPFinishArguments(true, 0, 0);
-        GC.EndNoGCRegion();
+        SetBPFinishArguments(true);
         GC.Collect ();
         // During this GC, there are no cross ref handles anymore so no bridge objects to process
 
         // Make sure BP is finished before we start next test
         Thread.Sleep(1000);
+        Assert.Equal((nuint)0, sccsLen);
+        Assert.Equal((nuint)0, ccrsLen);
 
         Console.WriteLine("Finished test {0}", buildGraph.Method.Name);
+        return true;
+    }
+
+    // Not inlined, so that unoptimized callers do not keep the roots alive.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    static List<WeakReference> BuildGraph(Func<List<WeakReference>> buildGraph)
+    {
+        // Keep the graph alive while it is being built.
+        Bridge.Roots = new List<Bridge>();
+        return buildGraph();
+    }
+
+    static void ReleaseGraph(List<WeakReference> weakRefs)
+    {
+        Console.WriteLine(" Unexpected GC, releasing the graph");
+        releaseHandles = true;
+        while (weakRefs.Exists(w => w.IsAlive))
+        {
+            GC.Collect();
+        }
     }
 
     // Simpler version of NestedCycles
