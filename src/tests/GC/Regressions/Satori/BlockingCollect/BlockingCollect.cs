@@ -65,6 +65,15 @@ public static class BlockingCollect
         Node tenuredGraph = CreateGraph();
         PrepareHeap();
         Node youngGraph = CreateGraph();
+
+        if (concurrentGeneration == 1)
+        {
+            // A gen1 GC marks only the ephemeral generations, so it starts concurrently only when the ephemeral
+            // occupancy recorded by the previous GC is large enough. Record the young graph, otherwise the
+            // gen1 collection below runs entirely in its pause and there is no concurrent mark to interrupt.
+            GC.Collect(1, GCCollectionMode.Forced, blocking: true);
+        }
+
         int before = GC.CollectionCount(concurrentGeneration);
 
         // With no workers, one helping quantum cannot finish this graph.
