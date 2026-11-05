@@ -202,7 +202,7 @@ ALTERNATE_ENTRY PatchableValue_CardSet_WriteBarrierState
         push rdx
         push r8
 
-        ; also save xmm0, in case it is used for stack clearing, as JIT_ByRefWriteBarrier should not trash xmm0
+        ; also save xmm0, in case it is used for stack clearing.
         ; Hopefully EscapeFn cannot corrupt other xmm regs, since there is no float math or vectorizable code in there.
         sub     rsp, 16
         movdqa  [rsp], xmm0

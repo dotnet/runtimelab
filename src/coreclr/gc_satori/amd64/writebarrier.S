@@ -102,11 +102,7 @@ LOCAL_LABEL(RhpCheckedEntry):
 LOCAL_LABEL(JustAssign):
     ALTERNATE_ENTRY_WITH_UNWIND RhpAssignRefAVLocationNotHeap
     mov     [rdi], rsi              // src is external/null, or the assignment is completely threadlocal
-    // set rdi, rsi per contract with JIT_ByRefWriteBarrier
-    //add     rdi, 8
-    //mov     rsi, r10
     ret
-    ////nop
 
     // Not executed. Aligns the imm64 below: 3 bytes of padding, the 3-byte store and the 2-byte opcode
     // end on an 8-byte boundary (see the top of the file).
@@ -122,16 +118,12 @@ LOCAL_LABEL(AssignAndMarkCards):
     ALTERNATE_ENTRY_WITH_UNWIND PatchableValue_AssignAndMarkCards_WriteBarrierState
     .quad   0x0F0F0F0F0F0F0F0F0      // fetch the barrier state value (patched; see GetAssignRefFunctions)
 
-    // set rdi per contract with JIT_ByRefWriteBarrier
     mov     rax, rdi
-    //add     rdi, 8
 
     // check the barrier state. this must be done after the assignment (in program order)
     // if state == 2 we do not set or dirty cards.
     cmp     r11, 2
     jne     LOCAL_LABEL(DoCards)
-    // set rsi per contract with JIT_ByRefWriteBarrier
-    //mov     rsi, r10
 LOCAL_LABEL(Exit):
     ret
 
@@ -139,8 +131,6 @@ LOCAL_LABEL(DoCards):
     // if same region, just check if barrier is not concurrent
     xor     rsi, rax
     shr     rsi, 21
-    // set rsi per contract with JIT_ByRefWriteBarrier
-    //mov     rsi, r10
     jz      LOCAL_LABEL(CheckConcurrent)         // same region, just check if barrier is not concurrent
 
     // if src is in gen2/3 and the barrier is not concurrent we do not need to mark cards
@@ -227,16 +217,14 @@ LOCAL_LABEL(RecordEscape):
     // Align rsp
     mov  r9, rsp
     and  rsp, -16
-    sub  rsp, 8
 
-    // save rsp, rdi, rsi, rdx and r10 (possibly preadjusted rsi)
+    // save rsp, rdi, rsi and rdx
     push r9
     push rdi
     push rsi
     push rdx
-    push r10
 
-    // also save xmm0, in case it is used for stack clearing, as JIT_ByRefWriteBarrier should not trash xmm0
+    // also save xmm0, in case it is used for stack clearing.
     // Hopefully EscapeFn cannot corrupt other xmm regs, since there is no float math or vectorizable code in there.
     sub     rsp, 16
     movdqa  [rsp], xmm0
@@ -247,7 +235,6 @@ LOCAL_LABEL(RecordEscape):
     movdqa  xmm0, [rsp]
     add     rsp, 16
 
-    pop     r10
     pop     rdx
     pop     rsi
     pop     rdi
