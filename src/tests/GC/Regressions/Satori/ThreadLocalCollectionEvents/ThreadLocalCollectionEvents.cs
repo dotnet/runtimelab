@@ -95,7 +95,8 @@ public static class ThreadLocalCollectionEvents
             }
 
             EscapedByteMarkers.Log.Begin(2);
-            AllocateTransientInRegion(anchor, RegionSize, graph);
+            // The window between thread-local collections is at least 1 MB. Allocate enough for repeated collections.
+            AllocateTransientInRegion(anchor, 4 * RegionSize, graph);
         }
         finally
         {

@@ -529,7 +529,13 @@ bool SatoriRecycler::ShouldDoConcurrent(int generation)
         return true;
     }
 
-    if (this->GetTotalOccupancy() < concMarkThreshold)
+    // A gen1 GC marks only the ephemeral generations, tenured data is not traversed.
+    // Thus a large tenured generation does not make concurrent marking of gen1 worthwhile.
+    size_t markingEstimate = generation == 2 ?
+        GetTotalOccupancy() :
+        m_occupancy[0] + m_occupancy[1];
+
+    if (markingEstimate < concMarkThreshold)
     {
         return false;
     }
@@ -1190,6 +1196,23 @@ void SatoriRecycler::AskForHelp()
             Interlocked::Decrement(&m_totalWorkers);
             return;
         }
+    }
+}
+
+// Invites a helper, but only the first time a worker finds work.
+//
+// Invites cascade: a helper that joins and finds work assumes there is more and invites the next one.
+// A worker that keeps finding more work does not need to ask again, so handle scanning invites on
+// the first claimed partition only. Claiming the last available partition invites as well, which is
+// one redundant invite at most and is not worth checking for.
+//
+// Workers that produce a lot of shareable work, such as publishing a work chunk, may still ask when they do.
+void SatoriRecycler::MaybeAskForHelpOnce(bool& askedForHelp)
+{
+    if (!askedForHelp)
+    {
+        askedForHelp = true;
+        MaybeAskForHelp();
     }
 }
 
@@ -3811,11 +3834,12 @@ bool SatoriRecycler::MarkHandles(int64_t deadline)
     MarkContext c = MarkContext(this);
     sc._unused1 = &c;
 
+    bool askedForHelp = false;
     bool revisit = SatoriHandlePartitioner::ForEachUnscannedPartition(
         [&](int p)
         {
             // there is work for us, so maybe there is more
-            MaybeAskForHelp();
+            MaybeAskForHelpOnce(askedForHelp);
             _ASSERTE(m_condemnedGeneration > 0);
 
             sc.thread_number = p;
@@ -3878,9 +3902,13 @@ void SatoriRecycler::ShortWeakPtrScanWorker()
 {
     ScanContext sc;
     sc.promotion = TRUE;
+    bool askedForHelp = false;
     SatoriHandlePartitioner::ForEachUnscannedPartition(
         [&](int p)
         {
+            // there is work for us, so maybe there is more
+            MaybeAskForHelpOnce(askedForHelp);
+
             sc.thread_number = p;
             GCScan::GcShortWeakPtrScan(m_condemnedGeneration, 2, &sc);
         }
@@ -3898,9 +3926,13 @@ void SatoriRecycler::LongWeakPtrScanWorker()
 {
     ScanContext sc;
     sc.promotion = TRUE;
+    bool askedForHelp = false;
     SatoriHandlePartitioner::ForEachUnscannedPartition(
         [&](int p)
         {
+            // there is work for us, so maybe there is more
+            MaybeAskForHelpOnce(askedForHelp);
+
             sc.thread_number = p;
             GCScan::GcWeakPtrScan(m_condemnedGeneration, 2, &sc);
         }
@@ -4045,9 +4077,13 @@ void SatoriRecycler::DependentHandlesInitialScanWorker()
     MarkContext c = MarkContext(this);
     sc._unused1 = &c;
 
+    bool askedForHelp = false;
     SatoriHandlePartitioner::ForEachUnscannedPartition(
         [&](int p)
         {
+            // there is work for us, so maybe there is more
+            MaybeAskForHelpOnce(askedForHelp);
+
             sc.thread_number = p;
             GCScan::GcDhInitialScan(MarkFn</*isConservative*/ false>, m_condemnedGeneration, 2, &sc);
         }
@@ -4072,12 +4108,16 @@ void SatoriRecycler::DependentHandlesRescanWorker()
     MarkContext c = MarkContext(this);
     sc._unused1 = &c;
 
+    bool askedForHelp = false;
     SatoriHandlePartitioner::ForEachUnscannedPartition(
         [&](int p)
         {
             sc.thread_number = p;
             if (GCScan::GcDhUnpromotedHandlesExist(&sc))
             {
+                // there is work for us, so maybe there is more
+                MaybeAskForHelpOnce(askedForHelp);
+
                 GCScan::GcDhReScan(&sc);
             }
         }
@@ -4113,9 +4153,13 @@ void SatoriRecycler::PromoteSurvivedHandlesAndFreeRelocatedRegionsWorker()
         // no need for scan context. we do not create more work here.
         sc._unused1 = nullptr;
 
+        bool askedForHelp = false;
         SatoriHandlePartitioner::ForEachUnscannedPartition(
             [&](int p)
             {
+                // there is work for us, so maybe there is more
+                MaybeAskForHelpOnce(askedForHelp);
+
                 sc.thread_number = p;
                 // promote gen1 handles
                 GCScan::GcPromotionsGranted(1, 2, &sc);
@@ -4672,8 +4716,6 @@ void SatoriRecycler::Update()
         {
             IncrementCardScanTicket();
         }
-
-        m_workerGate->WakeAll();
     }
 
     RunWithHelp(&SatoriRecycler::UpdateRootsWorker);
@@ -4747,11 +4789,12 @@ void SatoriRecycler::UpdateRootsWorker()
         MarkContext c = MarkContext(this);
         sc._unused1 = &c;
 
+        bool askedForHelp = false;
         SatoriHandlePartitioner::ForEachUnscannedPartition(
             [&](int p)
             {
                 // there is work for us, so maybe there is more
-                MaybeAskForHelp();
+                MaybeAskForHelpOnce(askedForHelp);
 
                 sc.thread_number = p;
                 GCScan::GcScanHandles(UpdateFn</*isConservative*/ false>, m_condemnedGeneration, 2, &sc);

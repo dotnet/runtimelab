@@ -205,7 +205,7 @@ inline void SatoriObject::SetLocalReloc(int32_t next)
     SetNextInLocalMarkStack(next);
 }
 
-inline void SatoriObject::ClearMarkCompactStateForRelocation()
+inline void SatoriObject::ClearMarkCompactStateForRelocation(size_t size)
 {
     // since local relocation does not intersect with uses of mark stack
     // we will use the same bits.
@@ -213,7 +213,10 @@ inline void SatoriObject::ClearMarkCompactStateForRelocation()
 
     SatoriRegion* r = ContainingRegion();
     _ASSERTE(!r->IsEscaped(this));
-    r->ClearMarkedAndPinned(this);
+    _ASSERTE(!r->IsPinnedLocal(this));
+    r->ClearMarked(this);
+    // the end of an object that is not marked must not be in the local bitmap, see SatoriRegion::SkipEscapedThreadLocal
+    r->ClearEndLocal(this, size);
 }
 
 inline SatoriObject* SatoriObject::RelocatedToUnchecked()

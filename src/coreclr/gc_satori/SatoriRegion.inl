@@ -146,24 +146,21 @@ inline size_t SatoriRegion::GetAllocRemaining()
 
 inline size_t SatoriRegion::ComputeTlgcWindow()
 {
-    // Dyadic ("ruler-function") schedule: baseWindow << tzcnt(m_tlgcCount + 1).
-    // Half of collections use baseWindow, 1/4 use 2 * baseWindow, 1/8 use 4 * baseWindow, etc.,
-    // so every level of the cache hierarchy captures all scales that fit in it without knowing cache sizes.
-    DWORD scale;
-    BitScanForward64(&scale, (size_t)m_tlgcCount + 1);
-    size_t baseWindow = 4 * SatoriUtil::MinZeroInitSize();
-    size_t dyadicWindow = scale < 6 ? (baseWindow << scale) : Satori::REGION_SIZE_GRANULARITY;
-    dyadicWindow = min(dyadicWindow, (size_t)Satori::REGION_SIZE_GRANULARITY);
+    // Every collection visits all the objects that are alive after the previous one - the escaped ones and the survivors -
+    // so its cost grows with their number, not with their size. Scale up the window, so that this cost is spread over
+    // a proportional amount of allocation.
+    size_t liveFloor = (size_t)max(m_objCount, 0) * Satori::TLGC_WINDOW_PER_OBJECT;
 
-    // Scale up by total unrecoverable/live bytes (survivors + escaped + sub-quantum fragments)
-    // so at least ~75% of the window is free space (matching TLGC_MIN_FREE_PERCENT = 70),
-    // and by stack depth / root count so deep stacks do not scan on small windows.
+    // The objects that have escaped since then will be carried too. If much of the window escapes, extend it,
+    // instead of collecting early. (see ShouldCollectAtTlgcLimit)
     size_t escapedSinceCollect = (size_t)m_escapedSize > m_escapedSizeAtCollect ?
         (size_t)m_escapedSize - m_escapedSizeAtCollect : 0;
-    size_t unusableBytes = max((size_t)m_escapedSize, m_unusableInPrefix + escapedSinceCollect);
-    size_t liveFloor = unusableBytes * 4;
+    size_t escapeFloor = escapedSinceCollect * 4;
+
+    // And by stack depth / root count so deep stacks do not scan on small windows.
     size_t stackFloor = max(CurrentStackDepth() * 8, (size_t)m_lastStackSlots * 256);
-    return min((size_t)Satori::REGION_SIZE_GRANULARITY, max(dyadicWindow, max(liveFloor, stackFloor)));
+    return min((size_t)Satori::REGION_SIZE_GRANULARITY,
+        max(Satori::TLGC_BASE_WINDOW, max(max(liveFloor, escapeFloor), stackFloor)));
 }
 
 inline size_t SatoriRegion::ComputeTlgcAllocEnd(size_t minAllocSize, size_t allocBytes)
@@ -213,7 +210,7 @@ inline bool SatoriRegion::ShouldCollectAtTlgcLimit(size_t allocBytes)
             (size_t)m_escapedSize - m_escapedSizeAtCollect : 0;
         if (escapedSinceCollect * 4 > alreadyAllocated)
         {
-            // Too much of the current window escaped; let the live-size floor extend it instead of collecting early.
+            // Too much of the current window escaped; let the window extend (see ComputeTlgcWindow) instead of collecting early.
             return false;
         }
 
@@ -263,8 +260,8 @@ inline void SatoriRegion::StartEscapeTrackingRelease(size_t threadTag, size_t al
     m_escapeFunc = EscapeFn;
     m_ownerThreadTag = threadTag;
     m_allocBytesAtCollect = allocBytes;
-    m_tlgcCount = 0;
     m_escapedSizeAtCollect = (uint32_t)m_escapedSize;
+    m_movableCountAtCollect = 0;
     m_allocBytesAtAttach = allocBytes;
     m_lastStackSlots = 0;
     VolatileStore(&m_generation, 0);
@@ -917,6 +914,18 @@ inline void SatoriRegion::RebaselineUsableIfStale(size_t allocBytes)
         m_usableAtAttach = UsableCapacity();
         m_allocBytesAtAttach = allocBytes;
         m_usableBaselineStale = false;
+
+        if (IsEscapeTracking())
+        {
+            // The sweep has emptied the region, except for the survivors, which are escaped now.
+            // Thread-local GC starts over. Otherwise the allocation counted since the last collection
+            // would include everything allocated before the GC, and the first window check would collect
+            // the region that has just been emptied.
+            m_allocBytesAtCollect = allocBytes;
+            m_escapedSizeAtCollect = (uint32_t)m_escapedSize;
+            m_movableCountAtCollect = 0;
+            m_unusableInPrefix = 0;
+        }
     }
 }
 
@@ -1037,62 +1046,97 @@ inline bool SatoriRegion::CheckAndClearMarked(SatoriObject* o)
     return wasMarked;
 }
 
-inline bool SatoriRegion::IsPinned(SatoriObject* o)
-{
-    return IsMarked(o + MarkOffset::Pinned);
-}
-
-inline void SatoriRegion::SetPinned(SatoriObject* o)
-{
-    SetMarked(o + MarkOffset::Pinned);
-}
-
-// NB: the mark, escaped and pinned bits of an object are adjacent, thus usually in the same bitmap word.
-//     In escaped objects the bit in the pinned position is the "exposed" bit of the second field,
-//     so it can be treated as the pinned bit only when the object is not escaped.
-
-inline void SatoriRegion::ClearMarkedAndPinned(SatoriObject* o)
+// A thread-local GC keeps the pinned objects and the ends of marked objects in its own bitmap, see m_localBitmap.
+inline bool SatoriRegion::IsPinnedLocal(SatoriObject* o)
 {
     _ASSERTE(o->SameRegion(this));
+    _ASSERTE(m_localBitmap != nullptr);
+
+    size_t word = o->Start();
+    size_t bitmapIndex = (word >> 9) & (SatoriRegion::BITMAP_LENGTH - 1);
+    size_t mask = (size_t)1 << ((word >> 3) & 63);
+
+    return m_localBitmap[bitmapIndex] & mask;
+}
+
+inline void SatoriRegion::SetPinnedLocal(SatoriObject* o)
+{
+    _ASSERTE(o->SameRegion(this));
+    _ASSERTE(m_localBitmap != nullptr);
+    _ASSERTE(IsMarked(o));
     _ASSERTE(!IsEscaped(o));
 
     size_t word = o->Start();
     size_t bitmapIndex = (word >> 9) & (SatoriRegion::BITMAP_LENGTH - 1);
-    size_t bit = (word >> 3) & 63;
-    if (bit < 62)
-    {
-        // ClearMarked(o) and ClearMarked(o + MarkOffset::Pinned) at once
-        m_bitmap[bitmapIndex] &= ~((size_t)5 << bit);
-    }
-    else
-    {
-        ClearMarked(o);
-        ClearMarked(o + MarkOffset::Pinned);
-    }
+    size_t mask = (size_t)1 << ((word >> 3) & 63);
+
+    m_localBitmap[bitmapIndex] |= mask;
 }
 
-// escaped objects stay marked (and cannot be pinned), see SetEscaped
-inline void SatoriRegion::ClearMarkedAndPinnedUnlessEscaped(SatoriObject* o)
+// Records the last word of an object that is marked and is not escaped.
+inline void SatoriRegion::SetEndLocal(SatoriObject* o, size_t size)
 {
     _ASSERTE(o->SameRegion(this));
+    _ASSERTE(m_localBitmap != nullptr);
+    _ASSERTE(size == o->Size());
+    _ASSERTE(size >= Satori::MIN_FREE_SIZE);
 
-    size_t word = o->Start();
+    size_t word = o->Start() + size - sizeof(size_t);
     size_t bitmapIndex = (word >> 9) & (SatoriRegion::BITMAP_LENGTH - 1);
-    size_t bit = (word >> 3) & 63;
-    if (bit < 62)
+    size_t mask = (size_t)1 << ((word >> 3) & 63);
+
+    m_localBitmap[bitmapIndex] |= mask;
+}
+
+// Removes the last word of an object from the local bitmap, when the mark of the object is cleared during compaction.
+// (the local bitmap has the end of an object only as long as the object is marked)
+inline void SatoriRegion::ClearEndLocal(SatoriObject* o, size_t size)
+{
+    _ASSERTE(o->SameRegion(this));
+    _ASSERTE(m_localBitmap != nullptr);
+
+    size_t word = o->Start() + size - sizeof(size_t);
+    size_t bitmapIndex = (word >> 9) & (SatoriRegion::BITMAP_LENGTH - 1);
+    size_t mask = (size_t)1 << ((word >> 3) & 63);
+
+    m_localBitmap[bitmapIndex] &= ~mask;
+}
+
+// Accounts for an object that was just marked by a thread-local GC and returns its size. The object must not be escaped.
+inline size_t SatoriRegion::AddSurvivorLocal(SatoriObject* o)
+{
+    _ASSERTE(!IsEscaped(o));
+
+    size_t size = o->Size();
+    m_occupancy += size;
+    m_objCount++;
+    SetEndLocal(o, size);
+    return size;
+}
+
+// The size of an object that is marked and is not escaped. Does not read the object.
+inline size_t SatoriRegion::SizeLocal(SatoriObject* o)
+{
+    _ASSERTE(o->SameRegion(this));
+    _ASSERTE(m_localBitmap != nullptr);
+    _ASSERTE(IsMarked(o));
+    _ASSERTE(!IsEscaped(o));
+
+    size_t start = o->Start();
+    size_t bitmapIndex = (start >> 9) & (SatoriRegion::BITMAP_LENGTH - 1);
+    // the first bit after the start is the last word of the object.
+    size_t bits = m_localBitmap[bitmapIndex] & ((~(size_t)1) << ((start >> 3) & 63));
+    while (bits == 0)
     {
-        size_t bits = m_bitmap[bitmapIndex];
-        if (!(bits & ((size_t)2 << bit)))
-        {
-            // not escaped, ClearMarked(o) and ClearMarked(o + MarkOffset::Pinned) at once
-            m_bitmap[bitmapIndex] = bits & ~((size_t)5 << bit);
-        }
+        _ASSERTE(bitmapIndex < SatoriRegion::BITMAP_LENGTH);
+        bits = m_localBitmap[++bitmapIndex];
     }
-    else if (!IsEscaped(o))
-    {
-        ClearMarked(o);
-        ClearMarked(o + MarkOffset::Pinned);
-    }
+
+    DWORD offset;
+    BitScanForward64(&offset, bits);
+    size_t size = ObjectForMarkBit(bitmapIndex, offset)->Start() + sizeof(size_t) - start;
+    _ASSERTE(size == o->Size());
+    return size;
 }
 
 inline bool SatoriRegion::IsEscaped(SatoriObject* o)
@@ -1104,7 +1148,9 @@ inline void SatoriRegion::SetEscaped(SatoriObject* o)
 {
     // Escaped objects are always live as far as thread-local GC is concerned, so they are also marked.
     // Thread-local GC clears marks when done, except marks of escaped objects.
-    // NB: both bits are cleared together when tracking stops or when GC takes over the region.
+    // NB: this sets only the first two bits, which is enough to tell that the object is escaped.
+    //     The rest of the bits are set when the size of the object is known, see SetEscapedExtent.
+    // NB: the bits are cleared together when tracking stops or when GC takes over the region.
     _ASSERTE(o->SameRegion(this));
 
     size_t word = o->Start();
@@ -1127,32 +1173,43 @@ inline void SatoriRegion::SetEscaped(SatoriObject* o)
 
 inline bool SatoriRegion::IsEscapedOrPinned(SatoriObject* o)
 {
-    _ASSERTE(o->SameRegion(this));
-
-    size_t word = o->Start();
-    size_t bitmapIndex = (word >> 9) & (SatoriRegion::BITMAP_LENGTH - 1);
-    size_t bit = (word >> 3) & 63;
-    if (bit < 62)
-    {
-        // IsEscaped(o) || IsPinned(o) with one read
-        if (m_bitmap[bitmapIndex] & ((size_t)6 << bit))
-        {
-            return true;
-        }
-    }
-    else if (IsEscaped(o) || IsPinned(o))
-    {
-        return true;
-    }
-
-    return o->IsUnmovable();
+    // NB: objects that are unmovable due to pinned allocation are escaped if they are in a region that is escape tracked.
+    //     (see ThreadLocalMark)
+    return IsEscaped(o) || IsPinnedLocal(o);
 }
 
-inline void SatoriRegion::SetExposed(SatoriObject** location)
+// Sets the bits of all words of an escaped object, which has the size "size".
+// The first bit is the mark and the second is the escape bit (see SetEscaped), the others are "exposed" bits.
+// The write barrier looks at the bits of reference fields to see if what is stored there becomes reachable
+// from other threads. The words that are not references are marked too, which does not change the meaning of those bits.
+// What that does is making the extent of a run of escaped objects visible in the bitmap, thread-local GC
+// can skip the objects without looking at them. (see SkipEscapedThreadLocal)
+inline void SatoriRegion::SetEscapedExtent(SatoriObject* o, size_t size)
 {
-    // set the mark bit corresponding to the location to indicate that it is globally exposed
-    // same as: SetMarked((SatoriObject*)location);
-    SetMarked((SatoriObject*)location);
+    _ASSERTE(o->SameRegion(this));
+    _ASSERTE(size == o->Size());
+
+    // bit index in the map is the index of the word in the region
+    size_t first = (o->Start() >> 3) & (SatoriRegion::BITMAP_LENGTH * 64 - 1);
+    size_t last = first + (size >> 3) - 1;
+    size_t firstIndex = first >> 6;
+    size_t lastIndex = last >> 6;
+    size_t firstMask = ~(size_t)0 << (first & 63);
+    size_t lastMask = ~(size_t)0 >> (63 - (last & 63));
+    if (firstIndex == lastIndex)
+    {
+        m_bitmap[firstIndex] |= firstMask & lastMask;
+    }
+    else
+    {
+        m_bitmap[firstIndex] |= firstMask;
+        for (size_t i = firstIndex + 1; i < lastIndex; i++)
+        {
+            m_bitmap[i] = ~(size_t)0;
+        }
+
+        m_bitmap[lastIndex] |= lastMask;
+    }
 }
 
 inline bool SatoriRegion::IsExposed(SatoriObject** location)

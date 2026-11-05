@@ -351,6 +351,7 @@ private:
     int64_t HelpQuantumTimeStampTicks();
     int64_t HelpQuantumOsTicks();
     void AskForHelp();
+    void MaybeAskForHelpOnce(bool& askedForHelp);
     void RunWithHelp(void(SatoriRecycler::* method)());
     bool HelpOnceCore(bool minQuantum);
     bool HelpOnceCoreInner(bool minQuantum);

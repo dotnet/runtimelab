@@ -111,7 +111,7 @@ public:
     int32_t GetNextInLocalMarkStack();
     void SetNextInLocalMarkStack(int32_t);
     void ClearNextInLocalMarkStack();
-    void ClearMarkCompactStateForRelocation();
+    void ClearMarkCompactStateForRelocation(size_t size);
     int32_t GetLocalReloc();
     void SetLocalReloc(int32_t);
 

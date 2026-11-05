@@ -39,6 +39,7 @@ class SatoriRegionQueue;
 class SatoriObject;
 class SatoriAllocationContext;
 struct SatoriLocalRootCache;
+struct SatoriLocalStayRuns;
 
 // The Region contains objects and their metadata.
 class SatoriRegion
@@ -302,8 +303,13 @@ private:
     union
     {
         // object metadata - one bit per size_t
-        // due to the minimum size of an object we can store 3 bits per object: {Marked, Escaped, Pinned}
-        // it may be possible to repurpose the bits for other needs as we see fit.
+        // due to the minimum size of an object we can store 3 bits per object, but we use 2: {Marked, Escaped}
+        // it may be possible to repurpose the bit for other needs as we see fit.
+        // NB: a thread-local GC does not use the bitmap for pinned objects and sizes, see m_localBitmap.
+        //     In a region that is escape tracked an object that is not escaped has no bits in the bitmap other than the mark
+        //     (if it is marked by a thread-local GC), while an escaped object has a bit for every one of its words.
+        //     Thus escaped objects are runs of marks, where the first bit is the mark, the second is the escape bit and
+        //     the bits of the reference fields are the "exposed" bits. (see SetEscapedExtent, SkipEscapedThreadLocal)
         //
         // we will overlap the map and the header for simplicity of map operations.
         // it is ok because the first BITMAP_START elements of the map cover the header/map itself and thus will not be used.
@@ -368,8 +374,6 @@ private:
             uint32_t m_sweepsSinceLastAllocation;
             // Bit N is set when free list N is not empty.
             uint16_t m_nonEmptyFreeLists;
-            // Number of thread-local collections performed in this region, drives the dyadic window schedule.
-            uint16_t m_tlgcCount;
 
             // ===== 128  bytes boundary
             SatoriRegion* m_prev;
@@ -378,7 +382,7 @@ private:
 
             size_t m_occupancy;
             size_t m_demotedOccupancy;
-            // End of the current dyadic allocation window (<= m_allocEnd) when escape-tracking.
+            // End of the current allocation window (<= m_allocEnd) when escape-tracking.
             size_t m_tlgcAllocEnd;
             // Upper bound on the end of all non-free objects in the region, bounds thread-local bitmap and index scans.
             size_t m_maxParseableEnd;
@@ -390,9 +394,25 @@ private:
             size_t m_usableAtAttach;
             // The owner's alloc bytes at the start of the current accounting period. (see IsTlgcProductive)
             size_t m_allocBytesAtAttach;
+            // Extra per-object information of a thread-local GC in progress, null otherwise.
+            // The layout is the same as in the mark bitmap - a bit for every size_t, but the storage is owned
+            // by the running ThreadLocalCollect. It has bits for the objects that are marked and not escaped:
+            //  - the last word of the object, thus the size of the object can be found without reading the object
+            //  - the first word of the object, if the stack pins it
+            // An object is at least 3 words, so these are different words and, other than that, there are
+            // no bits inside of such objects. Escaped objects are marked before the thread-local GC starts and are not in here.
+            // NB: when compaction clears the mark of an object that moves, it removes the last word of the object from here as well.
+            //     The old copy is ahead of the sweep, where a leftover bit could be taken for the end of an object that follows
+            //     escaped objects. (see SkipEscapedThreadLocal)
+            //     An object that stays is unmarked when the sweep gets to it, one by one or a run at a time, and keeps its bit.
+            //     Nothing looks at what is behind the sweep.
+            size_t* m_localBitmap;
             uint32_t m_escapedSizeAtCollect;
             uint32_t m_lastStackSlots;
             int32_t m_objCount;
+            // The number of survivors that are not escaped (they are marked, updated and copied by every
+            // thread-local collection) as of the last collection. The rest of m_objCount is escaped or pinned.
+            uint32_t m_movableCountAtCollect;
 
             int32_t m_unfinishedAllocationCount;
 
@@ -441,14 +461,25 @@ private:
     static void EscapeFn(SatoriObject** dst, SatoriObject* src, SatoriRegion* region);
     NOINLINE void EscapeReachable(SatoriObject* o);
 
-    bool ThreadLocalMark(SatoriLocalRootCache* rootCache);
-    void ThreadLocalPropagateMarks(size_t maxSurv);
-    void ThreadLocalPlan();
+    bool ThreadLocalMark(SatoriLocalRootCache* rootCache, size_t* localStorage);
+    void ThreadLocalPropagateMarks(size_t maxSurv, size_t maxCount, size_t maxPointerBytes, size_t& pointerBytes);
+    size_t ThreadLocalPlan(SatoriLocalStayRuns* stayRuns);
     void ThreadLocalUpdatePointers(SatoriLocalRootCache* rootCache);
-    void ThreadLocalCompact();
+    void ThreadLocalCompact(size_t denseEnd, SatoriLocalStayRuns* stayRuns);
     void ThreadLocalPendFinalizables();
+    size_t FindUnmovableThreadLocal(size_t from, size_t to, bool includePinned);
+    size_t SkipDenseThreadLocal(size_t from, int32_t* objCount);
+    void ClearMarksOfDenseThreadLocal(size_t from, size_t to);
+    size_t SkipEscapedThreadLocal(size_t from);
+    size_t MarkedSizeThreadLocal(SatoriObject* o);
+    bool StartsObjectAtEndOfRunThreadLocal(size_t lastBit);
+#ifdef _DEBUG
+    void VerifyLocalBitmap();
+    void VerifyIndexThreadLocal();
+    bool IsAllMarked(size_t first, size_t length);
+#endif
 
-    void PushToMarkStackIfHasPointers(SatoriObject* obj);
+    bool PushToMarkStackIfHasPointers(SatoriObject* obj);
     SatoriObject* PopFromMarkStack();
     SatoriObject* ObjectForMarkBit(size_t bitmapIndex, int offset);
     void CompactFinalizableTrackers();
@@ -457,7 +488,6 @@ private:
     {
         Marked,
         Escaped,
-        Pinned,
     };
 
     bool IsMarked(SatoriObject* o);
@@ -466,15 +496,16 @@ private:
     void ClearMarked(SatoriObject* o);
     bool CheckAndClearMarked(SatoriObject* o);
 
-    bool IsPinned(SatoriObject* o);
-    void SetPinned(SatoriObject* o);
-    void ClearMarkedAndPinned(SatoriObject* o);
-    void ClearMarkedAndPinnedUnlessEscaped(SatoriObject* o);
+    bool IsPinnedLocal(SatoriObject* o);
+    void SetPinnedLocal(SatoriObject* o);
+    void SetEndLocal(SatoriObject* o, size_t size);
+    void ClearEndLocal(SatoriObject* o, size_t size);
+    size_t AddSurvivorLocal(SatoriObject* o);
+    size_t SizeLocal(SatoriObject* o);
     bool IsEscaped(SatoriObject* o);
     void SetEscaped(SatoriObject* o);
+    void SetEscapedExtent(SatoriObject* o, size_t size);
     bool IsEscapedOrPinned(SatoriObject* o);
-
-    void SetExposed(SatoriObject** location);
 
     bool ValidateIndexEmpty();
     bool Coalesce(SatoriRegion* next);
