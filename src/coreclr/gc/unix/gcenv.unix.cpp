@@ -1217,12 +1217,7 @@ bool GCToOSInterface::GetUserAddressRange(size_t* start, size_t* end)
     return true;
 #elif defined(HOST_64BIT)
     *start = 0;
-#if defined(HOST_ARM64)
-    // arm64 Linux uses up to 48 bits of user address space.
-    *end = (size_t)1 << 48;
-#else
     *end = GetVirtualMemoryMaxAddress();
-#endif
     return true;
 #else
     return false;
