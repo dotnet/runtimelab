@@ -301,7 +301,6 @@ struct segment_info
 #define GC_PROFILING       //Turn on profiling
 #endif // PROFILING_SUPPORTED
 
-// TODO: Satori has LARGE_OBJECT_SIZE ((size_t)(32 * 1024))
 #define LARGE_OBJECT_SIZE ((size_t)(85000))
 
 // The minimum size of an object is three pointers wide: one for the syncblock,
