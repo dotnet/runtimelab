@@ -42,61 +42,49 @@ GCGate::GCGate()
 {
 }
 
+// returns true if was woken up. false if timed out
+bool GCGate::TimedWait(int timeout)
+{
+    assert(timeout >= 0);
+
+    timespec t;
+    t.tv_sec  = (uint32_t)timeout / 1000;
+    t.tv_nsec = ((uint32_t)timeout % 1000) * 1000 * 1000;
+
+    // the timespec is a relative timeout with CLOCK_MONOTONIC clock by default.
+    long waitResult = syscall(SYS_futex, &m_state, FUTEX_WAIT_PRIVATE, Blocking, &t, NULL, 0);
+
+    // possible results: woken, not blocking, interrupted, timeout
+    assert(waitResult == 0 || errno == EAGAIN || errno == EINTR || errno == ETIMEDOUT);
+
+    // normal/immediate/spurious wakes are not timeouts
+    // in release treat unexpected results as spurious wakes
+    bool woken = waitResult == 0 || errno != ETIMEDOUT;
+    if (woken)
+    {
+        // consume the wake
+        m_state = Blocking;
+    }
+
+    return woken;
+}
+
 void GCGate::Wait()
 {
-    TimedWait(INFINITE);
-}
-
-bool GCGate::TimedWait(uint32_t timeout)
-{
-    timespec relativeTimeout;
-    timespec* waitTimeout = nullptr;
-    if (timeout != INFINITE)
-    {
-        relativeTimeout.tv_sec = timeout / 1000;
-        relativeTimeout.tv_nsec = (timeout % 1000) * 1000 * 1000;
-        waitTimeout = &relativeTimeout;
-    }
-
-    // The timeout is relative and uses CLOCK_MONOTONIC by default.
-    long result = syscall(SYS_futex, &m_state, FUTEX_WAIT_PRIVATE, Blocking, waitTimeout, nullptr, 0);
-    if (result != 0)
-    {
-        int error = errno;
-        if (error == ETIMEDOUT)
-        {
-            return false;
-        }
-
-        if (error != EAGAIN && error != EINTR)
-        {
-            assert(!"Failed to wait on GC gate");
-            abort();
-        }
-    }
-
+    syscall(SYS_futex, &m_state, FUTEX_WAIT_PRIVATE, Blocking, NULL, NULL, 0);
     m_state = Blocking;
-    return true;
-}
-
-void GCGate::WakeOne()
-{
-    m_state = Open;
-    if (syscall(SYS_futex, &m_state, FUTEX_WAKE_PRIVATE, 1, nullptr, nullptr, 0) < 0)
-    {
-        assert(!"Failed to wake GC gate");
-        abort();
-    }
 }
 
 void GCGate::WakeAll()
 {
     m_state = Open;
-    if (syscall(SYS_futex, &m_state, FUTEX_WAKE_PRIVATE, INT_MAX, nullptr, nullptr, 0) < 0)
-    {
-        assert(!"Failed to wake GC gate");
-        abort();
-    }
+    syscall(SYS_futex, &m_state, FUTEX_WAKE_PRIVATE, INT_MAX, NULL, NULL, 0);
+}
+
+void GCGate::WakeOne()
+{
+    m_state = Open;
+    syscall(SYS_futex, &m_state, FUTEX_WAKE_PRIVATE, 1, NULL, NULL, 0);
 }
 
 #else // TARGET_LINUX
@@ -110,138 +98,103 @@ void GCGate::WakeAll()
 class GCGate::Impl
 {
 public:
-    pthread_mutex_t m_mutex;
-    pthread_cond_t m_condition;
+    pthread_mutex_t m_cs;
+    pthread_cond_t m_cv;
 };
 
 GCGate::GCGate()
     : m_impl(new (nothrow) Impl()), m_state(Blocking)
 {
-    if (m_impl == nullptr || pthread_mutex_init(&m_impl->m_mutex, nullptr) != 0)
-    {
-        assert(!"Failed to initialize GC gate");
-        abort();
-    }
-
-    pthread_condattr_t attributes;
-    if (pthread_condattr_init(&attributes) != 0)
-    {
-        assert(!"Failed to initialize GC gate");
-        abort();
-    }
-
+    pthread_mutex_init(&m_impl->m_cs, nullptr);
+    pthread_condattr_t attrs;
+    pthread_condattr_init(&attrs);
 #if HAVE_PTHREAD_CONDATTR_SETCLOCK && !HAVE_CLOCK_GETTIME_NSEC_NP
-    if (pthread_condattr_setclock(&attributes, CLOCK_MONOTONIC) != 0)
-    {
-        assert(!"Failed to set GC gate wait clock");
-        abort();
-    }
+    // Ensure that the pthread_cond_timedwait will use CLOCK_MONOTONIC
+    pthread_condattr_setclock(&attrs, CLOCK_MONOTONIC);
 #endif // HAVE_PTHREAD_CONDATTR_SETCLOCK && !HAVE_CLOCK_GETTIME_NSEC_NP
+    pthread_cond_init(&m_impl->m_cv, &attrs);
+    pthread_condattr_destroy(&attrs);
+}
 
-    int result = pthread_cond_init(&m_impl->m_condition, &attributes);
-    int error = pthread_condattr_destroy(&attributes);
-    if (result != 0 || error != 0)
+// returns true if was woken up
+bool GCGate::TimedWait(int timeout)
+{
+    timespec endTime;
+#if HAVE_CLOCK_GETTIME_NSEC_NP
+    uint64_t endNanoseconds;
+    uint64_t nanoseconds = (uint64_t)timeout * tccMilliSecondsToNanoSeconds;
+    NanosecondsToTimeSpec(nanoseconds, &endTime);
+    endNanoseconds = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) + nanoseconds;
+#elif HAVE_PTHREAD_CONDATTR_SETCLOCK
+    clock_gettime(CLOCK_MONOTONIC, &endTime);
+    TimeSpecAdd(&endTime, timeout);
+#else
+#error "Don't know how to perform timed wait on this platform"
+#endif
+
+    int waitResult = 0;
+    pthread_mutex_lock(&m_impl->m_cs);
+#if HAVE_CLOCK_GETTIME_NSEC_NP
+    // Since OSX doesn't support CLOCK_MONOTONIC, we use relative variant of the timed wait.
+    waitResult = m_state == Open ?
+        0 :
+        pthread_cond_timedwait_relative_np(&m_impl->m_cv, &m_impl->m_cs, &endTime);
+#else // HAVE_CLOCK_GETTIME_NSEC_NP
+    waitResult = m_state == Open ?
+        0 :
+        pthread_cond_timedwait(&m_impl->m_cv, &m_impl->m_cs, &endTime);
+#endif // HAVE_CLOCK_GETTIME_NSEC_NP
+
+    bool woken = waitResult == 0;
+    if (woken)
     {
-        assert(!"Failed to initialize GC gate");
-        abort();
+        // consume the wake while holding the lock, so that the check above and
+        // the consumption are atomic with respect to the wakers.
+        // NB: as on other platforms the wake could be spurious.
+        m_state = Blocking;
     }
+
+    pthread_mutex_unlock(&m_impl->m_cs);
+    assert(waitResult == 0 || waitResult == ETIMEDOUT);
+
+    return woken;
 }
 
 void GCGate::Wait()
 {
-    TimedWait(INFINITE);
-}
+    int waitResult;
+    pthread_mutex_lock(&m_impl->m_cs);
 
-bool GCGate::TimedWait(uint32_t timeout)
-{
-    int error = pthread_mutex_lock(&m_impl->m_mutex);
-    assert(error == 0);
-    int result = 0;
-    if (m_state == Blocking)
-    {
-        if (timeout == INFINITE)
-        {
-            result = pthread_cond_wait(&m_impl->m_condition, &m_impl->m_mutex);
-        }
-        else
-        {
-            timespec waitTimeout;
-#if HAVE_CLOCK_GETTIME_NSEC_NP
-            uint64_t nanoseconds = static_cast<uint64_t>(timeout) * tccMilliSecondsToNanoSeconds;
-            waitTimeout.tv_sec = nanoseconds / tccSecondsToNanoSeconds;
-            waitTimeout.tv_nsec = nanoseconds % tccSecondsToNanoSeconds;
-            result = pthread_cond_timedwait_relative_np(&m_impl->m_condition, &m_impl->m_mutex, &waitTimeout);
-#else
-#if HAVE_PTHREAD_CONDATTR_SETCLOCK
-            const clockid_t waitClock = CLOCK_MONOTONIC;
-#else
-            const clockid_t waitClock = CLOCK_REALTIME;
-#endif // HAVE_PTHREAD_CONDATTR_SETCLOCK
-            if (clock_gettime(waitClock, &waitTimeout) != 0)
-            {
-                assert(!"Failed to read GC gate wait clock");
-                abort();
-            }
+    waitResult = m_state == Open ?
+        0 :
+        pthread_cond_wait(&m_impl->m_cv, &m_impl->m_cs);
 
-            uint64_t nanoseconds = static_cast<uint64_t>(waitTimeout.tv_nsec) +
-                static_cast<uint64_t>(timeout) * tccMilliSecondsToNanoSeconds;
-            waitTimeout.tv_sec += nanoseconds / tccSecondsToNanoSeconds;
-            waitTimeout.tv_nsec = nanoseconds % tccSecondsToNanoSeconds;
-            result = pthread_cond_timedwait(&m_impl->m_condition, &m_impl->m_mutex, &waitTimeout);
-#endif // HAVE_CLOCK_GETTIME_NSEC_NP
-        }
-    }
-
-    if (result == 0)
-    {
-        // Consume the wake under the lock so it is atomic with respect to wakers.
-        m_state = Blocking;
-    }
-    error = pthread_mutex_unlock(&m_impl->m_mutex);
-    assert(error == 0);
-    (void)error;
-
-    if (result != 0 && result != ETIMEDOUT)
-    {
-        assert(!"Failed to wait on GC gate");
-        abort();
-    }
-
-    return result != ETIMEDOUT;
+    // consume the wake while holding the lock, so that the check above and
+    // the consumption are atomic with respect to the wakers.
+    // NB: as on other platforms the wake could be spurious.
+    m_state = Blocking;
+    pthread_mutex_unlock(&m_impl->m_cs);
+    assert(waitResult == 0);
 }
 
 void GCGate::WakeOne()
 {
-    int error = pthread_mutex_lock(&m_impl->m_mutex);
-    assert(error == 0);
-    // Publish the state under the lock to avoid a missed wake.
+    // NB: see the comment in WakeAll about publishing the state under the lock.
+    pthread_mutex_lock(&m_impl->m_cs);
     m_state = Open;
-    int result = pthread_cond_signal(&m_impl->m_condition);
-    error = pthread_mutex_unlock(&m_impl->m_mutex);
-    assert(error == 0);
-    (void)error;
-    if (result != 0)
-    {
-        assert(!"Failed to wake GC gate");
-        abort();
-    }
+    pthread_cond_signal(&m_impl->m_cv);
+    pthread_mutex_unlock(&m_impl->m_cs);
 }
 
 void GCGate::WakeAll()
 {
-    int error = pthread_mutex_lock(&m_impl->m_mutex);
-    assert(error == 0);
-    // Publish the state under the lock to avoid a missed wake.
+    // NB: the state must be published while holding the lock, otherwise a waiter
+    //     could read the old state and start waiting after the signal is sent,
+    //     which would result in a missed wake.
+    pthread_mutex_lock(&m_impl->m_cs);
     m_state = Open;
-    int result = pthread_cond_broadcast(&m_impl->m_condition);
-    error = pthread_mutex_unlock(&m_impl->m_mutex);
-    assert(error == 0);
-    (void)error;
-    if (result != 0)
-    {
-        assert(!"Failed to wake GC gate");
-        abort();
-    }
+    pthread_cond_broadcast(&m_impl->m_cv);
+    pthread_mutex_unlock(&m_impl->m_cs);
 }
 
 #endif // TARGET_LINUX

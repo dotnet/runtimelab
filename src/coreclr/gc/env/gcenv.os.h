@@ -153,7 +153,7 @@ class GCGate final
     volatile uint32_t m_state;
 
 public:
-    // Constructs a closed gate. Initialization failure is fatal.
+    // Constructs a closed gate.
     GCGate();
 
     GCGate(const GCGate&) = delete;
@@ -162,7 +162,7 @@ public:
     void Wait();
 
     // The timeout is in milliseconds. Returns false only on timeout.
-    bool TimedWait(uint32_t timeout);
+    bool TimedWait(int timeout);
 
     // Releases at least one waiter, or retains a wake for a future waiter.
     // Concurrent wakes may coalesce.

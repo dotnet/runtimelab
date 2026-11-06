@@ -39,7 +39,7 @@ void GCGate::Wait()
     TimedWait(INFINITE);
 }
 
-bool GCGate::TimedWait(uint32_t timeout)
+bool GCGate::TimedWait(int timeout)
 {
     uint32_t blocking = Blocking;
     BOOL result = WaitOnAddress(&m_state, &blocking, sizeof(blocking), timeout);
