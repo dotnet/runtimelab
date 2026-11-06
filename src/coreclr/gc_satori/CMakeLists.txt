@@ -107,7 +107,6 @@ if (CLR_CMAKE_TARGET_WIN32)
     SatoriAllocationContext.h
     SatoriUtil.h
     SatoriLock.h
-    SatoriGate.h
     satoriconstants.h
   )
 else()
