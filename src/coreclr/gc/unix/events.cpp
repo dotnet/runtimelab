@@ -11,37 +11,6 @@
 #include "gcenv.os.h"
 #include "globals.h"
 
-namespace
-{
-
-#if HAVE_PTHREAD_CONDATTR_SETCLOCK
-void TimeSpecAdd(timespec* time, uint32_t milliseconds)
-{
-    uint64_t nsec = time->tv_nsec + (uint64_t)milliseconds * tccMilliSecondsToNanoSeconds;
-    if (nsec >= tccSecondsToNanoSeconds)
-    {
-        time->tv_sec += nsec / tccSecondsToNanoSeconds;
-        nsec %= tccSecondsToNanoSeconds;
-    }
-
-    time->tv_nsec = nsec;
-}
-#endif // HAVE_PTHREAD_CONDATTR_SETCLOCK
-
-#if HAVE_CLOCK_GETTIME_NSEC_NP
-// Convert nanoseconds to the timespec structure
-// Parameters:
-//  nanoseconds - time in nanoseconds to convert
-//  t           - the target timespec structure
-void NanosecondsToTimeSpec(uint64_t nanoseconds, timespec* t)
-{
-    t->tv_sec = nanoseconds / tccSecondsToNanoSeconds;
-    t->tv_nsec = nanoseconds % tccSecondsToNanoSeconds;
-}
-#endif // HAVE_CLOCK_GETTIME_NSEC_NP
-
-} // anonymous namespace
-
 class GCEvent::Impl
 {
     pthread_cond_t m_condition;
