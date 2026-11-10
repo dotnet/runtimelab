@@ -18,7 +18,7 @@
     <ItemGroup>
       <DotNetJsApiTestProject Include="PackagingTests/PackagingTestProject.DotNetJsApi.csproj"
                               Condition="'$(TargetsBrowser)' == 'true'"
-                              ExpectedOutputName="dotnet.native.wasm" />
+                              ExpectedOutputFiles="dotnet.native.wasm;dotnet.native.js;dotnet.js;dotnet.runtime.js;dotnet.diagnostics.js;dotnet.js.map;dotnet.runtime.js.map;dotnet.diagnostics.js.map" />
 
       <PackagingTestProject Include="PackagingTests/PackagingTestProject.csproj;@(DotNetJsApiTestProject)">
         <BuildProperties>
@@ -49,7 +49,17 @@
       <PackagingTestProject Include="@(SampleProject)"
                             Condition="'$(Test_HostPackageRuntimeIdentifier)' == '$(NETCoreSdkPortableRuntimeIdentifier)'" />
 
-      <PackagingTestProject Condition="'%(PackagingTestProject.ExpectedOutputName)' == ''" ExpectedOutputName="%(FileName).wasm" />
+      <PackagingTestProject Condition="'%(PackagingTestProject.ExpectedOutputFiles)' == ''"
+                            ExpectedOutputFiles="%(FileName).wasm" />
+      <PackagingTestProject Condition="'$(TargetsBrowser)' == 'true' And '%(PackagingTestProject.FileName)' != 'PackagingTestProject.DotNetJsApi'"
+                            ExpectedOutputFiles="%(ExpectedOutputFiles);%(FileName).js" />
+      <PackagingTestProject Condition="'$(TargetsBrowser)' == 'true' And ('%(PackagingTestProject.FileName)' == 'PackagingTestProject' Or '%(PackagingTestProject.FileName)' == 'HelloWorld')"
+                            ExpectedOutputFiles="%(ExpectedOutputFiles);%(FileName).html" />
+      <!-- These test projects use the SDK publish pipeline, which also emits application metadata. -->
+      <PackagingTestProject ExpectedOutputFiles="%(ExpectedOutputFiles);%(FileName).deps.json" />
+      <PackagingTestProject Condition="'%(PackagingTestProject.FileName)' != 'NativeLibrary'"
+                            ExpectedOutputFiles="%(ExpectedOutputFiles);%(FileName).runtimeconfig.json" />
+      <PackagingTestProject PublishDirectory="%(OutputPathRoot)/bin/$(Test_Configuration)/$(Test_TargetFramework)/$(Test_RuntimeIdentifier)/publish/" />
     </ItemGroup>
 
     <Error Condition="!Exists($(Test_RestoreSource))"
@@ -75,8 +85,27 @@
     <MSBuild Projects="@(PackagingTestProject)"
              Targets="Publish"
              Properties="%(BuildProperties)" />
+  </Target>
 
-    <Error Condition="!Exists('%(OutputPathRoot)/bin/$(Test_Configuration)/$(Test_TargetFramework)/$(Test_RuntimeIdentifier)/publish/%(ExpectedOutputName)')"
-           Text="%(PackagingTestProject.FullPath) did not produce the expected native artifacts" />
+  <!-- Batch by project so each publish directory is checked against its own expected files. -->
+  <Target Name="VerifyPackagingTestPublishOutput"
+          AfterTargets="PublishPackagingTestProject"
+          Outputs="%(PackagingTestProject.Identity)">
+    <PropertyGroup>
+      <_PublishDirectory>%(PackagingTestProject.PublishDirectory)</_PublishDirectory>
+    </PropertyGroup>
+    <ItemGroup>
+      <_ExpectedRelativeFile Include="%(PackagingTestProject.ExpectedOutputFiles)" />
+      <_ExpectedFile Include="@(_ExpectedRelativeFile->'$(_PublishDirectory)%(Identity)')" />
+      <_ActualFile Include="$(_PublishDirectory)**/*" />
+      <_MissingFile Include="@(_ExpectedFile)" />
+      <_MissingFile Remove="@(_ActualFile)" MatchOnMetadata="FullPath" MatchOnMetadataOptions="PathLike" />
+      <_UnexpectedFile Include="@(_ActualFile)" />
+      <_UnexpectedFile Remove="@(_ExpectedFile)" MatchOnMetadata="FullPath" MatchOnMetadataOptions="PathLike" />
+    </ItemGroup>
+
+    <Error Condition="'@(_MissingFile)' != '' Or '@(_UnexpectedFile)' != ''"
+           ContinueOnError="ErrorAndContinue"
+           Text="%(PackagingTestProject.Identity) produced an unexpected publish file set. Missing: [@(_MissingFile, ', ')]. Unexpected: [@(_UnexpectedFile, ', ')]." />
   </Target>
 </Project>
