@@ -480,7 +480,7 @@ private:
                 ProcessDef(block, node);
             }
 
-            // An empty block or a block with only PHIs has no first non-PHI node.
+            // FirstNonPhiNode also skips IL offsets, so the block may have no such node.
             DBEXEC(m_compiler->verbose && (firstNonPhiNode == nullptr), PrintCurrentLiveCandidates());
         }
 
