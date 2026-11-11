@@ -1,0 +1,44 @@
+name: Validate LSSA liveness logging (#3053)
+
+on:
+  push:
+    branches: [test/3053-lssa-validation]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wasm-lssa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      EVIDENCE: ${{ runner.temp }}/lssa-3053-evidence
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 3
+          persist-credentials: false
+      - name: Install native build dependencies
+        run: |
+          mkdir -p "$EVIDENCE"
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build build-essential libicu-dev libssl-dev zlib1g-dev libkrb5-dev libcurl4-openssl-dev liblttng-ust-dev libunwind-dev
+      - name: Build LLVM, build the patched compiler, and run the repro
+        run: bash .github/lssa-validation/run.sh
+      - name: Publish validation report
+        if: always()
+        run: |
+          mkdir -p "$EVIDENCE"
+          if [[ ! -s "$EVIDENCE/report.md" ]]; then
+            printf '## LSSA #3053: no compiler verdict\n\nThe job stopped before the repro ran. See the failed step and any available build logs.\n' > "$EVIDENCE/report.md"
+          fi
+          cat "$EVIDENCE/report.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload report and raw evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lssa-3053-evidence
+          path: ${{ env.EVIDENCE }}
+          if-no-files-found: error
+          retention-days: 14
