@@ -47,6 +47,8 @@ set -u
 
 stage="Debug host LLVM JIT and ILC build"
 logged host ./build.sh clr.llvmjit+clr.aot -a x64 -c Debug
+stage="Build the WasmAppBuilder host task"
+logged wasm-task "$root/.dotnet/dotnet" build src/tasks/WasmAppBuilder/WasmAppBuilder.csproj -c Debug -f net10.0
 stage="Debug browser-wasm runtime and libraries build"
 logged wasm ./build.sh clr.aot+libs -a wasm -os browser -c Debug
 stage="Package the browser target and x64 compiler"
