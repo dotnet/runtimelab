@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
-      EVIDENCE: ${{ runner.temp }}/lssa-3053-evidence
+      EVIDENCE: ${{ github.workspace }}/lssa-3053-evidence
     steps:
       - uses: actions/checkout@v4
         with:
