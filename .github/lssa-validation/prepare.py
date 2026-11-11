@@ -6,7 +6,12 @@ from pathlib import Path
 root, project = map(Path, sys.argv[1:])
 feed = root / "artifacts/packages/Debug/Shipping"
 pattern = re.compile(r"microsoft\.dotnet\.ilcompiler\.llvm\.(\d+\.\d+\.\d+[^/]*)\.nupkg", re.I)
-versions = [m[1] for package in feed.glob("*.nupkg") if (m := pattern.fullmatch(package.name))]
+versions = [
+    match[1]
+    for package in feed.glob("*.nupkg")
+    if not package.name.lower().endswith(".symbols.nupkg")
+    and (match := pattern.fullmatch(package.name))
+]
 if len(versions) != 1:
     sys.exit(f"Expected one LLVM ILC package in {feed}, found {versions}")
 version = versions[0]

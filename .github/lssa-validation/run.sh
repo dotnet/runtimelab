@@ -24,13 +24,16 @@ trap report EXIT
 logged() {
     local log=$1
     shift
-    if "$@" > "$EVIDENCE/$log.log" 2>&1; then
-        tail -n 10 "$EVIDENCE/$log.log"
+    printf '\n::group::%s (%s)\n' "$stage" "$log"
+    local status=0
+    if "$@" 2>&1 | tee "$EVIDENCE/$log.log"; then
+        :
     else
-        local status=$?
-        tail -n 100 "$EVIDENCE/$log.log"
-        return "$status"
+        status=$?
     fi
+    printf '::endgroup::\n'
+    printf '%s (%s): exit %s\n' "$stage" "$log" "$status"
+    return "$status"
 }
 
 stage="LLVM 18.1.3 setup"
@@ -60,7 +63,7 @@ export DOTNET_ROOT="$root/.dotnet"
 export PATH="$DOTNET_ROOT:$PATH"
 export MSBuildEnableWorkloadResolver=false
 export NUGET_PACKAGES="$work/nuget"
-python3 "$root/.github/lssa-validation/prepare.py" "$root" "$work/repro"
+logged prepare python3 "$root/.github/lssa-validation/prepare.py" "$root" "$work/repro"
 cd "$work/repro"
 logged restore dotnet restore --configfile NuGet.Config
 logged publish dotnet publish --no-restore -c Release
