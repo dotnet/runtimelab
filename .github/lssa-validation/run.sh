@@ -72,7 +72,8 @@ stage="Replay ILC with the patched Debug LLVM JIT"
 rsp=$(find obj -name '*.ilc.rsp' -print -quit)
 test -n "$rsp"
 jit=$(find "$root/artifacts/bin/coreclr" -path '*/linux.x64.Debug/*' -name 'libclrjit_universal_llvm32_x64.so' -print -quit)
-ilc=$(find "$root/artifacts/bin/coreclr" -path '*/linux.x64.Debug/ilc/ilc' -type f -print -quit)
+# The published ILC is self-contained, just like the compiler used by dotnet publish.
+ilc="$root/artifacts/bin/coreclr/linux.x64.Debug/ilc-published/ilc"
 test -x "$ilc"
 test -f "$jit"
 cp "$rsp" "$EVIDENCE/repro.ilc.rsp"
