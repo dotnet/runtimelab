@@ -428,12 +428,17 @@ private:
             if (m_anyCandidates)
             {
                 VarSetOps::Assign(m_compiler, m_liveDefs, block->bbLiveIn);
-                JITDUMPEXEC(PrintCurrentLiveCandidates());
             }
 
             LIR::Range& blockRange = LIR::AsRange(block);
+#ifdef DEBUG
+            // The live-in SSA definitions may come from PHIs in this block. Wait until all PHIs have been processed.
+            GenTree* firstNonPhiNode = m_compiler->verbose ? blockRange.FirstNonPhiNode() : nullptr;
+#endif
             for (GenTree* node = blockRange.FirstNode(); node != nullptr; node = node->gtNext)
             {
+                DBEXEC(m_compiler->verbose && (node == firstNonPhiNode), PrintCurrentLiveCandidates());
+
                 if (node->isContained())
                 {
                     assert(!m_llvm->isPotentialGcSafePoint(node) && !m_llvm->mayPhysicallyThrow(node));
@@ -474,6 +479,9 @@ private:
 
                 ProcessDef(block, node);
             }
+
+            // FirstNonPhiNode also skips IL offsets, so the block may have no such node.
+            DBEXEC(m_compiler->verbose && (firstNonPhiNode == nullptr), PrintCurrentLiveCandidates());
         }
 
         void ProcessUse(BasicBlock* block, GenTree* user, GenTree** use)
@@ -534,6 +542,7 @@ private:
                     if ((GetActiveUseCount(ssaDsc) == 1) && IsLastActiveUseLastUse(ssaDsc))
                     {
                         UpdateLiveLocalDefs(varDsc, /* isDead */ true, /* isBorn */ false);
+                        JITDUMPEXEC(PrintCurrentLiveCandidates());
                         ResetActiveUseCount(ssaDsc); // There may be multiple last uses; clear the bit and the count.
                     }
                     else
@@ -853,6 +862,8 @@ private:
                 {
                     PushActiveLocalDef(block, varDsc, ssaNum);
                     UpdateLiveLocalDefs(varDsc, node->AsLclVarCommon()->HasLastUse(), /* isBorn */ true);
+                    // ProcessBlock dumps the live set once all PHI definitions are active.
+                    DBEXEC(m_compiler->verbose && !node->IsPhiDefn(), PrintCurrentLiveCandidates());
                     UpdateShadowSlotsStateForDef(node->AsLclVarCommon());
                 }
                 // Increment the "active" use count used for accurate last use detection. Note that skipping
@@ -902,8 +913,6 @@ private:
             {
                 VarSetOps::AddElemD(m_compiler, m_liveDefs, varDsc->lvVarIndex);
             }
-
-            JITDUMPEXEC(PrintCurrentLiveCandidates());
         }
 
         void InitializeShadowSlotsStates()
@@ -1337,7 +1346,7 @@ private:
                 return;
             }
 
-            // printf("Liveness: { ");
+            printf("Liveness: { ");
             unsigned lclVarIndex;
             VarSetOps::Iter iter(m_compiler, m_liveDefs);
             while (iter.NextElem(&lclVarIndex))
@@ -1346,11 +1355,10 @@ private:
                 LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
                 if (IsCandidateLocal(varDsc))
                 {
-                    // TOOD-LLVM Reinstate when https://github.com/dotnet/runtimelab/issues/3053 is addressed.
-                    // printf("V%02u/%d ", lclNum, m_activeDefs.Top(lclVarIndex));
+                    printf("V%02u/%u ", lclNum, m_activeDefs.Top(lclVarIndex));
                 }
             }
-            // printf("}\n");
+            printf("}\n");
         }
 
         const char* GcStatusToString(unsigned status)
