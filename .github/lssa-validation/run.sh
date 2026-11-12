@@ -79,7 +79,8 @@ test -f "$jit"
 cp "$rsp" "$EVIDENCE/repro.ilc.rsp"
 printf 'ILC: %s\nJIT: %s\n' "$ilc" "$jit" > "$EVIDENCE/tool-paths.txt"
 sha256sum "$ilc" "$jit" >> "$EVIDENCE/tool-paths.txt"
-if ! logged patched-ilc "$ilc" "@$rsp" --jitpath "$jit" --codegenopt JitDump=Problem; then
+# Keep libc liveness output in order with the JIT log under tee.
+if ! logged patched-ilc stdbuf -o0 -e0 "$ilc" "@$rsp" --jitpath "$jit" --codegenopt JitDump=Problem; then
     result="Patched compiler invocation failed"
     exit 1
 fi
