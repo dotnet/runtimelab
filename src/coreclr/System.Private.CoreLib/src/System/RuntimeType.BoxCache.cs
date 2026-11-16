@@ -93,7 +93,7 @@ namespace System
                 {
                     if (RuntimeHelpers.RequiresOldValueWriteBarrier())
                     {
-                        MethodTable* valueType = (_nullableValueOffset == 0) ? _pMT : _pMT->NullableType.AsMethodTable();
+                        MethodTable* valueType = (_nullableValueOffset == 0) ? _pMT : _pMT->InstantiationArg0();
                         Buffer.BulkMoveWithOldValueWriteBarrier(
                             ref result.GetRawData(), ref source, valueType, _valueTypeSize, 1);
                     }
