@@ -575,7 +575,7 @@ inline void SideMetadataAccessor::Store(
             SideMetadataLocation checked = Locate(dataAddress);
             VerifyLocation(dataAddress, checked);
             _ASSERTE(reinterpret_cast<volatile uint8_t*>(checked.word) + (checked.shift >> 3) == metadataByte);
-            _ASSERTE((checked.shift & 7) == byteShift);
+            _ASSERTE((checked.shift & 7u) == byteShift);
             _ASSERTE((value & ~m_value_mask) == 0);
         }
 #endif // _DEBUG
@@ -639,7 +639,7 @@ inline void SideMetadataAccessor::StoreExclusive(uintptr_t dataAddress, uintptr_
             SideMetadataLocation checked = Locate(dataAddress);
             VerifyLocation(dataAddress, checked);
             _ASSERTE(reinterpret_cast<volatile uint8_t*>(checked.word) + (checked.shift >> 3) == metadataByte);
-            _ASSERTE((checked.shift & 7) == byteShift);
+            _ASSERTE((checked.shift & 7u) == byteShift);
             _ASSERTE((value & ~m_value_mask) == 0);
         }
 #endif // _DEBUG
@@ -674,7 +674,7 @@ inline bool SideMetadataAccessor::CompareExchange(
             SideMetadataLocation checked = Locate(dataAddress);
             VerifyLocation(dataAddress, checked);
             _ASSERTE(reinterpret_cast<volatile uint8_t*>(checked.word) + (checked.shift >> 3) == metadataByte);
-            _ASSERTE((checked.shift & 7) == byteShift);
+            _ASSERTE((checked.shift & 7u) == byteShift);
         }
 #endif // _DEBUG
 #ifdef _DEBUG
@@ -769,7 +769,7 @@ inline SideMetadataUpdateStatus SideMetadataAccessor::IncrementSaturating(
             SideMetadataLocation checked = Locate(dataAddress);
             VerifyLocation(dataAddress, checked);
             _ASSERTE(reinterpret_cast<volatile uint8_t*>(checked.word) + (checked.shift >> 3) == metadataByte);
-            _ASSERTE((checked.shift & 7) == byteShift);
+            _ASSERTE((checked.shift & 7u) == byteShift);
         }
 #endif // _DEBUG
         const uint8_t mask = static_cast<uint8_t>(m_value_mask << byteShift);
@@ -844,7 +844,7 @@ inline SideMetadataUpdateStatus SideMetadataAccessor::DecrementNonZeroNonSaturat
             SideMetadataLocation checked = Locate(dataAddress);
             VerifyLocation(dataAddress, checked);
             _ASSERTE(reinterpret_cast<volatile uint8_t*>(checked.word) + (checked.shift >> 3) == metadataByte);
-            _ASSERTE((checked.shift & 7) == byteShift);
+            _ASSERTE((checked.shift & 7u) == byteShift);
         }
 #endif // _DEBUG
         const uint8_t mask = static_cast<uint8_t>(m_value_mask << byteShift);
