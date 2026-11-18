@@ -417,7 +417,7 @@ void SatoriGC::GetFastGCFunctions(FastGCFunctions* functions)
     functions->context = this;
     functions->write_barrier = &ErectWriteBarrier;
     functions->is_in_gc_heap = &IsInHeap;
-    functions->check_escape = &CheckEscapeSatori;
+    functions->pre_store = &CheckEscapeSatori;
     functions->bulk_move_with_write_barrier = &::BulkMoveWithWriteBarrier;
 }
 

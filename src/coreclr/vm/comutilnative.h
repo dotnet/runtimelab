@@ -82,6 +82,7 @@ class Buffer
 {
 public:
     FCDECL3(static VOID, BulkMoveWithWriteBarrier, void *dst, void *src, size_t byteCount);
+    FCDECL2(static VOID, BulkClearWithWriteBarrier, void* dst, size_t byteCount);
 };
 
 const UINT MEM_PRESSURE_COUNT = 4;

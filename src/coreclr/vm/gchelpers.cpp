@@ -1349,6 +1349,7 @@ HCIMPLEND_RAW
 //    that could occur if multiple threads were trying to set different bits in the same card.
 
 #include <optsmallperfcritical.h>
+
 void ErectWriteBarrier(OBJECTREF *dst, OBJECTREF ref)
 {
     STATIC_CONTRACT_MODE_COOPERATIVE;
@@ -1401,7 +1402,7 @@ void ErectWriteBarrierForMT(MethodTable **dst, MethodTable *ref)
     STATIC_CONTRACT_NOTHROW;
     STATIC_CONTRACT_GC_NOTRIGGER;
 
-	if (g_heap_type != GC_HEAP_CUSTOM)
+    if (g_heap_type != GC_HEAP_CUSTOM)
     {
     *dst = ref;
 

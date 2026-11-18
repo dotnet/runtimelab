@@ -62,6 +62,7 @@ void memmoveGCRefs(void *dest, const void *src, size_t len)
         GC_NOTRIGGER;
         MODE_COOPERATIVE;
     }
+
     CONTRACTL_END;
 
     _ASSERTE(dest != nullptr);
@@ -76,6 +77,32 @@ void memmoveGCRefs(void *dest, const void *src, size_t len)
     {
         InlinedMemmoveGCRefsHelper(dest, src, len);
     }
+}
+
+void memmoveGCRefsWithLayout(void* dest, const void* src, size_t len, MethodTable* type)
+{
+    CONTRACTL
+    {
+        NOTHROW;
+        GC_NOTRIGGER;
+        MODE_COOPERATIVE;
+    }
+    CONTRACTL_END;
+
+    _ASSERTE(dest != nullptr);
+    _ASSERTE(src != nullptr);
+    _ASSERTE(type != nullptr);
+    _ASSERTE(type->ContainsGCPointers());
+    _ASSERTE(IS_ALIGNED(dest, sizeof(SIZE_T)));
+    _ASSERTE(IS_ALIGNED(src, sizeof(SIZE_T)));
+    _ASSERTE(IS_ALIGNED(len, sizeof(SIZE_T)));
+
+    if ((len == 0) || (dest == src))
+    {
+        return;
+    }
+
+    InlinedMemmoveGCRefsHelper(dest, src, len);
 }
 
 

@@ -326,9 +326,25 @@ FORCEINLINE void InlinedMemmoveGCRefsHelper(void *dest, const void *src, size_t 
     }
     else
     {
-        if (GCHeapUtilities::GetFastGCFunctions().is_in_gc_heap(GCHeapUtilities::GetFastGCFunctions().context, (Object**)dest))
+        const FastGCFunctions& functions = GCHeapUtilities::GetFastGCFunctions();
+        if (functions.is_in_gc_heap(functions.context, dest))
         {
-            GCHeapUtilities::GetFastGCFunctions().bulk_move_with_write_barrier(GCHeapUtilities::GetFastGCFunctions().context, (void*)dest, src, len);
+            if (!GCHeapUtilities::RequiresOldValueWriteBarrier())
+            {
+                functions.bulk_move_with_write_barrier(functions.context, dest, src, len);
+                return;
+            }
+            size_t remaining = len;
+            BYTE* destination = static_cast<BYTE*>(dest);
+            const BYTE* source = static_cast<const BYTE*>(src);
+            bool forward = reinterpret_cast<size_t>(dest) - reinterpret_cast<size_t>(src) >= len;
+            while (remaining != 0)
+            {
+                size_t chunk = min(remaining, GCHeapUtilities::BulkWriteBarrierChunk);
+                size_t offset = forward ? len - remaining : remaining - chunk;
+                functions.bulk_move_with_write_barrier(functions.context, destination + offset, source + offset, chunk);
+                remaining -= chunk;
+            }
             return;
         }
 

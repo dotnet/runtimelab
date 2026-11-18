@@ -478,6 +478,14 @@ FCIMPL3(VOID, Buffer::BulkMoveWithWriteBarrier, void *dst, void *src, size_t byt
 }
 FCIMPLEND
 
+FCIMPL2(VOID, Buffer::BulkClearWithWriteBarrier, void* dst, size_t byteCount)
+{
+    FCALL_CONTRACT;
+
+    ZeroMemoryInGCHeap(dst, byteCount);
+}
+FCIMPLEND
+
 //
 // GCInterface
 //
@@ -1713,10 +1721,7 @@ FCIMPL2(LPVOID,COMInterlocked::ExchangeObject, LPVOID*location, LPVOID value)
 {
     FCALL_CONTRACT;
 
-    if (GCHeapUtilities::GetFastGCFunctions().check_escape != nullptr)
-    {
-        GCHeapUtilities::GetFastGCFunctions().check_escape((Object**)location, (Object*)value);
-    }
+    GCHeapUtilities::PreStoreCheck((Object**)location, (Object*)value);
 
     LPVOID ret = InterlockedExchangeT(location, value);
 #ifdef _DEBUG
@@ -1732,10 +1737,7 @@ FCIMPL3(LPVOID,COMInterlocked::CompareExchangeObject, LPVOID *location, LPVOID v
     FCALL_CONTRACT;
 
      
-    if (GCHeapUtilities::GetFastGCFunctions().check_escape != nullptr)
-    {
-        GCHeapUtilities::GetFastGCFunctions().check_escape((Object**)location, (Object*)value);
-    }
+    GCHeapUtilities::PreStoreCheck((Object**)location, (Object*)value);
 
     // <TODO>@todo: only set ref if is updated</TODO>
     LPVOID ret = InterlockedCompareExchangeT(location, value, comparand);

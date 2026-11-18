@@ -385,6 +385,12 @@ C_FUNC(\Name\()_End):
 #if defined(__APPLE__)
         movq    _\Var@TLVP(%rip), %rdi
         callq   *(%rdi)
+#elif defined(FEATURE_TLS_DESCRIPTORS)
+        // TLS descriptor (GNU2 dialect). The callee returns the offset from the thread pointer in rax and preserves all
+        // other registers, so unlike __tls_get_addr it does not trash the volatile registers. See clrdefinitions.cmake.
+        leaq    \Var@tlsdesc(%rip), %rax
+        call    *\Var@tlscall(%rax)
+        addq    %fs:0, %rax
 #else
         .byte 0x66  // data16 prefix - padding to have space for linker relaxations
         leaq    \Var@TLSGD(%rip), %rdi

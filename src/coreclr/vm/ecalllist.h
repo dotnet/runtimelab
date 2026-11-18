@@ -272,6 +272,7 @@ FCFuncStart(gArrayFuncs)
 FCFuncEnd()
 
 FCFuncStart(gBufferFuncs)
+    FCFuncElement("BulkClearWithWriteBarrierInternal", Buffer::BulkClearWithWriteBarrier)
     FCFuncElement("BulkMoveWithWriteBarrierInternal", Buffer::BulkMoveWithWriteBarrier)
 FCFuncEnd()
 
