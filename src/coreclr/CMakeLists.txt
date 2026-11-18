@@ -83,6 +83,19 @@ OPTION(CLR_CMAKE_LXR_OBJECT_START_BITMAP
   "Build libclrlxrgc with the ValidObject bit plane instead of the default count-plane object starts" OFF)
 OPTION(CLR_CMAKE_LXR_BUILD_BITMAP_VARIANT
   "When LXR is enabled, also build libclrlxrgc-bitmap.so (ValidObject bit plane) next to libclrlxrgc.so, for comparison" ON)
+OPTION(CLR_CMAKE_ENABLE_LAXORI_GC
+  "Build the experimental selectable Laxori collector (thread-local private regions over an LXR engine)" OFF)
+OPTION(CLR_CMAKE_LAXORI_OBJECT_START_BITMAP
+  "Laxori: make libclrlaxorigc.so itself the ValidObject bit-plane build (default: object starts from the count plane)" OFF)
+OPTION(CLR_CMAKE_LAXORI_BUILD_BITMAP_VARIANT
+  "Laxori: also build libclrlaxorigc-bitmap.so (ValidObject plane) from the same sources for comparison" ON)
+
+if(CLR_CMAKE_ENABLE_LAXORI_GC)
+  if(NOT CLR_CMAKE_TARGET_ARCH_AMD64 OR
+     (NOT CLR_CMAKE_TARGET_WIN32 AND NOT CLR_CMAKE_TARGET_LINUX))
+    message(FATAL_ERROR "The selectable Laxori prototype requires standalone Windows or Linux AMD64 CoreCLR")
+  endif()
+endif()
 
 if(CLR_CMAKE_ENABLE_LXR_GC)
   if(NOT CLR_CMAKE_TARGET_ARCH_AMD64 OR
@@ -272,6 +285,9 @@ include(clrdefinitions.cmake)
 if(CLR_CMAKE_ENABLE_LXR_GC AND NOT FEATURE_STANDALONE_GC)
   message(FATAL_ERROR "The selectable LXR prototype requires standalone GC support")
 endif()
+if(CLR_CMAKE_ENABLE_LAXORI_GC AND NOT FEATURE_STANDALONE_GC)
+  message(FATAL_ERROR "The selectable Laxori prototype requires standalone GC support")
+endif()
 
 #--------------------------------
 # Data descriptors mechanics
@@ -340,6 +356,9 @@ endif()
 add_subdirectory(gc)
 if(CLR_CMAKE_ENABLE_LXR_GC)
   add_subdirectory(gc_lxr)
+endif()
+if(CLR_CMAKE_ENABLE_LAXORI_GC)
+  add_subdirectory(gc_laxori)
 endif()
 if (CLR_CMAKE_ENABLE_SATORI_GC AND (CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_ARM64))
   add_subdirectory(gc_satori)
