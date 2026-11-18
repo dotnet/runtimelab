@@ -14,6 +14,7 @@ namespace System
         [Intrinsic] // Unrolled for small sizes
         public static unsafe void Fill<T>(ref T refData, nuint numElements, T value)
         {
+
             // Early checks to see if it's even possible to vectorize - JIT will turn these checks into consts.
             // - T cannot contain references (GC can't track references in vectors)
             // - Vectorization must be hardware-accelerated

@@ -98,6 +98,12 @@ public:
     // Initializes a standalone GC.
     static HRESULT InitializeStandaloneGC();
 
+    // Accepts object-reference enumeration. NativeAOT MethodTables are not collectible.
+    static HRESULT ConfigureObjectReferenceEnumeration(IGCHeap* gcHeap);
+
+    // Validates and completes the collector's object-header bit request.
+    static HRESULT ConfigureObjectHeaderBits(IGCHeap* gcHeap);
+
     // Records a change in eventing state. This ultimately will inform the GC that it needs to be aware
     // of new events being enabled.
     static void RecordEventStateChange(bool isPublicProvider, GCEventKeyword keywords, GCEventLevel level);

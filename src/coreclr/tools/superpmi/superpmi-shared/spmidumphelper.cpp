@@ -259,6 +259,7 @@ std::string SpmiDumpHelper::DumpJitFlags(unsigned long long flags)
     AddFlagNumeric(SOFTFP_ABI, 30);
 
     AddFlag(USE_DISPATCH_HELPERS);
+    AddFlag(WRITE_BARRIER_REQUIRES_OLD_VALUE);
 
     // "Extra jit flag" support
     //

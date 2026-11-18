@@ -162,6 +162,8 @@
       <CrossGenDllCmd>$(CrossGenDllCmd) --targetarch:$(TargetArchitecture)</CrossGenDllCmd>
       <CrossGenDllCmd Condition="'$(PublishReadyToRunContainerFormat)' != ''">$(CrossGenDllCmd) --obj-format:$(PublishReadyToRunContainerFormat)</CrossGenDllCmd>
       <CrossGenDllCmd Condition="'$(PublishReadyToRunContainerFormat)' == 'wasm'">$(CrossGenDllCmd) --codegenopt:JitWasmNyiToR2RUnsupported=1</CrossGenDllCmd>
+      <!-- A runtime with an LXR-style collector (old value of every overwritten reference) only uses images with this mark. -->
+      <CrossGenDllCmd Condition="'$(CrossgenOldValueWriteBarriers)' == 'true'">$(CrossGenDllCmd) --old-value-write-barriers</CrossGenDllCmd>
       <!-- wasm: enable cross-module inlining/optimization across the whole shared framework (the -r IL closure). -->
       <CrossGenDllCmd Condition="'$(PublishReadyToRunContainerFormat)' == 'wasm'">$(CrossGenDllCmd) "--opt-cross-module:*"</CrossGenDllCmd>
       <CrossGenDllCmd Condition="'$(PublishReadyToRunContainerFormat)' == 'wasm' and '$(TargetOS)' == 'browser'">$(CrossGenDllCmd) @(WasmCoreClrFrameworkPInvokeModule->WithMetadataValue('Browser', 'true')->WithMetadataValue('PrebuiltR2RDirect', 'true')->'--directpinvoke:%(Identity)', ' ')</CrossGenDllCmd>

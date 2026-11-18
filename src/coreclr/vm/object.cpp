@@ -334,10 +334,7 @@ void SetObjectReferenceUnchecked(OBJECTREF *dst,OBJECTREF ref)
     STATIC_CONTRACT_MODE_COOPERATIVE;
     STATIC_CONTRACT_CANNOT_TAKE_LOCK;
 
-    if (GCHeapUtilities::GetFastGCFunctions().check_escape != nullptr)
-    {
-        GCHeapUtilities::GetFastGCFunctions().check_escape((Object**)dst, OBJECTREFToObject(ref));
-    }
+    GCHeapUtilities::PreStoreCheck((Object**)dst, OBJECTREFToObject(ref));
 
     // Assign value. We use casting to avoid going thru the overloaded
     // OBJECTREF= operator which in this case would trigger a false
@@ -360,7 +357,7 @@ void CopyValueClassUnchecked(void* dest, void* src, MethodTable *pMT)
 
     if (pMT->ContainsGCPointers())
     {
-        memmoveGCRefs(dest, src, pMT->GetNumInstanceFieldBytesIfContainsGCPointers());
+        memmoveGCRefsWithLayout(dest, src, pMT->GetNumInstanceFieldBytesIfContainsGCPointers(), pMT);
     }
     else
     {
@@ -1170,6 +1167,30 @@ OBJECTREF& OBJECTREF::operator=(TADDR nul)
 void __fastcall ZeroMemoryInGCHeap(void* mem, size_t size)
 {
     WRAPPER_NO_CONTRACT;
+    if (size == 0)
+    {
+        return;
+    }
+    if (GCHeapUtilities::RequiresOldValueWriteBarrier())
+    {
+        const FastGCFunctions& functions = GCHeapUtilities::GetFastGCFunctions();
+        if (functions.is_in_gc_heap(functions.context, mem))
+        {
+            BYTE* cursor = static_cast<BYTE*>(mem);
+            while (size != 0)
+            {
+                size_t chunk = min(size, GCHeapUtilities::BulkWriteBarrierChunk);
+                if (size > chunk)
+                {
+                    chunk -= reinterpret_cast<uintptr_t>(cursor) & (sizeof(void*) - 1);
+                }
+                functions.bulk_clear_with_write_barrier(functions.context, cursor, chunk);
+                cursor += chunk;
+                size -= chunk;
+            }
+            return;
+        }
+    }
     BYTE* memBytes = (BYTE*) mem;
     BYTE* endBytes = &memBytes[size];
 

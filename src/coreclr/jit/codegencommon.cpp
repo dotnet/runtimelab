@@ -2193,6 +2193,8 @@ void CodeGen::genGenerateCode(void** codePtr, uint32_t* nativeSizeOfCode)
         {
             m_compiler->compGetHelperFtn((CorInfoHelpFunc)i);
         }
+        m_compiler->compGetHelperFtn(CORINFO_HELP_BULK_WRITEBARRIER_WITH_LAYOUT);
+        m_compiler->compGetHelperFtn(CORINFO_HELP_BULK_WRITEBARRIER_CLEAR_WITH_LAYOUT);
     }
 
 #if defined(TARGET_WASM)

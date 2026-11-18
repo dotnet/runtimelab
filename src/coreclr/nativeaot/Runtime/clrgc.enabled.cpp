@@ -216,6 +216,24 @@ HRESULT GCHeapUtilities::InitializeStandaloneGC()
     IGCHeap* heap;
     IGCHandleManager* manager;
     HRESULT initResult = initFunc(gcToClr, &heap, &manager, &g_gc_dac_vars);
+
+    if (initResult == S_OK)
+    {
+        if ((g_gc_version_info.MajorVersion == GC_INTERFACE_MAJOR_VERSION) &&
+            (g_gc_version_info.MinorVersion >= GC_OBJECT_REFERENCE_ENUMERATION_INTERFACE_MINOR_VERSION))
+        {
+            initResult = GCHeapUtilities::ConfigureObjectReferenceEnumeration(heap);
+        }
+
+        if ((initResult == S_OK) &&
+            (g_gc_version_info.MajorVersion == GC_INTERFACE_MAJOR_VERSION) &&
+            (g_gc_version_info.MinorVersion >= GC_OBJECT_HEADER_BITS_INTERFACE_MINOR_VERSION))
+        {
+            initResult = GCHeapUtilities::ConfigureObjectHeaderBits(heap);
+        }
+
+    }
+
     if (initResult == S_OK)
     {
         g_pGCHeap = heap;

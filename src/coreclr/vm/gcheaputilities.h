@@ -252,7 +252,7 @@ public:
 #endif // FEATURE_SVR_GC
     }
 
-    static void InitializeFastGCFunctions(IGCHeap* gcHeap);
+    static HRESULT InitializeFastGCFunctions(IGCHeap* gcHeap);
 
 #ifdef FEATURE_USE_SOFTWARE_WRITE_WATCH_FOR_GC_HEAP
 
@@ -327,6 +327,38 @@ public:
     // Loads (if using a standalone GC) and initializes the GC.
     static HRESULT LoadAndInitialize();
 
+    // Validates and completes the collector's object-reference enumeration request.
+    static HRESULT ConfigureObjectReferenceEnumeration(IGCHeap* gcHeap, const VersionInfo& version);
+
+    // Validates and completes the collector's object-header bit request.
+    static HRESULT ConfigureObjectHeaderBits(IGCHeap* gcHeap, const VersionInfo& version);
+
+    // Returns whether the collector needs the old value of every overwritten reference field (an LXR-style
+    // collector, see FASTGC_REQUIRES_OLD_VALUE). Immutable after GC startup; the JIT, ReadyToRun and the runtime
+    // store sites all follow it.
+    inline static bool RequiresOldValueWriteBarrier()
+    {
+        LIMITED_METHOD_CONTRACT;
+        return (s_fastGCFunctions.flags & FASTGC_REQUIRES_OLD_VALUE) != 0;
+    }
+
+    // Call before every runtime reference store/atomic attempt, even for null/frozen proposals and failed CAS.
+    inline static void PreStoreCheck(Object** dst, Object* ref)
+    {
+        WRAPPER_NO_CONTRACT;
+        if (s_fastGCFunctions.pre_store != nullptr)
+        {
+            s_fastGCFunctions.pre_store(dst, ref);
+        }
+    }
+
+    // Match CoreLib Buffer's bounded callbacks. Native GC_NOTRIGGER callers do not poll between chunks.
+#ifdef _DEBUG
+    static constexpr size_t BulkWriteBarrierChunk = 0x400;
+#else
+    static constexpr size_t BulkWriteBarrierChunk = 0x4000;
+#endif
+
     // Records a change in eventing state. This ultimately will inform the GC that it needs to be aware
     // of new events being enabled.
     static void RecordEventStateChange(bool isPublicProvider, GCEventKeyword keywords, GCEventLevel level);
@@ -345,4 +377,3 @@ private:
 };
 
 #endif // _GCHEAPUTILITIES_H_
-

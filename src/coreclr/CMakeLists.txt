@@ -53,6 +53,79 @@ if(CLR_CMAKE_TARGET_WASI)
 endif()
 
 OPTION(CLR_CMAKE_ENABLE_CODE_COVERAGE "Enable code coverage" OFF)
+OPTION(CLR_CMAKE_ENABLE_OBJECT_REFERENCE_ENUMERATION_TEST
+  "Enable object-reference enumeration scan validation" OFF)
+OPTION(CLR_CMAKE_ENABLE_OBJECT_HEADER_BITS_TEST
+  "Enable GC object-header bit validation" OFF)
+OPTION(CLR_CMAKE_ENABLE_IMMIX_BLOCK_STATE_TEST
+  "Enable the Immix block-state validation exports" OFF)
+OPTION(CLR_CMAKE_ENABLE_LARGE_OBJECT_SPACE_TEST
+  "Enable the LXR large-object-space validation exports" OFF)
+OPTION(CLR_CMAKE_ENABLE_IMMIX_ALLOCATION_TEST
+  "Enable the Immix allocation validation exports" OFF)
+OPTION(CLR_CMAKE_ENABLE_REFERENCE_COUNT_TEST
+  "Enable the reference-count validation exports" OFF)
+OPTION(CLR_CMAKE_ENABLE_LXR_WORK_PACKET_SCHEDULER_TEST
+  "Enable the LXR work-packet scheduler validation export" OFF)
+OPTION(CLR_CMAKE_ENABLE_LXR_PAUSE_COORDINATOR_TEST
+  "Enable the LXR pause coordinator validation export" OFF)
+OPTION(CLR_CMAKE_ENABLE_LXR_DEFERRED_BUCKET_TEST
+  "Enable the LXR deferred concurrent bucket validation export" OFF)
+OPTION(CLR_CMAKE_ENABLE_LXR_LAZY_COMPLETION_COUNTER_TEST
+  "Enable the LXR lazy completion counter validation export" OFF)
+OPTION(CLR_CMAKE_ENABLE_LXR_RC_VERTICAL
+  "Enable the experimental integrated LXR reference-counting engine" OFF)
+OPTION(CLR_CMAKE_ENABLE_SATORI_GC
+  "Build the Satori standalone collector (comparison build; AMD64 and ARM64 only)" OFF)
+OPTION(CLR_CMAKE_ENABLE_LXR_GC
+  "Build the experimental selectable LXR collector" OFF)
+OPTION(CLR_CMAKE_LXR_OBJECT_START_BITMAP
+  "Build libclrlxrgc with the ValidObject bit plane instead of the default count-plane object starts" OFF)
+OPTION(CLR_CMAKE_LXR_BUILD_BITMAP_VARIANT
+  "When LXR is enabled, also build libclrlxrgc-bitmap.so (ValidObject bit plane) next to libclrlxrgc.so, for comparison" ON)
+
+if(CLR_CMAKE_ENABLE_LXR_GC)
+  if(NOT CLR_CMAKE_TARGET_ARCH_AMD64 OR
+     (NOT CLR_CMAKE_TARGET_WIN32 AND NOT CLR_CMAKE_TARGET_LINUX))
+    message(FATAL_ERROR "The selectable LXR prototype requires standalone Windows or Linux AMD64 CoreCLR")
+  endif()
+  add_compile_definitions(LXR_ENABLE_LAZY_COMPLETION_COUNTER)
+endif()
+
+if(CLR_CMAKE_ENABLE_LXR_RC_VERTICAL)
+  if(NOT CLR_CMAKE_TARGET_ARCH_AMD64 OR
+     (NOT CLR_CMAKE_TARGET_WIN32 AND NOT CLR_CMAKE_TARGET_LINUX))
+    message(FATAL_ERROR "The LXR RC prototype requires Windows or Linux AMD64")
+  endif()
+endif()
+
+if(CLR_CMAKE_ENABLE_LXR_LAZY_COMPLETION_COUNTER_TEST OR CLR_CMAKE_ENABLE_LXR_RC_VERTICAL)
+  add_compile_definitions(LXR_ENABLE_LAZY_COMPLETION_COUNTER)
+endif()
+
+if(CLR_CMAKE_ENABLE_IMMIX_BLOCK_STATE_TEST)
+  if(NOT CLR_CMAKE_TARGET_ARCH_AMD64)
+    message(FATAL_ERROR "The Immix block-state validation exports require AMD64")
+  endif()
+endif()
+
+if(CLR_CMAKE_ENABLE_REFERENCE_COUNT_TEST)
+  if(NOT CLR_CMAKE_TARGET_ARCH_AMD64)
+    message(FATAL_ERROR "The reference-count validation exports require AMD64")
+  endif()
+endif()
+
+if(CLR_CMAKE_ENABLE_IMMIX_ALLOCATION_TEST)
+  if(NOT CLR_CMAKE_TARGET_ARCH_AMD64)
+    message(FATAL_ERROR "The Immix allocation validation exports require AMD64")
+  endif()
+endif()
+
+if(CLR_CMAKE_ENABLE_OBJECT_REFERENCE_ENUMERATION_TEST)
+  if(NOT CLR_CMAKE_TARGET_WIN32 OR NOT CLR_CMAKE_TARGET_ARCH_AMD64)
+    message(FATAL_ERROR "The object-reference enumeration validation path requires Windows AMD64")
+  endif()
+endif()
 
 #----------------------------------------------------
 # Cross target Component build specific configuration
@@ -196,6 +269,10 @@ endif(CLR_CMAKE_HOST_WIN32)
 #----------------------------------
 include(clrdefinitions.cmake)
 
+if(CLR_CMAKE_ENABLE_LXR_GC AND NOT FEATURE_STANDALONE_GC)
+  message(FATAL_ERROR "The selectable LXR prototype requires standalone GC support")
+endif()
+
 #--------------------------------
 # Data descriptors mechanics
 #  - all clr specific data descriptor helpers should be included in this file
@@ -261,7 +338,10 @@ if(CLR_CROSS_COMPONENTS_BUILD AND CLR_CMAKE_TARGET_ARCH_WASM)
 endif()
 
 add_subdirectory(gc)
-if (CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_ARM64)
+if(CLR_CMAKE_ENABLE_LXR_GC)
+  add_subdirectory(gc_lxr)
+endif()
+if (CLR_CMAKE_ENABLE_SATORI_GC AND (CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_ARM64))
   add_subdirectory(gc_satori)
 endif()
 

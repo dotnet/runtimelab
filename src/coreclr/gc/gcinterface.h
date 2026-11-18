@@ -4,6 +4,8 @@
 #ifndef _GC_INTERFACE_H_
 #define _GC_INTERFACE_H_
 
+#include <stddef.h>
+
 // The major version of the IGCHeap interface. Breaking changes to this interface
 // require bumps in the major version number.
 #define GC_INTERFACE_MAJOR_VERSION 6
@@ -11,15 +13,37 @@
 // The minor version of the IGCHeap interface. Non-breaking changes are required
 // to bump the minor version number. GCs and EEs with minor version number
 // mismatches can still interoperate correctly, with some care.
-#define GC_INTERFACE_MINOR_VERSION 0
+#define GC_INTERFACE_MINOR_VERSION 8
+
+// Minor versions above the 6.0 base (custom GC support) that the LXR port adds.
+// 6.1 adds the old-value store hooks at the end of FastGCFunctions.
+// 6.2 adds IGCHeap::GetObjectReferenceEnumerationParameters.
+// 6.3 adds IGCHeap::GetObjectHeaderBitsParameters.
+// 6.8 replaces the range hook with shared, collector-owned copy/clear processing.
+// The obsolete range slot and the flags offset remain reserved for binary safety.
+// See the comment block above the tail methods of IGCHeap for the history of these numbers.
+#define GC_OLD_VALUE_STORE_HOOKS_INTERFACE_MINOR_VERSION 1
+#define GC_OBJECT_REFERENCE_ENUMERATION_INTERFACE_MINOR_VERSION 2
+#define GC_OBJECT_HEADER_BITS_INTERFACE_MINOR_VERSION 3
+#define GC_OBJECT_HEADER_BITS_PARAMETERS_VERSION 1
+#define GC_SHARED_WRITE_BARRIERS_INTERFACE_MINOR_VERSION 8
 
 // The major version of the IGCToCLR interface. Breaking changes to this interface
 // require bumps in the major version number.
 #define EE_INTERFACE_MAJOR_VERSION 6
+#define EE_INTERFACE_MINOR_VERSION 1
+
+#ifdef TARGET_X86
+#define LOCALGC_CALLCONV __cdecl
+#else
+#define LOCALGC_CALLCONV
+#endif
 
 struct ScanContext;
 struct gc_alloc_context;
 class CrawlFrame;
+class MethodTable;
+class Object;
 
 // Callback passed to GcScanRoots.
 typedef void promote_func(PTR_PTR_Object, ScanContext*, uint32_t);
@@ -72,6 +96,106 @@ enum class WriteBarrierParametersMask
     RegionShr = 1 << 10,
     RegionUseBitwiseWriteBarrier = 1 << 11,
     WriteWatchTable = 1 << 12,
+};
+
+enum class ObjectReferenceEnumerationRequestStatus : uint32_t
+{
+    NotProcessed = 0,
+    Accepted = 1,
+    Unsupported = 2,
+};
+
+enum class ObjectReferenceEnumerationRequest : uint32_t
+{
+    Disabled = 0,
+    Enabled = 1,
+};
+
+// Returns the handle-table slot containing the LoaderAllocator object for a
+// collectible MethodTable. The returned slot is read-only to the caller.
+typedef Object** (LOCALGC_CALLCONV *GetLoaderAllocatorObjectSlot)(
+    MethodTable* method_table);
+
+struct ObjectReferenceEnumerationParameters
+{
+    // The collector initializes this to NotProcessed. The EE writes Accepted
+    // or Unsupported before IGCHeap::Initialize.
+    ObjectReferenceEnumerationRequestStatus request_status;
+
+    // Disabled is the backwards-compatible request.
+    ObjectReferenceEnumerationRequest request;
+
+    // Written by the EE for an accepted Enabled request.
+    alignas(void*) GetLoaderAllocatorObjectSlot get_loader_allocator_object_slot;
+};
+
+enum class ObjectHeaderBitsRequestStatus : uint32_t
+{
+    NotProcessed = 0,
+    Accepted = 1,
+    Unsupported = 2,
+};
+
+enum class ObjectHeaderBitsRequest : uint32_t
+{
+    Disabled = 0,
+    Enabled = 1,
+};
+
+enum class ObjectHeaderBitsProtocol : uint32_t
+{
+    None = 0,
+    ClaimAndPublish = 1,
+};
+
+enum class ObjectHeaderBitsAtomicOperation : uint32_t
+{
+    None = 0,
+    Load = 1 << 0,
+    CompareExchange = 1 << 1,
+    Store = 1 << 2,
+    Wait = 1 << 3,
+};
+
+enum class ObjectHeaderBitsMemoryOrder : uint32_t
+{
+    None = 0,
+    SequentiallyConsistent = 1,
+};
+
+struct ObjectHeaderBitsParameters
+{
+    // The collector initializes this to NotProcessed. The EE writes Accepted
+    // or Unsupported before IGCHeap::Initialize.
+    ObjectHeaderBitsRequestStatus request_status;
+
+    // Disabled is the backwards-compatible request.
+    ObjectHeaderBitsRequest request;
+
+    // Enabled requests identify the descriptor shape they were built against.
+    uint32_t version;
+    uint32_t size;
+
+    // Collector requirements.
+    uint32_t requested_bit_count;
+    uint32_t requested_state_count;
+    ObjectHeaderBitsProtocol requested_protocol;
+    uint32_t required_atomic_operations;
+    ObjectHeaderBitsMemoryOrder required_memory_order;
+
+    // Runtime-selected placement and protocol. The collector initializes all
+    // output fields to zero.
+    int32_t object_byte_offset;
+    uint32_t storage_word_size;
+    uint32_t bit_mask;
+    uint32_t bit_shift;
+    ObjectHeaderBitsProtocol granted_protocol;
+    uint32_t granted_atomic_operations;
+    ObjectHeaderBitsMemoryOrder granted_memory_order;
+    uint32_t clear_state;
+    uint32_t invalid_state;
+    uint32_t transition_state;
+    uint32_t published_state;
 };
 
 // Arguments to GCToEEInterface::StompWriteBarrier
@@ -143,7 +267,21 @@ struct WriteBarrierParameters
 using WriteBarrierFunction = void (*)(void* context, Object** dst, Object* ref);
 using IsInGCHeapFunction = bool (*)(void* context, void* address);
 using BulkMoveWithWriteBarrierFunction = void (*)(void* context, void* destination, const void* source, size_t length);
-using CheckEscapeFunction = void (*)(Object** dst, Object* ref);
+// Called before runtime reference stores and atomic attempts, including null/frozen values and failed CAS.
+// The collector may read *dst. ref is only the proposed value; it does not indicate a committed store.
+// Callbacks must not trigger GC or retain untracked references after returning.
+using PreStoreFunction = void (*)(Object** dst, Object* ref);
+using BulkClearWithWriteBarrierFunction = void (*)(void* context, void* destination, size_t byteCount);
+
+// FastGCFunctions.flags
+enum FastGCFunctionsFlags : uint32_t
+{
+    // The collector needs the OLD value of every overwritten reference field, also when the new value is null, a frozen
+    // object or provably not in the heap. The JIT then keeps the barrier for those stores, and CoreLib uses the
+    // shared copy/clear paths and ordinary typed fill stores. Requires pre/post-store, is_in_gc_heap, bulk move
+    // and bulk clear callbacks (post-store can be a no-op). No unlogged fallback is permitted.
+    FASTGC_REQUIRES_OLD_VALUE = 1,
+};
 
 struct FastGCFunctions
 {
@@ -151,10 +289,22 @@ struct FastGCFunctions
     WriteBarrierFunction write_barrier;
     // WriteBarrierFunction checked_write_barrier;
     IsInGCHeapFunction is_in_gc_heap;
-    CheckEscapeFunction check_escape;
+    PreStoreFunction pre_store;
+    // Both bulk callbacks own collector processing BEFORE writing, then write every byte of the bounded chunk.
+    // Ranges can contain mixed reference/non-reference fields. Copy must preserve overlap order and reference
+    // atomicity. GC is permitted only between completed callbacks, with the caller's byrefs tracked.
     BulkMoveWithWriteBarrierFunction bulk_move_with_write_barrier;
+
+    // Keep the 6.1-6.3 range slot and flags offset. An old function address must never be treated as bulk clear.
+    void* reserved_pre_store_range;
+    uint32_t flags;
+    // Added in GC6.8 / EE6.1. A collector must verify the EE buffer version before writing this tail.
+    BulkClearWithWriteBarrierFunction bulk_clear_with_write_barrier;
 };
 
+static_assert(offsetof(FastGCFunctions, reserved_pre_store_range) == 5 * sizeof(void*));
+static_assert(offsetof(FastGCFunctions, flags) == 6 * sizeof(void*));
+static_assert(offsetof(FastGCFunctions, bulk_clear_with_write_barrier) == 7 * sizeof(void*));
 // Describes a patchable, pointer-sized data slot embedded directly in a custom assign-reference
 // helper (see GetAssignRefFunctions), used in place of a direct reference to a global variable.
 // A helper cannot take a PC-relative reference to an arbitrary (possibly far away) global and
@@ -311,7 +461,6 @@ struct segment_info
 // Software Write Watch table.
 #define SOFTWARE_WRITE_WATCH_AddressToTableByteIndexShift 0xc
 
-class Object;
 class IGCHeap;
 class IGCHandleManager;
 
@@ -1150,6 +1299,44 @@ public:
     // listed in patchableValues (and read from the patched slot) so the helper remains correct no
     // matter where the EE copies it to.
     virtual void GetAssignRefFunctions(void** assignRef, size_t* assignRefSize, void** assignRefChecked, size_t* assignRefCheckedSize, uintptr_t** avLocationsList, GCWriteBarrierPatchableValue** patchableValues) PURE_VIRTUAL
+
+    // ---- Tail methods added by the LXR port (interface minors 6.2 and 6.3) ----
+    //
+    // The two methods below carry default implementations, so a collector built from older source still
+    // produces a valid vtable slot for them. Their minor numbers were renumbered once, when the allocation-complete
+    // callback request (formerly 6.5, between the old-value hooks and the two methods below) was removed:
+    //
+    //                                         before   now
+    //   old-value store hooks (FastGCFunctions)   6.1    6.1
+    //   allocation-complete callback              6.5    removed
+    //   object reference enumeration              6.6    6.2
+    //   object header bits                        6.7    6.3
+    //
+    // Removing the allocation-complete request moved the two methods that followed it up by one vtable slot,
+    // so a collector or runtime built against the old 6.5 - 6.7 layout is NOT binary compatible with this one,
+    // even though the major version is unchanged. Rebuild the runtime and the collector together.
+    // GC6.8 keeps these two slots, but requires the shared write-barrier buffer protocol. The loader rejects
+    // ambiguous 6.2-6.7 layouts and unknown later layouts before calling any getters.
+    // The slot-log barrier shape negotiation (once 6.2 to 6.4) was removed earlier, when LXR moved to the
+    // PR #3316 barrier mechanism.
+
+    // Returns the object-reference enumeration request. The EE calls this only
+    // for GC interface version 6.2 or later. Collectors built from older
+    // source inherit a process-lifetime disabled request.
+    virtual ObjectReferenceEnumerationParameters* GetObjectReferenceEnumerationParameters()
+    {
+        static ObjectReferenceEnumerationParameters parameters = {};
+        return &parameters;
+    }
+
+    // Returns the object-header bit request. The EE calls this only for GC
+    // interface version 6.3 or later. Collectors built from older source
+    // inherit a process-lifetime disabled request.
+    virtual ObjectHeaderBitsParameters* GetObjectHeaderBitsParameters()
+    {
+        static ObjectHeaderBitsParameters parameters = {};
+        return &parameters;
+    }
 };
 
 #ifdef WRITE_BARRIER_CHECK
@@ -1242,12 +1429,6 @@ struct VersionInfo {
     uint32_t BuildVersion;
     const char* Name;
 };
-
-#ifdef TARGET_X86
-#define LOCALGC_CALLCONV __cdecl
-#else
-#define LOCALGC_CALLCONV
-#endif
 
 typedef void (LOCALGC_CALLCONV *GC_VersionInfoFunction)(
     /* InOut */ VersionInfo*
