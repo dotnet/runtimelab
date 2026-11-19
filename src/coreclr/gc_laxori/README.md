@@ -34,6 +34,17 @@ The build makes `clrlaxorigc.dll` (`libclrlaxorigc.so` on Linux). By default it 
 (`libclrlaxorigc-bitmap.so`), a variant that finds object starts with a separate bit plane
 (`CLR_CMAKE_LAXORI_BUILD_BITMAP_VARIANT`).
 
+The official shipping pipeline (`eng/pipelines/runtimelab-official.yml`) enables `CLR_CMAKE_ENABLE_SATORI_GC`,
+`CLR_CMAKE_ENABLE_LXR_GC`, and `CLR_CMAKE_ENABLE_LAXORI_GC` through the existing `-cmakeargs` argument.
+This applies only to normal Windows x64 and Linux x64 builds, not the standard-GC producer modes.
+To do the same locally, separate the options with spaces on Linux
+(`./build.sh ... -cmakeargs "-DCLR_CMAKE_ENABLE_SATORI_GC=1 -DCLR_CMAKE_ENABLE_LXR_GC=1 -DCLR_CMAKE_ENABLE_LAXORI_GC=1"`).
+On Windows they must stay a `;` list, quoted as in the pipeline file, because `build-runtime.cmd` passes each
+list item to CMake as one argument.
+The `Microsoft.NETCore.App.Runtime.win-x64` and `.linux-x64` packages include Satori and the regular and bitmap
+variants of LXR and Laxori. Their versions use the `laxori` prerelease label; package IDs and the
+`dotnet-experimental` feed are unchanged.
+
 ## Use
 
 Put the GC library next to the runtime and select it with `DOTNET_GCName`:
