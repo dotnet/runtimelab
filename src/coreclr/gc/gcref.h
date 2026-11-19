@@ -329,6 +329,29 @@ private:
     size_t m_rangeStart;
     size_t m_rangeEnd;
 };
+
+FORCEINLINE bool IsGCReferenceSlot(Object* object, uintptr_t address)
+{
+    MethodTable* methodTable = object->GetGCSafeMethodTable();
+    uintptr_t objectAddress = reinterpret_cast<uintptr_t>(object);
+    if (!methodTable->ContainsGCPointers() || address < objectAddress ||
+        (address & (sizeof(Object*) - 1)) != 0)
+    {
+        return false;
+    }
+
+    GCReferenceObjectLayout layout = GetGCReferenceObjectLayout(object, methodTable);
+    if (layout.objectSize < sizeof(ObjHeader) + sizeof(Object*) ||
+        address - objectAddress > layout.objectSize - sizeof(ObjHeader) - sizeof(Object*))
+    {
+        return false;
+    }
+
+    GCReferenceRangeIterator iterator(object);
+    iterator.RestrictToRange(address - objectAddress, sizeof(Object*));
+    GCReferenceRange range;
+    return iterator.Next(&range);
+}
 #endif // !DACCESS_COMPILE
 
 #endif // _GCREF_H_
