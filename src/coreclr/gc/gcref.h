@@ -194,6 +194,18 @@ public:
         }
     }
 
+    bool TryRestrictToRange(size_t offset, size_t bytes)
+    {
+        if (m_seriesCount == 0 || m_objectSize < sizeof(ObjHeader) ||
+            offset > m_objectSize - sizeof(ObjHeader) ||
+            bytes > m_objectSize - sizeof(ObjHeader) - offset)
+        {
+            return false;
+        }
+        RestrictToRange(offset, bytes);
+        return true;
+    }
+
     void Relocate(Object* object)
     {
         uint8_t* destination = reinterpret_cast<uint8_t*>(object);
@@ -332,23 +344,19 @@ private:
 
 FORCEINLINE bool IsGCReferenceSlot(Object* object, uintptr_t address)
 {
-    MethodTable* methodTable = object->GetGCSafeMethodTable();
     uintptr_t objectAddress = reinterpret_cast<uintptr_t>(object);
-    if (!methodTable->ContainsGCPointers() || address < objectAddress ||
+    if (address < objectAddress ||
         (address & (sizeof(Object*) - 1)) != 0)
     {
         return false;
     }
 
-    GCReferenceObjectLayout layout = GetGCReferenceObjectLayout(object, methodTable);
-    if (layout.objectSize < sizeof(ObjHeader) + sizeof(Object*) ||
-        address - objectAddress > layout.objectSize - sizeof(ObjHeader) - sizeof(Object*))
+    GCReferenceRangeIterator iterator(object);
+    if (!iterator.TryRestrictToRange(address - objectAddress, sizeof(Object*)))
     {
         return false;
     }
 
-    GCReferenceRangeIterator iterator(object);
-    iterator.RestrictToRange(address - objectAddress, sizeof(Object*));
     GCReferenceRange range;
     return iterator.Next(&range);
 }
