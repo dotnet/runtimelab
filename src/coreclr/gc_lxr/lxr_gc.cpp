@@ -437,6 +437,7 @@ HRESULT LxrGcHeap::Initialize()
         configuration.concurrentTraceWorkers = configuration.workers;
     }
     m_engine.GetPauseTimers().Configure(phaseTimers);
+    configuration.lookupStats = m_lookup_stats;
     configuration.selectParallelBlocks = static_cast<uint32_t>(selectParallelBlocks);
     for (const char* unsupported : {
             "LXRMaxPauseMillis", "LXRTransparentHugepage",

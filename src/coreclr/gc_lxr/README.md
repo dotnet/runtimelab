@@ -52,5 +52,7 @@ The settings are read from `DOTNET_LXR*` environment variables. Size settings ar
 - `DOTNET_LXRNativePlaneLimitMB`: the limit of the side metadata memory.
 - `DOTNET_LXRConcGCThreads`, `DOTNET_LXRGCThreads`: the number of GC worker threads.
 - `DOTNET_LXRPolicyTrace=1`: prints the collection policy decisions.
+- `DOTNET_LXRLookupStats=1`: collects interior-lookup timing and counters and prints cumulative `LXRLOOKUP` statistics
+  at each pause. Collection is off by default, independently of `DOTNET_LXRPhaseTimers`.
 
 See `LxrGcHeap::Initialize` in `lxr_gc.cpp` for the full list.
