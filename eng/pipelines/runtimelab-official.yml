@@ -59,6 +59,23 @@ extends:
             jobTemplate: /eng/pipelines/common/global-build-job.yml
             helixQueuesTemplate: /eng/pipelines/libraries/helix-queues-setup.yml
             buildConfig: release
+            # Default shipping builds (linux_x64 and windows_x64 only) enable the Satori, LXR and
+            # Laxori collectors, whose CMake options default to OFF. The existing -cmakeargs path
+            # needs a different separator per OS:
+            # - Windows: build-runtime.cmd keeps each runtime.proj item as one quoted CMake argument,
+            #   so the options must be a ';' list. The quoting keeps the ';' intact through build.cmd's
+            #   PowerShell layer and the MSBuild command line.
+            # - Linux: build.sh joins arguments with spaces and build-commons.sh word-splits them.
+            #   A ';' would break the cross-component AdditionalProperties in eng/Subsets.props.
+            ${{ if eq(parameters.standardGcArtifactProducer, 'none') }}:
+              variables:
+              - name: _experimentalGcWindowsBuildArgs
+                value: >-
+                  -cmakeargs "'\`\"-DCLR_CMAKE_ENABLE_SATORI_GC=1;-DCLR_CMAKE_ENABLE_LXR_GC=1;-DCLR_CMAKE_ENABLE_LAXORI_GC=1\`\"'"
+              - name: _experimentalGcLinuxBuildArgs
+                value: -cmakeargs "-DCLR_CMAKE_ENABLE_SATORI_GC=1 -DCLR_CMAKE_ENABLE_LXR_GC=1 -DCLR_CMAKE_ENABLE_LAXORI_GC=1"
+              - name: _experimentalGcBuildArgs
+                value: $[ iif(eq(variables['osGroup'], 'windows'), variables['_experimentalGcWindowsBuildArgs'], variables['_experimentalGcLinuxBuildArgs']) ]
             platforms:
             - linux_x64
             - windows_x64
@@ -93,7 +110,11 @@ extends:
                     targetPath: $(Build.StagingDirectory)/ExternalDotnetLayout_windows_arm64_Release_coreclr.zip
                     artifactName: ExternalDotnetLayout_windows_arm64_Release_coreclr
                     condition: and(succeeded(), eq(variables['osGroup'], 'windows'), eq(variables['archType'], 'arm64'))
-              buildArgs: -s clr+libs+host+packs -c $(_BuildConfig) -restore -build -publish /p:PublishingVersion=4
+              # Standard-GC producer modes keep their existing build contract.
+              ${{ if eq(parameters.standardGcArtifactProducer, 'none') }}:
+                buildArgs: -s clr+libs+host+packs -c $(_BuildConfig) -restore -build -publish /p:PublishingVersion=4 $(_experimentalGcBuildArgs)
+              ${{ else }}:
+                buildArgs: -s clr+libs+host+packs -c $(_BuildConfig) -restore -build -publish /p:PublishingVersion=4
               postBuildSteps:
               - ${{ if ne(parameters.standardGcArtifactProducer, 'none') }}:
                 - template: /eng/pipelines/common/upload-artifact-step.yml

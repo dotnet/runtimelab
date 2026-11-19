@@ -149,7 +149,7 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
         ):
             self.assertIsNotNone(_load_yaml(path), path)
 
-    def test_default_mode_preserves_exact_baseline_graph(self):
+    def test_only_default_shipping_arguments_differ_from_baseline_graph(self):
         baseline_text = subprocess.run(
             ["git", "show", f"{BASE_SHA}:eng/pipelines/runtimelab-official.yml"],
             cwd=REPO_ROOT,
@@ -168,6 +168,24 @@ class StandardGcArtifactProducerTests(unittest.TestCase):
         current["parameters"] = [
             item for item in current["parameters"] if item["name"] not in producer_parameters
         ]
+        build_stage = next(
+            stage
+            for stage in current["extends"]["parameters"]["stages"]
+            if stage.get("stage") == "Build"
+        )
+        default_mode = "${{ if eq(parameters.standardGcArtifactProducer, 'none') }}"
+        matrix_parameters = build_stage["jobs"][0]["parameters"]
+        matrix_parameters.pop(default_mode)
+        job_parameters = matrix_parameters["jobParameters"]
+        shipping = job_parameters.pop(default_mode)
+        producer = job_parameters.pop("${{ else }}")
+        self.assertEqual({"buildArgs"}, set(shipping))
+        self.assertEqual({"buildArgs"}, set(producer))
+        self.assertEqual(
+            producer["buildArgs"] + " $(_experimentalGcBuildArgs)",
+            shipping["buildArgs"],
+        )
+        job_parameters.update(producer)
         self.assertEqual(baseline, _normalize_default_graph(current))
 
     def test_mode_is_closed_and_default_off(self):

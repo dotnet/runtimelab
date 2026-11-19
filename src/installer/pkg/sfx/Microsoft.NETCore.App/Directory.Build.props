@@ -123,6 +123,10 @@
     <PlatformManifestFileEntry Include="libclrlxrgc.so" IsNative="true" />
     <PlatformManifestFileEntry Include="clrlxrgc-bitmap.dll" IsNative="true" />
     <PlatformManifestFileEntry Include="libclrlxrgc-bitmap.so" IsNative="true" />
+    <PlatformManifestFileEntry Include="clrlaxorigc.dll" IsNative="true" />
+    <PlatformManifestFileEntry Include="libclrlaxorigc.so" IsNative="true" />
+    <PlatformManifestFileEntry Include="clrlaxorigc-bitmap.dll" IsNative="true" />
+    <PlatformManifestFileEntry Include="libclrlaxorigc-bitmap.so" IsNative="true" />
     <PlatformManifestFileEntry Include="clretwrc.dll" IsNative="true" />
     <PlatformManifestFileEntry Include="clrjit.dll" IsNative="true" />
     <PlatformManifestFileEntry Condition="'$(PgoInstrument)' != ''" Include="pgort140.dll" IsNative="true" />
