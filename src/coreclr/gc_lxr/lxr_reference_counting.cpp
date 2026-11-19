@@ -9596,10 +9596,22 @@ LxrRcResult LxrReferenceCounting::ScanTraceLocked(TraceScan* scan, bool finish, 
                     *slot = child;
                 }
             }
-            LxrRcResult result = append(reinterpret_cast<uintptr_t>(child));
-            if (result != LxrRcResult::Success)
+            else
             {
-                return result;
+                child = ResolveForwardedChecked(child);
+            }
+            // Remember the slot and resolve/copy first: a marked source can move to an unmarked destination.
+            // Counted marks have scan, promotion or deletion work behind them. Keep RC-zero readers on the checked queue path.
+            uintptr_t childStart = Start(child);
+            if (!OwnsAddress(childStart) || childStart % sizeof(uintptr_t) != 0 ||
+                m_mark_metadata.Load(childStart, SideMetadataMemoryOrder::Relaxed) == 0 ||
+                m_rc_metadata.Load(childStart, SideMetadataMemoryOrder::Relaxed) == 0)
+            {
+                LxrRcResult result = append(reinterpret_cast<uintptr_t>(child));
+                if (result != LxrRcResult::Success)
+                {
+                    return result;
+                }
             }
         }
         if (!finish && visited == BufferCapacity)
