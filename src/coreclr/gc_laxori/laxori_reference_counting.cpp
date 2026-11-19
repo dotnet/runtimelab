@@ -5043,16 +5043,8 @@ LaxoriRcResult LaxoriReferenceCounting::ReplayRememberedChunk(RememberedChunk* c
                 m_mature_metrics[12].fetch_add(1, std::memory_order_relaxed);
                 continue;
             }
-            bool referenceField = false;
             // Byte tags may wrap. Inspect only a current metadata-live owner's shape, never stale payload.
-            GCReferenceRanges::Enumerate(owner, [&](Object** first, size_t count)
-            {
-                uintptr_t start = reinterpret_cast<uintptr_t>(first);
-                referenceField = address >= start && (address - start) / sizeof(Object*) < count &&
-                    (address - start) % sizeof(Object*) == 0;
-                return !referenceField;
-            });
-            if (!referenceField)
+            if (!IsGCReferenceSlot(owner, address))
             {
                 m_mature_metrics[12].fetch_add(1, std::memory_order_relaxed);
                 continue;
