@@ -9577,9 +9577,9 @@ LxrRcResult LxrReferenceCounting::ScanTraceLocked(TraceScan* scan, bool finish, 
             }
         }
         Object** slot = scan->range.start + scan->cursor++;
-        // A pause has no mutator that writes the slot, so it reads the slot without an exclusive cache line.
-        Object* child = pausePhase ? VolatileLoadWithoutBarrier(slot)
-            : Interlocked::CompareExchangePointer(slot, static_cast<Object*>(nullptr), nullptr);
+        // A pause has no mutator that writes the slot. A concurrent trace needs only an atomic acquire load:
+        // the SATB barrier logs the old value before it stores, so the old and the new value are both safe.
+        Object* child = pausePhase ? VolatileLoadWithoutBarrier(slot) : VolatileLoad(slot);
         visited++;
         if (child != nullptr)
         {
