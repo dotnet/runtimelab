@@ -64,13 +64,16 @@ extends:
             # needs a different separator per OS:
             # - Windows: build-runtime.cmd keeps each runtime.proj item as one quoted CMake argument,
             #   so the options must be a ';' list. The quoting keeps the ';' intact through build.cmd's
-            #   PowerShell layer and the MSBuild command line.
+            #   PowerShell layer and the MSBuild command line. NuGet's static-graph restore otherwise
+            #   forwards global properties as a ';'-joined string and splits that list into invalid
+            #   property names, so the restore must serialize them instead.
             # - Linux: build.sh joins arguments with spaces and build-commons.sh word-splits them.
             #   A ';' would break the cross-component AdditionalProperties in eng/Subsets.props.
             ${{ if eq(parameters.standardGcArtifactProducer, 'none') }}:
               variables:
               - name: _experimentalGcWindowsBuildArgs
                 value: >-
+                  /p:RestoreSerializeGlobalProperties=true
                   -cmakeargs "'\`\"-DCLR_CMAKE_ENABLE_SATORI_GC=1;-DCLR_CMAKE_ENABLE_LXR_GC=1;-DCLR_CMAKE_ENABLE_LAXORI_GC=1\`\"'"
               - name: _experimentalGcLinuxBuildArgs
                 value: -cmakeargs "-DCLR_CMAKE_ENABLE_SATORI_GC=1 -DCLR_CMAKE_ENABLE_LXR_GC=1 -DCLR_CMAKE_ENABLE_LAXORI_GC=1"
