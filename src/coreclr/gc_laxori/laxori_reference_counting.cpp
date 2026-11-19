@@ -3748,7 +3748,7 @@ Object* LaxoriReferenceCounting::ResolveForwarded(Object* object) const
 
 Object* LaxoriReferenceCounting::ResolveForwardedChecked(Object* object) const
 {
-#if !defined(LAXORI_OBJECT_START_WALK) || (defined(LAXORI_WALK_TRUSTED_RESOLVE_CONTROL))
+#if defined(LAXORI_WALK_TRUSTED_RESOLVE_CONTROL)
     // (Control for the walk variant: a stale value is trusted like a start.)
     return ResolveForwarded(object);
 #else
@@ -3761,13 +3761,29 @@ Object* LaxoriReferenceCounting::ResolveForwardedChecked(Object* object) const
     {
         return object;
     }
-    size_t slot = (start - GetReservationStart()) / sizeof(uintptr_t);
+    size_t block = (start - GetReservationStart()) / ImmixBlockGeometry::BlockBytes;
     if (m_rc_metadata.Load(start, SideMetadataMemoryOrder::Relaxed) != 0)
     {
+        // A young copy source keeps count zero. A counted source can move only while its mature source flag is set.
+        // Source retirement clears the count before clearing the flag, after trace and replay work has drained.
+        if (m_evacuation_sources == nullptr ||
+            (block < m_block_table_blocks.load(std::memory_order_acquire) &&
+             m_evacuation_sources[block].load(std::memory_order_acquire) == 0))
+        {
+            return object;
+        }
+#ifdef LAXORI_OBJECT_START_WALK
         // A counted start has a valid header. The first slot of a continuation line also holds a count, but it lies inside
         // another object, and its header is arbitrary data.
+        size_t slot = (start - GetReservationStart()) / sizeof(uintptr_t);
         return IsContinuationSlot(slot) ? object : ResolveForwarded(object);
+#else
+        return ResolveForwarded(object);
+#endif // LAXORI_OBJECT_START_WALK
     }
+#ifndef LAXORI_OBJECT_START_WALK
+    return ResolveForwarded(object);
+#else
     // Count zero: a young object, a dead object, or an address inside an object. Only the young object that the pause
     // claimed as a copy source has a forwarding state. The sources are in the spans of the pause, which exist until
     // Resume; a value that no span starts an object at is not a source. The header is read first only to skip the walk
@@ -3785,6 +3801,7 @@ Object* LaxoriReferenceCounting::ResolveForwardedChecked(Object* object) const
     }
     return ResolveForwarded(object);
 #endif // !LAXORI_OBJECT_START_WALK
+#endif // LAXORI_WALK_TRUSTED_RESOLVE_CONTROL
 }
 
 #ifdef LAXORI_OBJECT_START_WALK
