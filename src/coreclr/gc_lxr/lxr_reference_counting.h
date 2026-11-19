@@ -910,6 +910,8 @@ private:
         bool* incrementedInPlace, uintptr_t* previous);
     LxrRcResult AllocateCopy(size_t size, size_t worker, uintptr_t* start);
     LxrRcResult TryCopyMature(Object** object);
+    // The caller has applied ResolveForwardedChecked. A concurrent copy can still win the claim below.
+    LxrRcResult TryCopyMatureResolved(Object** object);
     LxrRcResult SelectMatureCandidates();
     // P50 (item 8a). SelectMatureCandidates picks one of two implementations that give the same evacuation set. The serial one
     // is the loop of the first version (one pass over the blocks, then one pass over the candidates). The parallel one

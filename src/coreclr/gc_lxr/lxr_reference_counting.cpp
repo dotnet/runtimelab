@@ -5007,7 +5007,13 @@ LxrRcResult LxrReferenceCounting::TryCopyMature(Object** reference)
 {
     Object* source = *reference;
     *reference = ResolveForwardedChecked(source);
-    if (*reference != source || source == nullptr || !IsMatureCandidate(Start(source)) ||
+    return *reference != source ? LxrRcResult::Success : TryCopyMatureResolved(reference);
+}
+
+LxrRcResult LxrReferenceCounting::TryCopyMatureResolved(Object** reference)
+{
+    Object* source = *reference;
+    if (source == nullptr || !IsMatureCandidate(Start(source)) ||
         (GetTracePhase() != LxrTracePhase::Full && GetTracePhase() != LxrTracePhase::FinalMark))
     {
         return LxrRcResult::Success;
@@ -9450,7 +9456,7 @@ LxrRcResult LxrReferenceCounting::ProcessTraceObject(
     }
     if (m_configuration.evacuateMature)
     {
-        LxrRcResult copied = TryCopyMature(&object);
+        LxrRcResult copied = TryCopyMatureResolved(&object);
         if (copied != LxrRcResult::Success)
         {
             return copied;
