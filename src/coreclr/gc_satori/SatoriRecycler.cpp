@@ -135,7 +135,8 @@ void SatoriRecycler::Initialize(SatoriHeap* heap)
 
     m_workList = SatoriShardedWorkList::AllocAlignedForProcessors(4);
     m_gcState = GC_STATE_NONE;
-    m_barrierState = BARRIER_STATE_NOT_CONCURRENT;
+    // The first GC is a full GC (see m_nextGcIsFullGc), thus cards are not needed until then.
+    m_barrierState = BARRIER_STATE_SKIPPING_CARDS;
 
     m_gcCount[0] = m_gcCount[1] = m_gcCount[2] = 0;
     m_compactingGcCount[0] = m_compactingGcCount[1] = m_compactingGcCount[2] = 0;
@@ -202,6 +203,10 @@ void SatoriRecycler::Initialize(SatoriHeap* heap)
     m_lastTenuredGcInfo   = { 0 };
     m_CurrentGcInfo = nullptr;
     m_startMillis = GetNowMillis();
+
+    // Publish the initial barrier state to the barriers, as the blocking collection does.
+    // Nothing runs managed code yet, as if EE was suspended.
+    ToggleWriteBarrier(m_barrierState, /* eeSuspended */ true);
 }
 
 void SatoriRecycler::ShutDown()
