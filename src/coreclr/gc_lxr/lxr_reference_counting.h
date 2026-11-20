@@ -936,6 +936,8 @@ private:
     LxrRcResult RememberMatureSlot(Object** slot, Object* target);
     LxrRcResult ReplayMatureRememberedSlots();
     void DeleteRememberedChunks();
+    LxrRcResult FlushRememberedBuffers();
+    void PushRememberedChunk(RememberedChunk* chunk);
     LxrRcResult FixForwardingReaders();
     void FixPacketReferences(Work* work);
     LxrRcResult ReleaseSetup();
@@ -1252,6 +1254,10 @@ private:
     std::atomic<size_t> m_pause_copied_bytes{0};
     std::atomic<uint8_t>* m_evacuation_sources = nullptr;
     std::atomic<RememberedChunk*> m_remembered_chunks{nullptr};
+    // P3. One chunk per worker, plus one shared slot for threads that are not workers (as the per-worker buffers of the
+    // oracle, MatureEvecRemSet::gc_buffers). A full chunk goes to m_remembered_chunks.
+    struct RememberedBuffer;
+    RememberedBuffer* m_remembered_buffers = nullptr;
     // The chunks that a replay works through. The replay takes them from m_remembered_chunks, so that the entries that the
     // trace of the replay adds are not replayed. A chunk is deleted when the replay has ended.
     RememberedChunk* m_replay_chunks = nullptr;

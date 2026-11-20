@@ -194,6 +194,27 @@ struct LxrReferenceCounting::RememberedChunk
     RememberedChunk* next = nullptr;
 };
 
+// The lock is taken by the owner for each entry and by FlushRememberedBuffers. It is on the cache line of the owner, so an
+// entry costs an uncontended exchange on a local line, not a CAS on a line that every worker writes.
+struct alignas(64) LxrReferenceCounting::RememberedBuffer
+{
+    std::atomic_flag lock = ATOMIC_FLAG_INIT;
+    RememberedChunk* chunk = nullptr;
+
+    void Enter()
+    {
+        while (lock.test_and_set(std::memory_order_acquire))
+        {
+            YieldProcessor();
+        }
+    }
+
+    void Exit()
+    {
+        lock.clear(std::memory_order_release);
+    }
+};
+
 class LxrReferenceCounting::CostScope final
 {
 public:
@@ -1029,6 +1050,11 @@ LxrRcResult LxrReferenceCounting::InitializeBuffers(size_t slots)
     {
         return LxrRcResult::OutOfMemory;
     }
+    m_remembered_buffers = new (std::nothrow) RememberedBuffer[m_configuration.workers + 1];
+    if (m_remembered_buffers == nullptr)
+    {
+        return LxrRcResult::OutOfMemory;
+    }
     m_mutators = new (std::nothrow) LxrRcMutator[m_configuration.maximumMutators];
     m_mutator_chunks = new (std::nothrow) LogChunk[2 * m_configuration.maximumMutators];
     m_banks = new (std::nothrow) LogBank[2];
@@ -1464,6 +1490,7 @@ void LxrReferenceCounting::Shutdown()
     DeleteCopyLogs();
     DeleteReleaseChunks();
     delete[] m_copy_logs;
+    delete[] m_remembered_buffers;
     delete[] m_worker_counters;
     m_evacuation_sources_storage.Shutdown();
     delete[] m_mutator_chunks;
@@ -1487,6 +1514,7 @@ void LxrReferenceCounting::Shutdown()
     m_mutators = nullptr;
     m_copy_allocators = nullptr;
     m_copy_logs = nullptr;
+    m_remembered_buffers = nullptr;
     m_worker_counters = nullptr;
     m_evacuation_sources = nullptr;
     m_mutator_chunks = nullptr;
@@ -4706,38 +4734,75 @@ LxrRcResult LxrReferenceCounting::RememberMatureSlot(Object** slot, Object* targ
     }
     uintptr_t reuse = (IsImmix(address) ? m_line_reuse_metadata : m_page_reuse_metadata).Load(
         address, SideMetadataMemoryOrder::SequentiallyConsistent);
-    for (;;)
+    const size_t worker = GetExecutionWorker();
+    RememberedBuffer& buffer = m_remembered_buffers[worker];
+    buffer.Enter();
+    RememberedChunk* chunk = buffer.chunk;
+    if (chunk == nullptr || chunk->reserved.load(std::memory_order_relaxed) == BufferCapacity)
     {
-        RememberedChunk* head = m_remembered_chunks.load(std::memory_order_acquire);
-        if (head != nullptr)
+        RememberedChunk* fresh = new (std::nothrow) RememberedChunk;
+        if (fresh == nullptr)
         {
-            size_t index = head->reserved.load(std::memory_order_relaxed);
-            while (index < BufferCapacity)
-            {
-                if (head->reserved.compare_exchange_weak(index, index + 1, std::memory_order_relaxed))
-                {
-                    head->entries[index] = {slot, static_cast<uint8_t>(reuse)};
-                    head->published[index].store(1, std::memory_order_release);
-                    CountWorker(GetExecutionWorker(), RememberedSlotsCounter, 1);
-                    return LxrRcResult::Success;
-                }
-            }
-        }
-        RememberedChunk* chunk = new (std::nothrow) RememberedChunk;
-        if (chunk == nullptr)
-        {
+            buffer.Exit();
             return Fail(LxrRcResult::OutOfMemory);
         }
+        if (chunk != nullptr)
+        {
+            PushRememberedChunk(chunk);
+        }
+        buffer.chunk = fresh;
+        chunk = fresh;
+    }
+    size_t index = chunk->reserved.load(std::memory_order_relaxed);
+    chunk->entries[index] = {slot, static_cast<uint8_t>(reuse)};
+    chunk->published[index].store(1, std::memory_order_relaxed);
+    chunk->reserved.store(index + 1, std::memory_order_relaxed);
+    buffer.Exit();
+    CountWorker(worker, RememberedSlotsCounter, 1);
+    return LxrRcResult::Success;
+}
+
+void LxrReferenceCounting::PushRememberedChunk(RememberedChunk* chunk)
+{
+    RememberedChunk* head = m_remembered_chunks.load(std::memory_order_relaxed);
+    do
+    {
         chunk->next = head;
-        if (!m_remembered_chunks.compare_exchange_strong(head, chunk, std::memory_order_acq_rel))
+    } while (!m_remembered_chunks.compare_exchange_weak(head, chunk, std::memory_order_release, std::memory_order_relaxed));
+}
+
+// Moves the chunk of every worker to m_remembered_chunks (the oracle's flush_all). The lock of each buffer orders the entries
+// of its owner before the move, so the flush is correct also when a worker still records.
+LxrRcResult LxrReferenceCounting::FlushRememberedBuffers()
+{
+    if (m_remembered_buffers == nullptr)
+    {
+        return LxrRcResult::Success;
+    }
+    for (size_t worker = 0; worker <= m_configuration.workers; worker++)
+    {
+        RememberedBuffer& buffer = m_remembered_buffers[worker];
+        buffer.Enter();
+        RememberedChunk* chunk = buffer.chunk;
+        buffer.chunk = nullptr;
+        buffer.Exit();
+        if (chunk == nullptr)
+        {
+            continue;
+        }
+        if (chunk->reserved.load(std::memory_order_relaxed) == 0)
         {
             delete chunk;
+            continue;
         }
+        PushRememberedChunk(chunk);
     }
+    return LxrRcResult::Success;
 }
 
 void LxrReferenceCounting::DeleteRememberedChunks()
 {
+    FlushRememberedBuffers();
     RememberedChunk* chunk = m_remembered_chunks.exchange(nullptr, std::memory_order_acq_rel);
     while (chunk != nullptr)
     {
@@ -4760,6 +4825,11 @@ LxrRcResult LxrReferenceCounting::ReplayMatureRememberedSlots()
     CostScope cost(this, 6);
     // The replay works through the chunks that exist now. The trace of the objects that it copies adds entries to a new
     // list, and these are never replayed (they are deleted at the end, as before).
+    LxrRcResult flushed = FlushRememberedBuffers();
+    if (flushed != LxrRcResult::Success)
+    {
+        return flushed;
+    }
     RememberedChunk* chunks = m_remembered_chunks.exchange(nullptr, std::memory_order_acq_rel);
     m_replay_chunks = chunks;
     LxrRcResult status = LxrRcResult::Success;
