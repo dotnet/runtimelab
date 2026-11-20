@@ -601,12 +601,14 @@ struct LxrReferenceCounting::ReferenceBatch
 struct LxrReferenceCounting::TraceBatch
 {
     LxrReferenceCounting* engine;
+    // P6. The worker of the packet, read once from the thread-local state (the oracle sets it once per packet).
+    size_t worker;
     size_t count = 0;
     bool registered = false;
     bool accounted = false;
     uintptr_t references[FullTraceBatchCapacity];
 
-    explicit TraceBatch(LxrReferenceCounting* owner) : engine(owner)
+    explicit TraceBatch(LxrReferenceCounting* owner) : engine(owner), worker(owner->GetExecutionWorker())
     {
         // Unpublished targets retain completion ownership until copied work takes over.
 #if !defined(LXR_SIDE_METADATA_TEST_PLATFORM) || !defined(LXR_TRACE_BATCH_EARLY_CONTROL)
@@ -4727,6 +4729,16 @@ LxrRcResult LxrReferenceCounting::RememberMatureSlot(Object** slot, Object* targ
     {
         return LxrRcResult::Success;
     }
+    return RememberMatureCandidateSlot(slot, GetExecutionWorker());
+}
+
+// The target of the slot is a mature candidate.
+LxrRcResult LxrReferenceCounting::RememberMatureCandidateSlot(Object** slot, size_t worker)
+{
+    if (!(m_marking.load(std::memory_order_relaxed) || m_pause_kind == LxrPauseKind::FinalMark))
+    {
+        return LxrRcResult::Success;
+    }
     uintptr_t address = reinterpret_cast<uintptr_t>(slot);
     if (!OwnsAddress(address))
     {
@@ -4734,7 +4746,6 @@ LxrRcResult LxrReferenceCounting::RememberMatureSlot(Object** slot, Object* targ
     }
     uintptr_t reuse = (IsImmix(address) ? m_line_reuse_metadata : m_page_reuse_metadata).Load(
         address, SideMetadataMemoryOrder::SequentiallyConsistent);
-    const size_t worker = GetExecutionWorker();
     RememberedBuffer& buffer = m_remembered_buffers[worker];
     buffer.Enter();
     RememberedChunk* chunk = buffer.chunk;
@@ -5106,8 +5117,18 @@ LxrRcResult LxrReferenceCounting::TryCopyMature(Object** reference)
 LxrRcResult LxrReferenceCounting::TryCopyMatureResolved(Object** reference)
 {
     Object* source = *reference;
-    if (source == nullptr || !IsMatureCandidate(Start(source)) ||
-        (GetTracePhase() != LxrTracePhase::Full && GetTracePhase() != LxrTracePhase::FinalMark))
+    if (source == nullptr || !IsMatureCandidate(Start(source)))
+    {
+        return LxrRcResult::Success;
+    }
+    return TryCopyMatureCandidate(reference);
+}
+
+// *reference is not forwarded and is in a mature candidate block.
+LxrRcResult LxrReferenceCounting::TryCopyMatureCandidate(Object** reference)
+{
+    Object* source = *reference;
+    if (GetTracePhase() != LxrTracePhase::Full && GetTracePhase() != LxrTracePhase::FinalMark)
     {
         return LxrRcResult::Success;
     }
@@ -9482,7 +9503,7 @@ LxrRcResult LxrReferenceCounting::ProcessPauseTraceObject(
     }
 #endif // LXR_SIDE_METADATA_TEST_PLATFORM && LXR_PAUSE_TRACE_MARK_CONTROL
     (void)observed;
-    CountWorker(GetExecutionWorker(), TraceObjectsCounter, 1);
+    CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), TraceObjectsCounter, 1);
     if (maximumReferences <= *directBudget)
     {
         TraceScan local(object, loader);
@@ -9577,13 +9598,13 @@ LxrRcResult LxrReferenceCounting::ProcessTraceObject(
     if (maximumReferences <= *directBudget)
     {
         m_mark_metadata.Store(start, 1, SideMetadataMemoryOrder::SequentiallyConsistent);
-        CountWorker(GetExecutionWorker(), TraceObjectsCounter, 1);
+        CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), TraceObjectsCounter, 1);
         TraceScan local(object, loader);
         result = ScanTraceLocked(&local, true, targets);
         *directBudget -= maximumReferences;
         if (GetPhase() == LxrRcPhase::Mutator && GetTracePhase() == LxrTracePhase::Concurrent)
         {
-            CountWorker(GetExecutionWorker(), ConcurrentSlicesCounter, 1);
+            CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), ConcurrentSlicesCounter, 1);
         }
         ExitTraceLock(index);
         return result;
@@ -9617,7 +9638,7 @@ LxrRcResult LxrReferenceCounting::ProcessTraceObject(
     LinkTraceScan(index, scan);
 #endif // !LXR_S7_SCAN_LINK_CONTROL
     m_mark_metadata.Store(start, 1, SideMetadataMemoryOrder::SequentiallyConsistent);
-    CountWorker(GetExecutionWorker(), TraceObjectsCounter, 1);
+    CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), TraceObjectsCounter, 1);
     result = QueueTrace(nullptr, 0, scan);
     ExitTraceLock(index);
     return result;
@@ -9630,6 +9651,7 @@ LxrRcResult LxrReferenceCounting::ScanTraceLocked(TraceScan* scan, bool finish, 
     size_t count = 0;
     size_t visited = 0;
     const bool pausePhase = GetPhase() == LxrRcPhase::Suspended;
+    const size_t worker = targets != nullptr ? targets->worker : GetExecutionWorker();
     auto append = [&](uintptr_t target)
     {
         if (targets != nullptr)
@@ -9675,10 +9697,17 @@ LxrRcResult LxrReferenceCounting::ScanTraceLocked(TraceScan* scan, bool finish, 
             if (m_configuration.evacuateMature)
             {
                 Object* original = child;
-                LxrRcResult result = RememberMatureSlot(slot, child);
+                // P6. One candidate check serves the remembered slot and the copy (the copy checks only an unforwarded
+                // child, which is this object).
+                const bool candidate = IsMatureCandidate(Start(child));
+                LxrRcResult result = candidate ? RememberMatureCandidateSlot(slot, worker) : LxrRcResult::Success;
                 if (result == LxrRcResult::Success)
                 {
-                    result = TryCopyMature(&child);
+                    child = ResolveForwardedChecked(child);
+                    if (child == original && candidate)
+                    {
+                        result = TryCopyMatureCandidate(&child);
+                    }
                 }
                 if (result != LxrRcResult::Success)
                 {
@@ -9714,7 +9743,7 @@ LxrRcResult LxrReferenceCounting::ScanTraceLocked(TraceScan* scan, bool finish, 
             break;
         }
     }
-    CountWorker(GetExecutionWorker(), TraceReferencesCounter, visited);
+    CountWorker(worker, TraceReferencesCounter, visited);
     if (count != 0)
     {
         LxrRcResult result = QueueTrace(children, count);
@@ -9756,7 +9785,7 @@ LxrRcResult LxrReferenceCounting::ProcessTraceScan(TraceScan* scan, bool finish,
     ExitTraceLock(index);
     if (!finish && GetPhase() == LxrRcPhase::Mutator && GetTracePhase() == LxrTracePhase::Concurrent)
     {
-        CountWorker(GetExecutionWorker(), ConcurrentSlicesCounter, 1);
+        CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), ConcurrentSlicesCounter, 1);
 #ifdef LXR_HAS_DIAGNOSTIC_PROBES
         uintptr_t target = reinterpret_cast<uintptr_t>(scan->object);
         if (!complete && m_scan_checkpoint.load(std::memory_order_acquire) == target)

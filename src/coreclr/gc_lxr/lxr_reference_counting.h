@@ -909,6 +909,7 @@ private:
     LxrRcResult TryCopyMature(Object** object);
     // The caller has applied ResolveForwardedChecked. A concurrent copy can still win the claim below.
     LxrRcResult TryCopyMatureResolved(Object** object);
+    LxrRcResult TryCopyMatureCandidate(Object** object);
     LxrRcResult SelectMatureCandidates();
     // P50 (item 8a). SelectMatureCandidates picks one of two implementations that give the same evacuation set. The serial one
     // is the loop of the first version (one pass over the blocks, then one pass over the candidates). The parallel one
@@ -934,6 +935,7 @@ private:
     bool IsPinnedObject(Object* object) const;
     bool IsMatureCandidate(uintptr_t address);
     LxrRcResult RememberMatureSlot(Object** slot, Object* target);
+    LxrRcResult RememberMatureCandidateSlot(Object** slot, size_t worker);
     LxrRcResult ReplayMatureRememberedSlots();
     void DeleteRememberedChunks();
     LxrRcResult FlushRememberedBuffers();
