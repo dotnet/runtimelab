@@ -18,6 +18,7 @@
 #include "gcenv.base.h"
 #include "gcenv.os.h"
 #include "gcenv.ee.h"
+#include "gcenv.interlocked.h"
 #include "gcenv.unix.inl"
 #include "volatile.h"
 #include "gcconfig.h"
@@ -99,6 +100,14 @@ typedef cpuset_t cpu_set_t;
 #include "globals.h"
 #include "cgroup.h"
 
+#if defined(INTERLOCKED_ARM64_LSE_DETECTION) && (defined(__linux__) || defined(__FreeBSD__))
+#include <sys/auxv.h>
+#define HAVE_INTERLOCKED_LSE_DETECTION
+#elif defined(INTERLOCKED_ARM64_LSE_DETECTION) && defined(__APPLE__)
+#include <sys/sysctl.h>
+#define HAVE_INTERLOCKED_LSE_DETECTION
+#endif
+
 #ifndef __APPLE__
 #if HAVE_SYSCONF && HAVE__SC_AVPHYS_PAGES
 #define SYSCONF_PAGES _SC_AVPHYS_PAGES
@@ -139,6 +148,35 @@ static int64_t g_totalPhysicalMemSize = 0;
 static int *g_kern_memorystatus_level_mib = NULL;
 static size_t g_kern_memorystatus_level_mib_length = 0;
 #endif
+
+#ifdef HAVE_INTERLOCKED_LSE_DETECTION
+// Tells the interlocked operations whether the processor has the LSE atomics, see Interlocked::s_arm64LseAtomics.
+// A constructor runs when the module is loaded, before the GC starts.
+__attribute__((constructor))
+static void InitializeInterlockedLseAtomics()
+{
+#if defined(__APPLE__)
+    // iOS and tvOS, where the build does not require LSE. The key is there from iOS 15 and tvOS 15; where it is not, the flag stays false.
+    // The same check as in minipal_getcpufeatures.
+    int64_t valueFromSysctl = 0;
+    size_t sz = sizeof(valueFromSysctl);
+    Interlocked::s_arm64LseAtomics = (sysctlbyname("hw.optional.arm.FEAT_LSE", &valueFromSysctl, &sz, NULL, 0) == 0) && (valueFromSysctl != 0);
+#else
+#ifdef HWCAP_ATOMICS
+    const unsigned long lseAtomicsBit = HWCAP_ATOMICS;
+#else
+    const unsigned long lseAtomicsBit = 1 << 8; // HWCAP_ATOMICS
+#endif
+    unsigned long hwcap = 0;
+#if defined(__linux__)
+    hwcap = getauxval(AT_HWCAP);
+#else
+    elf_aux_info(AT_HWCAP, &hwcap, sizeof(hwcap));
+#endif
+    Interlocked::s_arm64LseAtomics = (hwcap & lseAtomicsBit) != 0;
+#endif
+}
+#endif // HAVE_INTERLOCKED_LSE_DETECTION
 
 // Initialize the interface implementation
 // Return:
