@@ -92,6 +92,7 @@ if (CLR_CMAKE_TARGET_WIN32)
     SatoriHeap.h
     SatoriPage.h
     SatoriRegion.h
+    ThreadLocalCollection.h
     SatoriRegion.inl
     SatoriObject.h
     SatoriObject.inl

@@ -32,14 +32,15 @@
 #include "SatoriHeap.h"
 #include "SatoriUtil.h"
 #include "SatoriObject.h"
+#include "ThreadLocalCollection.h"
 #include "SatoriPrefetchQueue.h"
 
 class SatoriAllocator;
 class SatoriRegionQueue;
 class SatoriObject;
 class SatoriAllocationContext;
-struct SatoriLocalRootCache;
-struct SatoriLocalStayRuns;
+struct ThreadLocalRootCache;
+struct ThreadLocalStayRuns;
 
 // The Region contains objects and their metadata.
 class SatoriRegion
@@ -288,8 +289,12 @@ public:
     void ClearFreeLists();
 
     // we tell where we are in terms of alloc bytes, so we do not collect too soon
-    // returns true if it actually did a collection.
-    bool ThreadLocalCollect(size_t allocBytes, bool atTlgcLimit = false);
+    static bool ThreadLocalCollectionEventEnabled();
+    // Diagnostic data is optional; rejected calls do not acquire a collection index.
+    ThreadLocalCollectionOutcome ThreadLocalCollect(size_t allocBytes, bool atTlgcLimit,
+        ThreadLocalCollectionData* data);
+    void ReportThreadLocalCollection(const ThreadLocalCollectionData& data, size_t requestedBytes,
+        ThreadLocalCollectionTrigger trigger, ThreadLocalCollectionOutcome outcome, ThreadLocalCollectionRetry retry);
 
     SatoriPage* ContainingPage();
     SatoriRegion* NextInPage();
@@ -481,11 +486,11 @@ private:
     static void EscapeFn(SatoriObject** dst, SatoriObject* src, SatoriRegion* region);
     NOINLINE void EscapeReachable(SatoriObject* o);
 
-    bool ThreadLocalMark(SatoriLocalRootCache* rootCache, size_t* localStorage);
+    bool ThreadLocalMark(ThreadLocalRootCache* rootCache, size_t* localStorage);
     void ThreadLocalPropagateMarks(size_t maxSurv, size_t maxCount, size_t maxPointerBytes, size_t& pointerBytes);
-    size_t ThreadLocalPlan(SatoriLocalStayRuns* stayRuns);
-    void ThreadLocalUpdatePointers(SatoriLocalRootCache* rootCache);
-    void ThreadLocalCompact(size_t denseEnd, SatoriLocalStayRuns* stayRuns);
+    size_t ThreadLocalPlan(ThreadLocalStayRuns* stayRuns);
+    void ThreadLocalUpdatePointers(ThreadLocalRootCache* rootCache);
+    void ThreadLocalCompact(size_t denseEnd, ThreadLocalStayRuns* stayRuns);
     void ThreadLocalPendFinalizables();
     size_t FindUnmovableThreadLocal(size_t from, size_t to, bool includePinned);
     size_t SkipDenseThreadLocal(size_t from, int32_t* objCount, size_t* searchFrom);

@@ -33,6 +33,7 @@
 #include "../env/gcenv.os.h"
 #include "../env/gcenv.ee.h"
 #include "SatoriRegion.h"
+#include "../gceventstatus.h"
 #include "SatoriPage.h"
 #include "SatoriWorkChunk.h"
 
@@ -255,6 +256,18 @@ inline size_t SatoriRegion::RegionSizeForAlloc(size_t allocSize)
 inline SatoriObject* SatoriRegion::FirstObject()
 {
     return &m_firstObject;
+}
+
+inline bool SatoriRegion::ThreadLocalCollectionEventEnabled()
+{
+#ifdef BUILD_AS_STANDALONE
+    if (g_runtimeSupportedVersion.MajorVersion < 6)
+    {
+        return false;
+    }
+#endif
+
+    return EVENT_ENABLED(GCThreadLocalCollection);
 }
 
 inline void SatoriRegion::StartEscapeTrackingRelease(size_t threadTag, size_t allocBytes, size_t minAllocSize)

@@ -1081,17 +1081,17 @@ tryAgain:
                 _ASSERTE(context->alloc_ptr == nullptr);
             }
 
+            // try get from the free list
+            bool allocated;
             if (collectAtTlgcLimit)
             {
-                if (!region->ThreadLocalCollect(context->alloc_bytes, /* atTlgcLimit */ true))
-                {
-                    SatoriRegion::OnEscapeTrackingEnded();
-                    region->StopEscapeTracking();
-                }
+                allocated = ThreadLocalCollectAndRetry(region, context->alloc_bytes, size, ThreadLocalCollectionTrigger::WindowLimit);
             }
-
-            // try get from the free list
-            if (region->StartAllocating(size, context->alloc_bytes))
+            else
+            {
+                allocated = region->StartAllocating(size, context->alloc_bytes) != 0;
+            }
+            if (allocated)
             {
                 // we have enough free space in the region to continue
                 context->alloc_ptr = context->alloc_limit = (uint8_t*)region->GetAllocStart();
@@ -1101,19 +1101,11 @@ tryAgain:
             if (region->IsEscapeTracking())
             {
                 // try performing thread local collection and see if we have enough space after that.
-                if (region->ThreadLocalCollect(context->alloc_bytes))
+                if (ThreadLocalCollectAndRetry(region, context->alloc_bytes, size, ThreadLocalCollectionTrigger::ExhaustedSpan))
                 {
-                    if (region->StartAllocating(size, context->alloc_bytes))
-                    {
-                        // we have enough free space in the region to continue
-                        context->alloc_ptr = context->alloc_limit = (uint8_t*)region->GetAllocStart();
-                        continue;
-                    }
-                }
-                else
-                {
-                    SatoriRegion::OnEscapeTrackingEnded(/* outOfSpace */ true);
-                    region->StopEscapeTracking();
+                    // we have enough free space in the region to continue
+                    context->alloc_ptr = context->alloc_limit = (uint8_t*)region->GetAllocStart();
+                    continue;
                 }
             }
 
