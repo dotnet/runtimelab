@@ -2020,7 +2020,7 @@ void SatoriRecycler::MarkFn(PTR_PTR_Object ppObject, ScanContext* sc, uint32_t f
 
     if (o->ContainingRegion()->Generation() <= markContext->m_condemnedGeneration)
     {
-        if (!o->IsMarked())
+        if (!o->IsMarkedAtomic())
         {
             o->SetMarkedAtomic();
             markContext->PushToMarkQueues(o);
@@ -2160,7 +2160,7 @@ void SatoriRecycler::MarkFnConcurrent(PTR_PTR_Object ppObject, ScanContext* sc, 
     // no need for fences here. a published obj cannot become gen2 concurrently. 
     if (containingRegion->Generation() <= markContext->m_condemnedGeneration)
     {
-        if (!o->IsMarked())
+        if (!o->IsMarkedAtomic())
         {
             o->SetMarkedAtomic();
             markContext->PushToMarkQueues(o);
@@ -2379,7 +2379,7 @@ void SatoriRecycler::MarkDemoted(SatoriRegion* curRegion, MarkContext* markConte
             {
                 SatoriObject* o = gen2Objects->Item(i);
                 // demotion put these in a gen1 region, so they may already be marked
-                if (!o->IsMarked())
+                if (!o->IsMarkedAtomic())
                 {
                     o->SetMarkedAtomic();
                     markContext->PushToMarkQueues(o);
@@ -2659,7 +2659,7 @@ bool SatoriRecycler::DrainMarkQueuesConcurrent(SatoriWorkChunk* srcChunk, int64_
                 o = srcChunk->Pop();
                 srcChunk->PrefetchNext(MARK_PREFETCH_DISTANCE);
 
-                _ASSERTE(o->IsMarked());
+                _ASSERTE(o->IsMarkedAtomic());
                 if (o->IsUnmovable())
                 {
                     o->ContainingRegion()->SetHasPinnedObjects();
@@ -2904,7 +2904,7 @@ void SatoriRecycler::DrainMarkQueues(SatoriWorkChunk* srcChunk)
                 SatoriObject* o = srcChunk->Pop();
                 srcChunk->PrefetchNext(MARK_PREFETCH_DISTANCE);
 
-                _ASSERTE(o->IsMarked());
+                _ASSERTE(o->IsMarkedAtomic());
                 if (o->IsUnmovable())
                 {
                     o->ContainingRegion()->SetHasPinnedObjects();
@@ -3131,7 +3131,7 @@ bool SatoriRecycler::MarkThroughCardsConcurrent(int64_t deadline)
 
                             if (cleaned)
                             {
-                                // do not allow card cleaning to delay until after checking IsMarked
+                                // do not allow card cleaning to delay until after checking IsMarkedAtomic
                                 MemoryBarrier();
                             }
 
@@ -3140,7 +3140,7 @@ bool SatoriRecycler::MarkThroughCardsConcurrent(int64_t deadline)
                                 size_t size = o->Size();
 
                                 // everything is effectively marked in gen2 remembered set
-                                // if (o->IsMarked())
+                                // if (o->IsMarkedAtomic())
                                 {
                                     o->ForEachObjectRef(
                                     [&](SatoriObject** ref)
@@ -3368,7 +3368,7 @@ bool SatoriRecycler::CleanCardsConcurrent(int64_t deadline)
                             size_t end = page->LocationForCard(&cards[j]);
                             size_t objLimit = min(end, region->Start() + Satori::REGION_SIZE_GRANULARITY);
 
-                            // do not allow card cleaning to delay until after checking IsMarked or fetching children
+                            // do not allow card cleaning to delay until after checking IsMarkedAtomic or fetching children
                             MemoryBarrier();
 
                             // Only marked objects need visiting, those can be found via the mark bitmap.
@@ -3396,7 +3396,7 @@ bool SatoriRecycler::CleanCardsConcurrent(int64_t deadline)
 
                                 size_t size = o->Size();
 
-                                // if (considerAllMarked || o->IsMarked())
+                                // if (considerAllMarked || o->IsMarkedAtomic())
                                 {
                                     o->ForEachObjectRef(
                                         [&](SatoriObject** ref)
@@ -3708,7 +3708,7 @@ void SatoriRecycler::CleanCards()
                             size_t end = page->LocationForCard(&cards[j]);
                             size_t objLimit = min(end, region->Start() + Satori::REGION_SIZE_GRANULARITY);
 
-                            // do not allow card cleaning to delay until after checking IsMarked
+                            // do not allow card cleaning to delay until after checking IsMarkedAtomic
                             if (!considerAllMarked)
                             {
                                 MemoryBarrier();
@@ -3739,7 +3739,7 @@ void SatoriRecycler::CleanCards()
 
                                 size_t size = o->Size();
 
-                                // if (considerAllMarked || o->IsMarked())
+                                // if (considerAllMarked || o->IsMarkedAtomic())
                                 {
                                     o->ForEachObjectRef(
                                         [&](SatoriObject** ref)
@@ -4742,6 +4742,7 @@ void SatoriRecycler::RelocateRegion(SatoriRegion* relocationSource)
             break;
         }
 
+        // marking is done and we have the region to ourselves
         _ASSERTE(o->IsMarked());
         _ASSERTE(!o->IsFree());
         _ASSERTE(!o->IsUnmovable());

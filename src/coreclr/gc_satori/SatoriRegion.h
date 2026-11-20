@@ -324,7 +324,20 @@ private:
         // we will overlap the map and the header for simplicity of map operations.
         // it is ok because the first BITMAP_START elements of the map cover the header/map itself and thus will not be used.
         // +1 to include End(), it will always be 0, but it is convenient to make it legal map index.
-        volatile size_t m_bitmap[BITMAP_LENGTH + 1];
+        //
+        // The map is not volatile - nearly always one thread has the map of a region to itself:
+        //  - in a region that is escape tracked, the owning thread: the write barrier, escaping and thread-local GC.
+        //    Concurrent marking does not mark in such region (see MaybeEscapeTrackingAcquire) and a blocking GC has
+        //    the owner suspended. The map changes hands through the owner tag and the stale marks flag - the map is
+        //    cleared before the tag is cleared (see StopEscapeTracking), or, when the barrier stops tracking, the flag
+        //    is set before the tag is cleared and reset after the map is cleared (see ClearStaleEscapeMarks).
+        //  - after marking is done, the thread that relocates, updates or sweeps the region. It took the region from a queue
+        //    and nothing is marked until all regions are swept.
+        // While the global GC marks, the map of a region that is not escape tracked is shared - many threads set marks
+        // at once (see SetMarkedAtomic) and look at the marks that others set. The code that can run at such time reads
+        // the map with volatile loads: IsMarkedAtomic, FindMarkedObjectFrom and SkipUnmarked that takes "upTo".
+        // NB: the escape path stores to the map as volatile for another reason, see SetEscaped.
+        size_t m_bitmap[BITMAP_LENGTH + 1];
 
         // Header.(can be up to 72 size_t)
         struct
@@ -475,11 +488,11 @@ private:
     void ThreadLocalCompact(size_t denseEnd, SatoriLocalStayRuns* stayRuns);
     void ThreadLocalPendFinalizables();
     size_t FindUnmovableThreadLocal(size_t from, size_t to, bool includePinned);
-    size_t SkipDenseThreadLocal(size_t from, int32_t* objCount);
-    void ClearMarksOfDenseThreadLocal(size_t from, size_t to);
-    size_t SkipEscapedThreadLocal(size_t from);
-    size_t MarkedSizeThreadLocal(SatoriObject* o);
-    bool StartsObjectAtEndOfRunThreadLocal(size_t lastBit);
+    size_t SkipDenseThreadLocal(size_t from, int32_t* objCount, size_t* searchFrom);
+    void ClearMarksOfDenseThreadLocal(size_t from, size_t to, size_t* searchFrom);
+    size_t SkipEscapedThreadLocal(size_t from, size_t* nextMarked);
+    size_t MarkedSizeThreadLocal(SatoriObject* o, size_t* searchFrom);
+    bool StartsObjectAtEndOfRunThreadLocal(size_t lastBit, size_t* nextMark);
 #ifdef _DEBUG
     void VerifyLocalBitmap();
     void VerifyIndexThreadLocal();
@@ -497,11 +510,16 @@ private:
         Escaped,
     };
 
+    // These use the bitmap as ordinary memory.
+    // Only for the code that has the bitmap of the region to itself. (see m_bitmap)
     bool IsMarked(SatoriObject* o);
     void SetMarked(SatoriObject* o);
-    void SetMarkedAtomic(SatoriObject* o);
     void ClearMarked(SatoriObject* o);
     bool CheckAndClearMarked(SatoriObject* o);
+    // These are for use while the global GC marks, when other threads may be setting marks in the region:
+    // the mark is read with a volatile load and set with an interlocked operation. (see m_bitmap)
+    bool IsMarkedAtomic(SatoriObject* o);
+    void SetMarkedAtomic(SatoriObject* o);
 
     bool IsPinnedLocal(SatoriObject* o);
     void SetPinnedLocal(SatoriObject* o);

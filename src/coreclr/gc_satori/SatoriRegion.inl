@@ -442,7 +442,7 @@ bool SatoriRegion::PendFinalizables(F markFn, int condemnedGeneration)
             // reachable finalizables are not iteresting in any state.
             // finalizer can be suppressed and re-registered again without creating new trackers.
             // (this is preexisting behavior)
-            if (finalizable->IsMarked())
+            if (finalizable->IsMarkedAtomic())
             {
                 continue;
             }
@@ -657,6 +657,7 @@ inline void SatoriRegion::SweepPrefetchAdvance(SweepPrefetcher& prefetcher, Sato
 inline void SatoriRegion::SweepPrefetchNext(SweepPrefetcher& prefetcher)
 {
     // NB: the sweep may clear marks behind us, but we are ahead and see the words before they are touched.
+    // NB: marking is done and the caller has the region to itself, see m_bitmap.
     while (prefetcher.m_word == 0)
     {
         if (prefetcher.m_index >= BITMAP_LENGTH - 1)
@@ -1020,6 +1021,18 @@ inline void SatoriRegion::ClearMarked(SatoriObject* o)
     m_bitmap[bitmapIndex] &= ~mask;
 }
 
+inline bool SatoriRegion::IsMarkedAtomic(SatoriObject* o)
+{
+    _ASSERTE(o->SameRegion(this));
+
+    size_t word = o->Start();
+    size_t bitmapIndex = (word >> 9) & (SatoriRegion::BITMAP_LENGTH - 1);
+    size_t mask = (size_t)1 << ((word >> 3) & 63);
+
+    // other threads may be setting marks in the same word, see m_bitmap.
+    return VolatileLoadWithoutBarrier(&m_bitmap[bitmapIndex]) & mask;
+}
+
 inline bool SatoriRegion::IsMarked(SatoriObject* o)
 {
     _ASSERTE(o->SameRegion(this));
@@ -1039,7 +1052,7 @@ inline bool SatoriRegion::CheckAndClearMarked(SatoriObject* o)
     size_t bitmapIndex = (word >> 9) & (SatoriRegion::BITMAP_LENGTH - 1);
     size_t mask = (size_t)1 << ((word >> 3) & 63);
 
-    volatile size_t& bitmapWord = m_bitmap[bitmapIndex];
+    size_t& bitmapWord = m_bitmap[bitmapIndex];
     bool wasMarked = bitmapWord & mask;
     bitmapWord &= ~mask;
     return wasMarked;
@@ -1138,6 +1151,8 @@ inline size_t SatoriRegion::SizeLocal(SatoriObject* o)
     return size;
 }
 
+// NB: the escape bits exist only in the regions that are escape tracked, and whoever looks at them
+//     has the bitmap of the region to itself, see m_bitmap.
 inline bool SatoriRegion::IsEscaped(SatoriObject* o)
 {
     return IsMarked(o + MarkOffset::Escaped);
@@ -1152,6 +1167,12 @@ inline void SatoriRegion::SetEscaped(SatoriObject* o)
     // NB: the bits are cleared together when tracking stops or when GC takes over the region.
     _ASSERTE(o->SameRegion(this));
 
+    // NB: the caller has the bitmap to itself, but the stores are volatile on purpose.
+    //     This runs in the write barrier (see EscapeFn), which does not preserve vector registers, and with ordinary
+    //     stores the compiler may use them - to update the two adjacent words at once here, or to fill the range
+    //     in SetEscapedExtent. Volatile keeps the stores scalar.
+    volatile size_t* bitmap = m_bitmap;
+
     size_t word = o->Start();
     size_t bitmapIndex = (word >> 9) & (SatoriRegion::BITMAP_LENGTH - 1);
     size_t bit = (word >> 3) & 63;
@@ -1159,14 +1180,14 @@ inline void SatoriRegion::SetEscaped(SatoriObject* o)
     {
         // the mark and escape bits are adjacent and in the same word, set both at once.
         // SetMarked(o) and SetMarked(o + MarkOffset::Escaped)
-        m_bitmap[bitmapIndex] |= (size_t)3 << bit;
+        bitmap[bitmapIndex] |= (size_t)3 << bit;
     }
     else
     {
         // the mark bit is the last in the word, the escape bit is the first in the next word.
         // NB: o is not at the end of the region, so the next word is still in the bitmap.
-        m_bitmap[bitmapIndex] |= (size_t)1 << 63;    // SetMarked(o)
-        m_bitmap[bitmapIndex + 1] |= 1;              // SetMarked(o + MarkOffset::Escaped)
+        bitmap[bitmapIndex] |= (size_t)1 << 63;    // SetMarked(o)
+        bitmap[bitmapIndex + 1] |= 1;              // SetMarked(o + MarkOffset::Escaped)
     }
 }
 
@@ -1188,6 +1209,10 @@ inline void SatoriRegion::SetEscapedExtent(SatoriObject* o, size_t size)
     _ASSERTE(o->SameRegion(this));
     _ASSERTE(size == o->Size());
 
+    // NB: the stores are volatile on purpose - this runs in the write barrier and must not turn into vector code
+    //     or a call to memset. (see SetEscaped)
+    volatile size_t* bitmap = m_bitmap;
+
     // bit index in the map is the index of the word in the region
     size_t first = (o->Start() >> 3) & (SatoriRegion::BITMAP_LENGTH * 64 - 1);
     size_t last = first + (size >> 3) - 1;
@@ -1197,24 +1222,24 @@ inline void SatoriRegion::SetEscapedExtent(SatoriObject* o, size_t size)
     size_t lastMask = ~(size_t)0 >> (63 - (last & 63));
     if (firstIndex == lastIndex)
     {
-        m_bitmap[firstIndex] |= firstMask & lastMask;
+        bitmap[firstIndex] |= firstMask & lastMask;
     }
     else
     {
-        m_bitmap[firstIndex] |= firstMask;
+        bitmap[firstIndex] |= firstMask;
         for (size_t i = firstIndex + 1; i < lastIndex; i++)
         {
-            m_bitmap[i] = ~(size_t)0;
+            bitmap[i] = ~(size_t)0;
         }
 
-        m_bitmap[lastIndex] |= lastMask;
+        bitmap[lastIndex] |= lastMask;
     }
 }
 
 inline bool SatoriRegion::IsExposed(SatoriObject** location)
 {
     // check the mark bit corresponding to the location
-    //same as: return IsMarked((SatoriObject*)location);
+    // NB: like the escape bits, the exposed bits are looked at only by the code that has the bitmap to itself.
     return IsMarked((SatoriObject*)location);
 }
 

@@ -137,11 +137,16 @@ inline bool SatoriObject::IsMarked()
     return ContainingRegion()->IsMarked(this);
 }
 
+inline bool SatoriObject::IsMarkedAtomic()
+{
+    return ContainingRegion()->IsMarkedAtomic(this);
+}
+
 FORCEINLINE bool SatoriObject::IsMarkedOrOlderThan(int generation)
 {
     _ASSERTE(this->Size() > 0);
     SatoriRegion* r = ContainingRegion();
-    return r->Generation() > generation || r->IsMarked(this);
+    return r->Generation() > generation || r->IsMarkedAtomic(this);
 }
 
 inline void SatoriObject::SetMarked()

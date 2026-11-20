@@ -64,7 +64,10 @@ public:
     bool IsExternal();
 
     bool IsEscaped();
+    // NB: IsMarked reads the mark as ordinary memory, for the code that has the bitmap of the region to itself.
+    //     IsMarkedAtomic reads it with a volatile load, for use while the GC marks. (see SatoriRegion::m_bitmap)
     bool IsMarked();
+    bool IsMarkedAtomic();
     bool IsMarkedOrOlderThan(int generation);
     void SetMarked();
     void SetMarkedAtomic();
