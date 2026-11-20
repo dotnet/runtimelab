@@ -1515,7 +1515,7 @@ tryAgain:
         region = nullptr;
         if (size < Satori::REGION_SIZE_GRANULARITY / 2)
         {
-            region = m_heap->Recycler()->TryGetReusableForLarge();
+            region = m_heap->Recycler()->TryGetReusableForLarge(size + Satori::MIN_FREE_SIZE);
         }
 
         if (!region)
@@ -1613,7 +1613,7 @@ SatoriObject* SatoriAllocator::AllocLargeShared(SatoriAllocationContext* context
         region = nullptr;
         if (size < Satori::REGION_SIZE_GRANULARITY / 2)
         {
-            region = m_heap->Recycler()->TryGetReusableForLarge();
+            region = m_heap->Recycler()->TryGetReusableForLarge(size + Satori::MIN_FREE_SIZE);
             _ASSERTE(region == nullptr || !region->IsAllocating());
         }
 
@@ -1786,7 +1786,7 @@ SatoriObject* SatoriAllocator::AllocPinned(SatoriAllocationContext* context, siz
         region = nullptr;
         if (size < Satori::REGION_SIZE_GRANULARITY / 2)
         {
-            region = m_heap->Recycler()->TryGetReusableForLarge();
+            region = m_heap->Recycler()->TryGetReusableForLarge(size + Satori::MIN_FREE_SIZE);
             _ASSERTE(region == nullptr || !region->IsAllocating());
         }
 

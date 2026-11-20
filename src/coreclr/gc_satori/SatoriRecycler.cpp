@@ -363,12 +363,22 @@ SatoriRegion* SatoriRecycler::TryGetReusable(size_t minFree)
     return reusable;
 }
 
-SatoriRegion* SatoriRecycler::TryGetReusableForLarge()
+// Takes a reusable region for a large or pinned allocation of minFree bytes.
+// A region with free space in the top bucket is preferred as it is likely to serve more such allocations.
+// Otherwise any reusable region that fits is still better than a new region. Without the fallback a steady
+// stream of large/pinned allocations keeps taking new regions while reusable regions with fitting free space
+// pile up, and that grows the heap when compacting GCs are rare (e.g. in low latency mode).
+SatoriRegion* SatoriRecycler::TryGetReusableForLarge(size_t minFree)
 {
     SatoriRegion* reusable = m_reusableRegions->TryDequeueIfHasFreeSpaceInTopBucket();
     if (reusable == nullptr)
     {
         reusable = m_reusableRegionsAlternate->TryDequeueIfHasFreeSpaceInTopBucket();
+    }
+
+    if (reusable == nullptr)
+    {
+        reusable = TryGetReusable(minFree);
     }
 
     _ASSERTE(reusable == nullptr || reusable->Occupancy() < Satori::REGION_SIZE_GRANULARITY);

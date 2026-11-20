@@ -104,7 +104,7 @@ public:
     void MaybeAskForHelp();
 
     SatoriRegion* TryGetReusable(size_t minFree);
-    SatoriRegion* TryGetReusableForLarge();
+    SatoriRegion* TryGetReusableForLarge(size_t minFree);
     // Whether `queue` is a queue of reusable regions. Compares addresses only, so it can be given any pointer. (see TryTakeReusableNext)
     bool IsReusableQueue(SatoriQueue<SatoriRegion>* queue);
 
