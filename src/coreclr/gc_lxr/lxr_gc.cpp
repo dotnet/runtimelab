@@ -354,6 +354,7 @@ HRESULT LxrGcHeap::Initialize()
     bool noMutatorRecycling = false;
     bool overshoot = true;
     bool phaseTimers = true;
+    bool traceStats = false;
     size_t nurseryCapMB = 0;
     size_t selectParallelBlocks = configuration.selectParallelBlocks;
     bool immixReserveSpecified = false;
@@ -410,6 +411,7 @@ HRESULT LxrGcHeap::Initialize()
         !ReadBooleanSetting("LXRPolicyTrace", &m_policy_trace) ||
         !ReadBooleanSetting("LXRLookupStats", &m_lookup_stats) ||
         !ReadBooleanSetting("LXRWindowStats", &m_window_stats) ||
+        !ReadBooleanSetting("LXRTraceStats", &traceStats) ||
         !ReadBooleanSetting("LXRPrezero", &configuration.prezero) ||
         !ReadBooleanSetting("LXRPrezeroThread", &configuration.prezeroThread) ||
         !ReadSetting("LXRPrezeroMarginBlocks", &configuration.prezeroMarginBlocks, 10, 4096) ||
@@ -438,6 +440,8 @@ HRESULT LxrGcHeap::Initialize()
     }
     m_engine.GetPauseTimers().Configure(phaseTimers);
     configuration.lookupStats = m_lookup_stats;
+    // LXRWINDOW prints deletionMarks.
+    configuration.traceStats = traceStats || m_window_stats;
     configuration.selectParallelBlocks = static_cast<uint32_t>(selectParallelBlocks);
     for (const char* unsupported : {
             "LXRMaxPauseMillis", "LXRTransparentHugepage",

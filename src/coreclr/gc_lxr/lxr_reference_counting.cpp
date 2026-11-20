@@ -780,7 +780,8 @@ namespace
     constexpr size_t MatureCopiedBytes = Epochs + 8;
     constexpr size_t PauseMatureCopiedBytes = Epochs + 9;
     // Statistics that were shared atomics on per-object or per-entry paths. The oracle has none there: its per-object
-    // statistics are compiled out (crate::stat, feature "instrumentation"). These keep exact totals per worker.
+    // statistics are compiled out (crate::stat, feature "instrumentation"). No product decision reads them, so they are
+    // counted only when LxrRcConfiguration::traceStats is set (LXRTraceStats), with exact totals per worker.
     constexpr size_t ConcurrentSlicesCounter = Epochs + 10;
     constexpr size_t RememberedSlotsCounter = Epochs + 11;
     constexpr size_t ReplayedSlotsCounter = Epochs + 12;
@@ -3859,8 +3860,8 @@ LxrMatureMetrics LxrReferenceCounting::GetMatureMetrics() const
         m_mature_metrics[0].load(), m_mature_metrics[1].load(), m_mature_metrics[2].load(),
         m_mature_metrics[3].load(), SumWorker(MatureCopiedObjects) + m_mature_metrics[4].load(),
         SumWorker(MatureCopiedBytes) + m_mature_metrics[5].load(),
-        m_mature_metrics[6].load(), m_mature_metrics[7].load() + SumWorker(RememberedSlotsCounter), m_mature_metrics[8].load(),
-        m_mature_metrics[9].load() + SumWorker(ReplayedSlotsCounter), m_mature_metrics[10].load(), m_mature_metrics[11].load(),
+        m_mature_metrics[6].load(), TraceStat(m_mature_metrics[7].load() + SumWorker(RememberedSlotsCounter)), m_mature_metrics[8].load(),
+        TraceStat(m_mature_metrics[9].load() + SumWorker(ReplayedSlotsCounter)), m_mature_metrics[10].load(), m_mature_metrics[11].load(),
         m_mature_metrics[12].load(),
         static_cast<size_t>(SumWorker(PauseMatureCopiedBytes)) + m_pause_mature_copied_bytes.load(),
     };
@@ -4771,7 +4772,10 @@ LxrRcResult LxrReferenceCounting::RememberMatureCandidateSlot(Object** slot, siz
     chunk->published[index].store(1, std::memory_order_relaxed);
     chunk->reserved.store(index + 1, std::memory_order_relaxed);
     buffer.Exit();
-    CountWorker(worker, RememberedSlotsCounter, 1);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, RememberedSlotsCounter, 1);
+    }
     return LxrRcResult::Success;
 }
 
@@ -5061,9 +5065,12 @@ LxrRcResult LxrReferenceCounting::ReplayRememberedChunk(RememberedChunk* chunk, 
             }
         }
     }
-    const size_t worker = GetExecutionWorker();
-    CountWorker(worker, ReplayedSlotsCounter, replayed);
-    CountWorker(worker, PauseReplayedSlotsCounter, pauseReplayed);
+    if (m_configuration.traceStats)
+    {
+        const size_t worker = GetExecutionWorker();
+        CountWorker(worker, ReplayedSlotsCounter, replayed);
+        CountWorker(worker, PauseReplayedSlotsCounter, pauseReplayed);
+    }
     return targetCount == 0 ? LxrRcResult::Success : QueueTrace(targets, targetCount);
 }
 
@@ -9674,7 +9681,8 @@ LxrRcResult LxrReferenceCounting::ProcessTraceObject(
         TraceScan local(object, loader);
         result = ScanTraceLocked(&local, true, targets);
         *directBudget -= maximumReferences;
-        if (GetPhase() == LxrRcPhase::Mutator && GetTracePhase() == LxrTracePhase::Concurrent)
+        if (m_configuration.traceStats && GetPhase() == LxrRcPhase::Mutator &&
+            GetTracePhase() == LxrTracePhase::Concurrent)
         {
             CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), ConcurrentSlicesCounter, 1);
         }
@@ -9857,7 +9865,10 @@ LxrRcResult LxrReferenceCounting::ProcessTraceScan(TraceScan* scan, bool finish,
     ExitTraceLock(index);
     if (!finish && GetPhase() == LxrRcPhase::Mutator && GetTracePhase() == LxrTracePhase::Concurrent)
     {
-        CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), ConcurrentSlicesCounter, 1);
+        if (m_configuration.traceStats)
+        {
+            CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), ConcurrentSlicesCounter, 1);
+        }
 #ifdef LXR_HAS_DIAGNOSTIC_PROBES
         uintptr_t target = reinterpret_cast<uintptr_t>(scan->object);
         if (!complete && m_scan_checkpoint.load(std::memory_order_acquire) == target)
@@ -9898,7 +9909,10 @@ LxrRcResult LxrReferenceCounting::FinishDyingTraceObject(Object* object)
     if (m_mark_metadata.Load(start, SideMetadataMemoryOrder::SequentiallyConsistent) == 0)
     {
         m_mark_metadata.Store(start, 1, SideMetadataMemoryOrder::SequentiallyConsistent);
-        CountWorker(GetExecutionWorker(), DeletionMarksCounter, 1);
+        if (m_configuration.traceStats)
+        {
+            CountWorker(GetExecutionWorker(), DeletionMarksCounter, 1);
+        }
 #ifdef LXR_HAS_PHASE_TIMERS
         CountWindow(1, 1);
 #endif // LXR_HAS_PHASE_TIMERS
@@ -9906,7 +9920,10 @@ LxrRcResult LxrReferenceCounting::FinishDyingTraceObject(Object* object)
     TraceScan* scan = FindTraceScan(index);
     if (result == LxrRcResult::Success && scan != nullptr && !scan->complete)
     {
-        CountWorker(GetExecutionWorker(), ForcedScansCounter, 1);
+        if (m_configuration.traceStats)
+        {
+            CountWorker(GetExecutionWorker(), ForcedScansCounter, 1);
+        }
         result = ScanTraceLocked(scan, true);
     }
     ExitTraceLock(index);
@@ -10374,7 +10391,7 @@ uint64_t LxrReferenceCounting::GetPauseTraceMetric(size_t index) const
         return UINT64_MAX;
     }
     uint64_t value = m_pause_trace_metrics[index].load(std::memory_order_relaxed);
-    return index == 2 ? value + SumWorker(PauseReplayedSlotsCounter) : value;
+    return index == 2 ? TraceStat(value + SumWorker(PauseReplayedSlotsCounter)) : value;
 }
 
 LxrTraceMetrics LxrReferenceCounting::GetTraceMetrics() const
@@ -10383,11 +10400,11 @@ LxrTraceMetrics LxrReferenceCounting::GetTraceMetrics() const
         m_trace_metrics[InitialMarks].load(), m_trace_metrics[FinalMarks].load(),
         m_trace_metrics[FullMarks].load(), SumWorker(TraceObjectsCounter) + m_trace_metrics[TracedObjects].load(),
         SumWorker(TraceReferencesCounter) + m_trace_metrics[TracedReferences].load(), m_trace_metrics[SatbEntries].load(),
-        m_trace_metrics[DeletionMarks].load() + SumWorker(DeletionMarksCounter),
-        m_trace_metrics[ForcedScans].load() + SumWorker(ForcedScansCounter),
+        TraceStat(m_trace_metrics[DeletionMarks].load() + SumWorker(DeletionMarksCounter)),
+        TraceStat(m_trace_metrics[ForcedScans].load() + SumWorker(ForcedScansCounter)),
         m_trace_metrics[SplitPackets].load(), m_trace_metrics[CycleObjects].load(),
         m_trace_metrics[CycleBytes].load(), m_trace_metrics[Interruptions].load(),
-        m_trace_metrics[ConcurrentSlices].load() + SumWorker(ConcurrentSlicesCounter),
+        TraceStat(m_trace_metrics[ConcurrentSlices].load() + SumWorker(ConcurrentSlicesCounter)),
         m_trace_metrics[CheckpointInterruptions].load(),
         WindowMetric(0), WindowMetric(1), WindowMetric(2), WindowMetric(3), WindowMetric(4), WindowMetric(5),
         WindowMetric(6),
