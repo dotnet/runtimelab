@@ -9555,6 +9555,36 @@ LxrRcResult LxrReferenceCounting::ProcessPauseTraceObject(
 LxrRcResult LxrReferenceCounting::ProcessTraceObject(
     Object* object, size_t* directBudget, TraceBatch* targets)
 {
+    if (object == nullptr)
+    {
+        return LxrRcResult::Success;
+    }
+#if !defined(LXR_WALK_TRUSTED_RESOLVE_CONTROL)
+    // P4. Most visits find a marked object (67 %). The oracle checks the mark first and resolves only for a defrag
+    // source (policy/immix/immixspace.rs:1111-1124). Here the check comes first when the object cannot be forwarded and
+    // cannot be a mature candidate: it is in the LOS, or it has a count and its block is not an evacuation source.
+    // ResolveForwardedChecked and TryCopyMatureResolved then return the object unchanged, so the result is the same.
+    // A source block keeps the full path: a copy has mark zero, and a visit through the marked source must mark it.
+    {
+        uintptr_t early = Start(object);
+        if (early % sizeof(uintptr_t) == 0 && OwnsAddress(early) &&
+            m_mark_metadata.Load(early, SideMetadataMemoryOrder::Relaxed) != 0)
+        {
+            if ((!m_configuration.evacuateNursery && !m_configuration.evacuateMature) || !IsImmix(early))
+            {
+                return LxrRcResult::Success;
+            }
+            size_t block = (early - GetReservationStart()) / ImmixBlockGeometry::BlockBytes;
+            if (m_rc_metadata.Load(early, SideMetadataMemoryOrder::Relaxed) != 0 &&
+                (m_evacuation_sources == nullptr ||
+                 (block < m_block_table_blocks.load(std::memory_order_acquire) &&
+                  m_evacuation_sources[block].load(std::memory_order_acquire) == 0)))
+            {
+                return LxrRcResult::Success;
+            }
+        }
+    }
+#endif // !LXR_WALK_TRUSTED_RESOLVE_CONTROL
     object = ResolveForwardedChecked(object);
     if (object == nullptr)
     {
