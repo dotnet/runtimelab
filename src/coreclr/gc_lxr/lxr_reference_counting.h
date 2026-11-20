@@ -651,7 +651,7 @@ public:
     };
     uint64_t GetOvershootMetric(size_t metric) const;
     LxrWorkSchedulerMetrics GetSchedulerMetrics() const { return m_scheduler.GetMetrics(); }
-    // 0: pauses that traced in parallel, 1: replay packets that ran, 2: remembered slots that a replay packet copied.
+    // 0: pauses that traced in parallel, 1: replay packets, 2: copied remembered slots, 3: parallel finalizer traces.
     uint64_t GetPauseTraceMetric(size_t index) const;
     size_t GetPauseSurvivorBytes() const;
     // P22 (D2). Span statistics: 0 = spans closed, 1 = bytes in closed spans, 2 = spans of the last pause.
@@ -1006,7 +1006,7 @@ private:
         const uintptr_t* objects, size_t count, TraceScan* scan = nullptr, bool logged = false);
     LxrRcResult DispatchTraceWork(Work* work);
     LxrRcResult ProcessUnsubmittedTrace(bool* progressed);
-    bool OpenPauseTrace(LxrRcResult* result);
+    bool OpenPauseTrace(LxrRcResult* result, bool finalizerTrace = false);
     void ClosePauseTrace();
     LxrRcResult PublishTraceWork();
     LxrRcResult ProcessTraceWork(Work* work);
@@ -1275,7 +1275,7 @@ private:
     // The number of children that a trace packet collects before it hands them to the scheduler as a new packet. A pause that
     // traces on all workers uses a smaller number, so that the work spreads to the idle workers soon.
     std::atomic<size_t> m_trace_batch_limit{FullTraceBatchCapacity};
-    // 0: parallel drains, 1: replay chunk packets, 2: remembered entries that were copied by the replay packets.
+    // 0: parallel pauses, 1: replay chunk packets, 2: copied remembered entries, 3: parallel finalizer traces.
     std::atomic<uint64_t> m_pause_trace_metrics[4]{};
     std::atomic<uint64_t> m_mature_metrics[13]{};
     std::atomic<uint64_t> m_cost_ticks[9]{};

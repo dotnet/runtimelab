@@ -9965,9 +9965,9 @@ bool LxrReferenceCounting::CanTraceInParallel() const
         t_execution_worker <= m_configuration.workers && !m_pause_trace_open.load(std::memory_order_acquire);
 }
 
-// Opens the trace of the pause to all workers. The caller is a packet of a pause stage. Returns false when the trace stays on
-// the calling thread (the setting is off, or the caller is not a scheduler thread of a FinalMark or Full pause).
-bool LxrReferenceCounting::OpenPauseTrace(LxrRcResult* result)
+// Opens the trace of the pause to all workers. The caller has a pause worker index. Returns false when the trace stays on
+// the calling thread (the setting is off, or the caller is not in a FinalMark or Full pause).
+bool LxrReferenceCounting::OpenPauseTrace(LxrRcResult* result, bool finalizerTrace)
 {
     *result = LxrRcResult::Success;
     if (!CanTraceInParallel())
@@ -9984,7 +9984,7 @@ bool LxrReferenceCounting::OpenPauseTrace(LxrRcResult* result)
     m_trace_batch_limit.store(
         std::max<size_t>(1, std::min<size_t>(m_configuration.pauseTraceBatch, FullTraceBatchCapacity)),
         std::memory_order_release);
-    m_pause_trace_metrics[0].fetch_add(1, std::memory_order_relaxed);
+    m_pause_trace_metrics[finalizerTrace ? 3 : 0].fetch_add(1, std::memory_order_relaxed);
     *result = SubmitUnsubmittedTrace();
     return true;
 }
@@ -10152,20 +10152,38 @@ LxrRcResult LxrReferenceCounting::TraceRoots(const uintptr_t* objects, size_t co
     {
         return LxrRcResult::InvalidPhase;
     }
-    for (size_t offset = 0; offset < count; offset += BufferCapacity)
+    if (count == 0)
+    {
+        return LxrRcResult::Success;
+    }
+
+    // The runtime's scan thread runs while the single weak-closure packet waits. It uses the pause thread's
+    // execution index, as the serial drain does; no other closure packet can use that index before the scan returns.
+    ExecutionScope executionScope(GetExecutionWorker());
+    LxrRcResult result = LxrRcResult::Success;
+    bool opened = OpenPauseTrace(&result, true);
+    for (size_t offset = 0; result == LxrRcResult::Success && offset < count; offset += BufferCapacity)
     {
         size_t batch = count - offset;
         if (batch > BufferCapacity)
         {
             batch = BufferCapacity;
         }
-        LxrRcResult result = QueueTrace(objects + offset, batch);
-        if (result != LxrRcResult::Success)
+        result = QueueTrace(objects + offset, batch);
+    }
+    if (result == LxrRcResult::Success)
+    {
+        result = DrainTraceInsidePause();
+    }
+    if (opened)
+    {
+        ClosePauseTrace();
+        if (result == LxrRcResult::Success)
         {
-            return result;
+            result = GetFailure();
         }
     }
-    return count == 0 ? LxrRcResult::Success : DrainTraceInsidePause();
+    return result;
 }
 
 bool LxrReferenceCounting::IsMarked(Object* object) const
