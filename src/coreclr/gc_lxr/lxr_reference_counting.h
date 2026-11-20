@@ -1039,6 +1039,7 @@ private:
     LxrRcResult PrepareTrace();
     LxrRcResult SweepCycles();
     void EnterTraceLock(size_t index);
+    bool EnterTraceLockUnlessMarked(size_t index, uintptr_t start);
     void ExitTraceLock(size_t index);
     LxrRcResult GetObjectSize(Object* object, size_t* size, size_t worker = SIZE_MAX);
     bool IsImmix(uintptr_t start) const;

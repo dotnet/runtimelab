@@ -9059,13 +9059,41 @@ LxrRcResult LxrReferenceCounting::WalkForwarded(LxrRcWalkForwarded visit, void* 
 
 void LxrReferenceCounting::EnterTraceLock(size_t index)
 {
+    std::atomic<uint8_t>& lock = TraceLockSlot(index);
     uint8_t expected = 0;
-    while (!TraceLockSlot(index).compare_exchange_weak(
-        expected, 1, std::memory_order_acquire, std::memory_order_relaxed))
+    while (!lock.compare_exchange_weak(expected, 1, std::memory_order_acquire, std::memory_order_relaxed))
     {
+        // Wait with plain loads: a CAS on each retry takes the cache line away from the holder.
+        do
+        {
+            YieldProcessor();
+        } while (lock.load(std::memory_order_relaxed) != 0);
         expected = 0;
-        YieldProcessor();
     }
+}
+
+// P5. As EnterTraceLock, but a waiter returns false, without the lock, when the object at start becomes marked. The
+// holder marks a small object before it scans it, so a waiter for a popular object does not wait for the whole scan
+// and then find the mark (the oracle loser of attempt_mark returns at once, policy/immix/immixspace.rs:1111-1124). The
+// lock stays: a dying object waits in FinishDyingTraceObject until the scan ends, because the allocator can reuse its
+// line as soon as the counts are zero.
+bool LxrReferenceCounting::EnterTraceLockUnlessMarked(size_t index, uintptr_t start)
+{
+    std::atomic<uint8_t>& lock = TraceLockSlot(index);
+    uint8_t expected = 0;
+    while (!lock.compare_exchange_weak(expected, 1, std::memory_order_acquire, std::memory_order_relaxed))
+    {
+        do
+        {
+            if (m_mark_metadata.Load(start, SideMetadataMemoryOrder::Relaxed) != 0)
+            {
+                return false;
+            }
+            YieldProcessor();
+        } while (lock.load(std::memory_order_relaxed) != 0);
+        expected = 0;
+    }
+    return true;
 }
 
 void LxrReferenceCounting::ExitTraceLock(size_t index)
@@ -9623,7 +9651,10 @@ LxrRcResult LxrReferenceCounting::ProcessTraceObject(
         return ProcessPauseTraceObject(object, start, directBudget, targets);
     }
     size_t index = (start - GetReservationStart()) / sizeof(uintptr_t);
-    EnterTraceLock(index);
+    if (!EnterTraceLockUnlessMarked(index, start))
+    {
+        return LxrRcResult::Success;
+    }
     uintptr_t count = m_rc_metadata.Load(start, SideMetadataMemoryOrder::SequentiallyConsistent);
     uintptr_t mark = m_mark_metadata.Load(start, SideMetadataMemoryOrder::SequentiallyConsistent);
     LxrRcResult result = LxrRcResult::Success;
