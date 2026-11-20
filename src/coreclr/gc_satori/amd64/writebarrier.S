@@ -175,7 +175,8 @@ LOCAL_LABEL(SetGroup):
 LOCAL_LABEL(SetPage):
     cmp     byte ptr [rax], 0
     jne     LOCAL_LABEL(CardSet)
-    mov     byte ptr [rax], 1
+    // DIRTY on purpose: a racing REMEMBERED store could overwrite another thread's DIRTY.
+    mov     byte ptr [rax], 4
 
     // Aligns the imm64 below: the padding and the 2-byte opcode end on an 8-byte boundary.
     // It is ahead of the label, so only the fall-through from SetPage runs it.

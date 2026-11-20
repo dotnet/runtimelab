@@ -491,6 +491,21 @@
                         <map value="0x0" message="$(string.RuntimePublisher.GCBucket.FLItemMapMessage)"/>
                         <map value="0x1" message="$(string.RuntimePublisher.GCBucket.PlugMessage)"/>
                     </valueMap>
+                    <valueMap name="ThreadLocalCollectionTriggerMap">
+                        <map value="0x0" message="$(string.RuntimePublisher.Satori.WindowLimit)"/>
+                        <map value="0x1" message="$(string.RuntimePublisher.Satori.ExhaustedSpan)"/>
+                    </valueMap>
+                    <valueMap name="ThreadLocalCollectionOutcomeMap">
+                        <map value="0x0" message="$(string.RuntimePublisher.Satori.EscapedLimit)"/>
+                        <map value="0x1" message="$(string.RuntimePublisher.Satori.InsufficientProgress)"/>
+                        <map value="0x2" message="$(string.RuntimePublisher.Satori.SurvivalAbort)"/>
+                        <map value="0x3" message="$(string.RuntimePublisher.Satori.Completed)"/>
+                    </valueMap>
+                    <valueMap name="ThreadLocalCollectionRetryMap">
+                        <map value="0x0" message="$(string.RuntimePublisher.Satori.NotAttempted)"/>
+                        <map value="0x1" message="$(string.RuntimePublisher.Satori.Succeeded)"/>
+                        <map value="0x2" message="$(string.RuntimePublisher.Satori.Failed)"/>
+                    </valueMap>
                     <valueMap name="GCTypeMap">
                         <map value="0x0" message="$(string.RuntimePublisher.GCType.NonConcurrentGCMapMessage)"/>
                         <map value="0x1" message="$(string.RuntimePublisher.GCType.BackgroundGCMapMessage)"/>
@@ -1468,26 +1483,50 @@
                         </UserData>
                     </template>
 
+                    <!-- One record per local collection request, emitted after the immediate retry.
+                         Outcome qualifies Count: it is valid for SurvivalAbort/Completed, including wrapped zero.
+                         AllocationProgress is the SOH allocation counter minus the current window baseline,
+                         after unused claims are returned and before that baseline is advanced.
+                         Usable/occupancy samples bracket the collection, before retry; escaped-after includes
+                         pending-finalizer publication. DurationNs covers collection, not retry.
+                         TrackingProductive is the existing sticky tracking-history flag, not per-attempt recovery.
+                         It can remain true across a global GC and resets when a new tracked region starts. -->
                     <template tid="GCThreadLocalCollection">
                         <data name="ClrInstanceID" inType="win:UInt16" />
                         <data name="Count" inType="win:UInt32" />
-                        <data name="Collected" inType="win:Boolean" />
+                        <data name="Outcome" inType="win:UInt32" map="ThreadLocalCollectionOutcomeMap" />
+                        <data name="Trigger" inType="win:UInt32" map="ThreadLocalCollectionTriggerMap" />
+                        <data name="Retry" inType="win:UInt32" map="ThreadLocalCollectionRetryMap" />
+                        <data name="TrackingProductive" inType="win:Boolean" />
+                        <data name="RegionID" inType="win:UInt64" />
+                        <data name="RequestedBytes" inType="win:UInt64" />
+                        <data name="AllocationProgress" inType="win:UInt64" />
+                        <data name="UsableBefore" inType="win:UInt64" />
+                        <data name="UsableAfter" inType="win:UInt64" />
                         <data name="OccupancyBefore" inType="win:UInt64" />
                         <data name="OccupancyAfter" inType="win:UInt64" />
-                        <data name="DurationNs" inType="win:Double" />
                         <data name="EscapedBytesBefore" inType="win:UInt64" />
                         <data name="EscapedBytesAfter" inType="win:UInt64" />
+                        <data name="DurationNs" inType="win:Double" />
 
                         <UserData>
                             <GCThreadLocalCollection xmlns="myNs">
                                 <ClrInstanceID> %1 </ClrInstanceID>
                                 <Count> %2 </Count>
-                                <Collected> %3 </Collected>
-                                <OccupancyBefore> %4 </OccupancyBefore>
-                                <OccupancyAfter> %5 </OccupancyAfter>
-                                <DurationNs> %6 </DurationNs>
-                                <EscapedBytesBefore> %7 </EscapedBytesBefore>
-                                <EscapedBytesAfter> %8 </EscapedBytesAfter>
+                                <Outcome> %3 </Outcome>
+                                <Trigger> %4 </Trigger>
+                                <Retry> %5 </Retry>
+                                <TrackingProductive> %6 </TrackingProductive>
+                                <RegionID> %7 </RegionID>
+                                <RequestedBytes> %8 </RequestedBytes>
+                                <AllocationProgress> %9 </AllocationProgress>
+                                <UsableBefore> %10 </UsableBefore>
+                                <UsableAfter> %11 </UsableAfter>
+                                <OccupancyBefore> %12 </OccupancyBefore>
+                                <OccupancyAfter> %13 </OccupancyAfter>
+                                <EscapedBytesBefore> %14 </EscapedBytesBefore>
+                                <EscapedBytesAfter> %15 </EscapedBytesAfter>
+                                <DurationNs> %16 </DurationNs>
                             </GCThreadLocalCollection>
                         </UserData>
                     </template>
@@ -4244,8 +4283,8 @@
                     <!-- Satori: a collection of a thread-local region by its allocating thread. It does not stop other threads,
                          is frequent and is closer to an allocation tick than to a GC, thus it is not reported as GCStart/GCEnd
                          and, like allocation ticks, is verbose. The value is away from the upstream GC events, which grow from 200. -->
-                    <event value="239" version="0" level="win:Verbose"  template="GCThreadLocalCollection"
-                           keywords ="GCKeyword"  opcode="GCThreadLocalCollection"
+                    <event value="239" version="0" level="win:Verbose" template="GCThreadLocalCollection"
+                           keywords="GCKeyword" opcode="GCThreadLocalCollection"
                            task="GarbageCollection"
                            symbol="GCThreadLocalCollection" message="$(string.RuntimePublisher.GCThreadLocalCollectionEventMessage)"/>
 
@@ -8630,7 +8669,16 @@
                 <string id="RuntimePublisher.GCGlobalHeap_V4EventMessage" value="FinalYoungestDesired=%1;%nNumHeaps=%2;%nCondemnedGeneration=%3;%nGen0ReductionCountD=%4;%nReason=%5;%nGlobalMechanisms=%6;%nClrInstanceID=%7;%nPauseMode=%8;%nMemoryPressure=%9;%nCondemnReasons0=%10;%nCondemnReasons1=%11;%nCount=%12"/>
                 <string id="RuntimePublisher.GCLOHCompactEventMessage" value="ClrInstanceID=%1;%nCount=%2" />
                 <string id="RuntimePublisher.GCFitBucketInfoEventMessage" value="ClrInstanceID=%1;%nBucketKind=%2;%nTotalSize=%3;%nCount=%4" />
-                <string id="RuntimePublisher.GCThreadLocalCollectionEventMessage" value="ClrInstanceID=%1;%nCount=%2;%nCollected=%3;%nOccupancyBefore=%4;%nOccupancyAfter=%5;%nDurationNs=%6;%nEscapedBytesBefore=%7;%nEscapedBytesAfter=%8" />
+                <string id="RuntimePublisher.GCThreadLocalCollectionEventMessage" value="ClrInstanceID=%1;%nCount=%2;%nOutcome=%3;%nTrigger=%4;%nRetry=%5;%nTrackingProductive=%6;%nRegionID=%7;%nRequestedBytes=%8;%nAllocationProgress=%9;%nUsableBefore=%10;%nUsableAfter=%11;%nOccupancyBefore=%12;%nOccupancyAfter=%13;%nEscapedBytesBefore=%14;%nEscapedBytesAfter=%15;%nDurationNs=%16" />
+                <string id="RuntimePublisher.Satori.WindowLimit" value="Window limit" />
+                <string id="RuntimePublisher.Satori.ExhaustedSpan" value="Exhausted span" />
+                <string id="RuntimePublisher.Satori.EscapedLimit" value="Escape limit" />
+                <string id="RuntimePublisher.Satori.InsufficientProgress" value="Insufficient progress" />
+                <string id="RuntimePublisher.Satori.SurvivalAbort" value="Survival abort" />
+                <string id="RuntimePublisher.Satori.Completed" value="Completed" />
+                <string id="RuntimePublisher.Satori.NotAttempted" value="Not attempted" />
+                <string id="RuntimePublisher.Satori.Succeeded" value="Succeeded" />
+                <string id="RuntimePublisher.Satori.Failed" value="Failed" />
                 <string id="RuntimePublisher.FinalizeObjectEventMessage" value="TypeID=%1;%nObjectID=%2;%nClrInstanceID=%3" />
                 <string id="RuntimePublisher.GCTriggeredEventMessage" value="Reason=%1" />
                 <string id="RuntimePublisher.PinObjectAtGCTimeEventMessage" value="HandleID=%1;%nObjectID=%2;%nObjectSize=%3;%nTypeName=%4;%n;%nClrInstanceID=%5" />

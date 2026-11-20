@@ -30,6 +30,9 @@ public static class ThreadLocalCollectionEvents
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
     public static void EscapedByteTotals(int scenario)
     {
         ValidateSourceManifest();
@@ -57,7 +60,7 @@ public static class ThreadLocalCollectionEvents
     private static void GenerateEscapedByteEvents(int scenario, EscapeProbe probe)
     {
         // Warm the marker before acquiring the region so its initialization cannot escape test objects.
-        EscapedByteMarkers.Log.Begin(0);
+        EscapedByteMarkers.Log.Begin(0, 0);
         EscapedByteMarkers.Log.End();
         EscapedByteMarkers.Log.Pulse();
 
@@ -99,8 +102,24 @@ public static class ThreadLocalCollectionEvents
                 AllocateFinalizableGraph(region);
             }
 
-            EscapedByteMarkers.Log.Begin(2);
-            AllocateTransientInRegion(anchor, RegionSize, graph);
+            EscapedByteMarkers.Log.Begin(2, scenario == 5 ? 0 : (long)region);
+            if (scenario == 3)
+            {
+                AllocateLiveSurvival(anchor);
+            }
+            else if (scenario == 4)
+            {
+                AllocateFinalizableSurvival(region);
+                AllocateTransientInRegion(anchor, RegionSize / 2);
+            }
+            else if (scenario == 5)
+            {
+                GenerateRejectedAttempts(anchor);
+            }
+            else
+            {
+                AllocateTransientInRegion(anchor, RegionSize, graph);
+            }
         }
         finally
         {
@@ -120,7 +139,7 @@ public static class ThreadLocalCollectionEvents
         for (int attempt = 0; attempt < AllocationLimit / RegionSize; attempt++)
         {
             probe.Ready.Reset();
-            EscapedByteMarkers.Log.Begin(1);
+            EscapedByteMarkers.Log.Begin(1, (long)RegionFor(anchor));
 
             // A thread-local collection comes after the window is allocated, which is at least 1 MB, and more when the
             // region has many objects. Half of the region is not always enough to get one.
@@ -212,22 +231,142 @@ public static class ThreadLocalCollectionEvents
         GC.KeepAlive(value);
     }
 
+    [InlineArray(32)]
+    private struct LocalRoots
+    {
+        private byte[]? _element0;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void AllocateLiveSurvival(byte[] anchor)
+    {
+        LocalRoots roots = default;
+        nuint region = RegionFor(anchor);
+        for (int i = 0; i < 32; i++)
+        {
+            byte[] buffer = new byte[24 * 1024];
+            Assert.Equal(region, RegionFor(buffer));
+            roots[i] = buffer;
+        }
+        AllocateTransientInRegion(anchor, RegionSize / 4);
+        KeepRoots(ref roots);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void KeepRoots(ref LocalRoots roots)
+    {
+        for (int i = 0; i < 32; i++)
+        {
+            GC.KeepAlive(roots[i]);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void AllocateFinalizableSurvival(nuint region)
+    {
+        var graph = new FinalizableSurvivalGraph(region);
+        GC.KeepAlive(graph);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void GenerateRejectedAttempts(byte[] anchor)
+    {
+        nuint region = RegionFor(anchor);
+        var roots = new byte[64][];
+        s_published = roots;
+        for (int i = 0; i < 96; i++)
+        {
+            // Escaped small survivors cannot move during local compaction. A reclaimed array's
+            // free span loses its terminator space, so it cannot fit another array of the same size.
+            byte[] garbage = new byte[31 * 1024];
+            if (RegionFor(garbage) != region)
+            {
+                // The first diversion can follow Completed/Failed; the next request must exercise
+                // the exhausted-span rejection unless the first request already ended tracking.
+                byte[] next = new byte[31 * 1024];
+                GC.KeepAlive(next);
+                GC.KeepAlive(roots);
+                GC.KeepAlive(anchor);
+                return;
+            }
+            roots[i & 63] = new byte[1024];
+            GC.KeepAlive(garbage);
+        }
+        throw new InvalidOperationException("Could not exhaust the region's large contiguous spans.");
+    }
+
+    [ConditionalFact(typeof(ThreadLocalCollectionEvents), nameof(IsSatori))]
+    public static void InformationalDoesNotReportAttempts()
+    {
+        int attempts = 0;
+        int localCollections = 0;
+        using var probe = new EscapeProbe();
+        var providers = new List<EventPipeProvider>
+        {
+            new EventPipeProvider("Microsoft-Windows-DotNETRuntime", EventLevel.Informational, 1),
+            new EventPipeProvider("Satori-EscapedBytes-Test", EventLevel.Informational)
+        };
+        var expected = new Dictionary<string, ExpectedEventCount>
+        {
+            { "Microsoft-Windows-DotNETRuntime", -1 },
+            { "Satori-EscapedBytes-Test", -1 }
+        };
+        Assert.Equal(100, IpcTraceTest.RunAndValidateEventCounts(expected, () => RunOnFreshThread(() =>
+        {
+            EscapedByteMarkers.Log.Begin(0, 0);
+            EscapedByteMarkers.Log.End();
+            EscapedByteMarkers.Log.Pulse();
+            GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+            byte[] anchor = AcquireThreadLocalRegion();
+            int before = GC.CollectionCount(0) - GC.CollectionCount(1);
+            AllocateTransientInRegion(anchor, RegionSize);
+            localCollections = GC.CollectionCount(0) - GC.CollectionCount(1) - before;
+        }), providers, 16, source =>
+        {
+            source.Dynamic.All += data =>
+            {
+                if (data.ProviderName == "Microsoft-Windows-DotNETRuntime")
+                {
+                    Assert.NotEqual(238, (int)data.ID);
+                    if ((int)data.ID == 239)
+                    {
+                        attempts++;
+                    }
+                }
+            };
+            return () =>
+            {
+                Assert.True(localCollections > 0, "The disabled-event test must still perform local collection.");
+                Assert.Equal(0, attempts);
+                Assert.Equal(0, source.EventsLost);
+                return 100;
+            };
+        }));
+    }
+
     private static Func<int> ValidateEscapedByteEvents(EventPipeEventSource source, int scenario, EscapeProbe probe)
     {
         int activeThread = -1;
         int scopes = 0;
         bool calibrating = false;
         bool probeDelivered = false;
+        ulong activeRegion = 0;
+        int survivalAborts = 0;
+        int finalizerAborts = 0;
+        int rejections = 0;
+        bool sawProductiveTracking = false;
         var samples = new List<(uint Count, ulong Before, ulong After)>();
         string[] payloadNames =
         {
-            "ClrInstanceID", "Count", "Collected", "OccupancyBefore", "OccupancyAfter",
-            "DurationNs", "EscapedBytesBefore", "EscapedBytesAfter"
+            "ClrInstanceID", "Count", "Outcome", "Trigger", "Retry", "TrackingProductive",
+            "RegionID", "RequestedBytes", "AllocationProgress", "UsableBefore", "UsableAfter",
+            "OccupancyBefore", "OccupancyAfter", "EscapedBytesBefore", "EscapedBytesAfter", "DurationNs"
         };
         Type[] payloadTypes =
         {
-            typeof(ushort), typeof(uint), typeof(bool), typeof(ulong), typeof(ulong),
-            typeof(double), typeof(ulong), typeof(ulong)
+            typeof(ushort), typeof(uint), typeof(uint), typeof(uint), typeof(uint), typeof(bool),
+            typeof(ulong), typeof(ulong), typeof(ulong), typeof(ulong), typeof(ulong),
+            typeof(ulong), typeof(ulong), typeof(ulong), typeof(ulong), typeof(double)
         };
         bool schemaReported = false;
 
@@ -252,6 +391,24 @@ public static class ThreadLocalCollectionEvents
             Assert.Equal(0, source.EventsLost);
             Assert.Equal(1, scopes);
             Assert.Equal(-1, activeThread);
+            Assert.True(sawProductiveTracking, "The region must retain its productive-tracking history.");
+            if (scenario == 5)
+            {
+                Assert.True(rejections > 0, "Expected a real pre-marking rejection.");
+                Console.WriteLine($"AttemptValidation scenario=5 PASS: rejections={rejections}, drops={source.EventsLost}");
+                return 100;
+            }
+            if (scenario >= 3)
+            {
+                Assert.True(survivalAborts > 0, "Expected a real survival-aborted attempt.");
+                if (scenario == 4)
+                {
+                    Assert.True(finalizerAborts > 0, "Expected pending finalizers to escape after aborted marking.");
+                }
+                Console.WriteLine($"AttemptValidation scenario={scenario} PASS: aborts={survivalAborts}, " +
+                    $"finalizerAborts={finalizerAborts}, drops={source.EventsLost}");
+                return 100;
+            }
             // The workload cannot leave the tracked 2 MB region and a thread-local GC window is at least 1 MB, so a region
             // yields two collections. Two are what the checks below need: the first one sees the escaped bytes and a later
             // one must not count them again.
@@ -295,10 +452,11 @@ public static class ThreadLocalCollectionEvents
             {
                 if ((int)data.ID == 1)
                 {
-                    int phase = (int)data.PayloadValue(0);
+                    int phase = (int)(long)data.PayloadValue(0);
                     if (phase != 0)
                     {
                         activeThread = data.ThreadID;
+                        activeRegion = (ulong)(long)data.PayloadValue(1);
                         calibrating = phase == 1;
                         probeDelivered = false;
                         if (!calibrating)
@@ -315,6 +473,10 @@ public static class ThreadLocalCollectionEvents
                 return;
             }
 
+            if (data.ProviderName == "Microsoft-Windows-DotNETRuntime")
+            {
+                Assert.NotEqual(238, (int)data.ID);
+            }
             if (data.ProviderName != "Microsoft-Windows-DotNETRuntime" ||
                 (int)data.ID != 239 || data.ThreadID != activeThread)
             {
@@ -337,26 +499,73 @@ public static class ThreadLocalCollectionEvents
             // When wire field definitions are absent, use the embedded build-source
             // manifest as an out-of-band contract, not as evidence of wire names or types.
             byte[] bytes = data.EventData();
-            const int PayloadBytes = sizeof(ushort) + sizeof(uint) + sizeof(int) + 4 * sizeof(ulong) + sizeof(double);
+            const int PayloadBytes = sizeof(ushort) + 5 * sizeof(uint) + 9 * sizeof(ulong) + sizeof(double);
             Assert.Equal(PayloadBytes, bytes.Length);
             ReadOnlySpan<byte> payload = bytes;
             _ = BinaryPrimitives.ReadUInt16LittleEndian(payload);
             uint count = BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(2));
-            Assert.Equal(1U, BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(6)));
-            ulong occupancyBefore = BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(10));
-            ulong occupancyAfter = BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(18));
-            double duration = BitConverter.Int64BitsToDouble(BinaryPrimitives.ReadInt64LittleEndian(payload.Slice(26)));
+            uint outcome = BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(6));
+            uint trigger = BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(10));
+            uint retry = BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(14));
+            uint productive = BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(18));
+            ulong regionId = BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(22));
+            ulong requested = BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(30));
+            ulong progress = BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(38));
+            ulong usableBefore = BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(46));
+            ulong usableAfter = BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(54));
+            ulong occupancyBefore = BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(62));
+            ulong occupancyAfter = BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(70));
+            ulong before = BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(78));
+            ulong after = BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(86));
+            double duration = BitConverter.Int64BitsToDouble(BinaryPrimitives.ReadInt64LittleEndian(payload.Slice(94)));
+            Assert.InRange(outcome, 0U, 3U);
+            Assert.InRange(trigger, 0U, 1U);
+            Assert.InRange(retry, 0U, 2U);
+            Assert.InRange(productive, 0U, 1U);
+            Assert.True(regionId > 0 && (regionId & (RegionSize - 1)) == 0);
+            if (activeRegion != 0)
+            {
+                Assert.Equal(activeRegion, regionId);
+            }
+            Assert.True(requested > 0 && requested < 32 * 1024);
+            Assert.Equal(retry == 0, trigger == 1 && outcome != 3);
+            if (outcome <= 1)
+            {
+                if (!calibrating)
+                {
+                    rejections++;
+                }
+                Assert.Equal(0U, count);
+                Assert.Equal(0.0, duration);
+                Assert.Equal(before, after);
+            }
+            if (outcome != 3)
+            {
+                Assert.Equal(usableBefore, usableAfter);
+                Assert.Equal(occupancyBefore, occupancyAfter);
+            }
             Assert.True(occupancyAfter <= occupancyBefore);
             Assert.True(double.IsFinite(duration) && duration >= 0);
-            ulong before = BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(34));
-            ulong after = BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(42));
-            Assert.True(before <= after && before <= occupancyBefore && after <= occupancyAfter);
+            Assert.True(before <= occupancyBefore && after <= occupancyAfter);
+            if (outcome == 2 && !calibrating)
+            {
+                survivalAborts++;
+                if (after > before)
+                {
+                    finalizerAborts++;
+                }
+            }
+            sawProductiveTracking |= productive != 0;
             if (!schemaReported)
             {
                 schemaReported = true;
                 Console.WriteLine($"239v0 schema: source manifest verified; wire field names/types " +
                     $"{(data.PayloadNames.Length == 0 ? "unavailable" : "verified")}; " +
                     $"rawBytes={bytes.Length}; firstRaw={Convert.ToHexString(bytes)}");
+            }
+            if (outcome != 3)
+            {
+                return;
             }
             if (calibrating)
             {
@@ -371,6 +580,7 @@ public static class ThreadLocalCollectionEvents
                 return;
             }
 
+            Assert.True(progress > 0, "Completed collection must pass the allocation-progress gate.");
             samples.Add((count, before, after));
         }
     }
@@ -387,13 +597,15 @@ public static class ThreadLocalCollectionEvents
             .Single(k => (string?)k.Attribute("name") == "GCKeyword").Attribute("mask"));
         string[] expected =
         {
-            "ClrInstanceID:win:UInt16", "Count:win:UInt32", "Collected:win:Boolean",
-            "OccupancyBefore:win:UInt64", "OccupancyAfter:win:UInt64", "DurationNs:win:Double",
-            "EscapedBytesBefore:win:UInt64", "EscapedBytesAfter:win:UInt64"
+            "ClrInstanceID:win:UInt16", "Count:win:UInt32", "Outcome:win:UInt32",
+            "Trigger:win:UInt32", "Retry:win:UInt32", "TrackingProductive:win:Boolean",
+            "RegionID:win:UInt64", "RequestedBytes:win:UInt64", "AllocationProgress:win:UInt64",
+            "UsableBefore:win:UInt64", "UsableAfter:win:UInt64", "OccupancyBefore:win:UInt64",
+            "OccupancyAfter:win:UInt64", "EscapedBytesBefore:win:UInt64", "EscapedBytesAfter:win:UInt64",
+            "DurationNs:win:Double"
         };
         XElement definition = provider.Element(ns + "events")!.Elements(ns + "event")
-            .Single(e => (string?)e.Attribute("value") == "239");
-        Assert.Equal("0", (string?)definition.Attribute("version"));
+            .Single(e => (string?)e.Attribute("value") == "239" && (string?)e.Attribute("version") == "0");
         Assert.Equal("win:Verbose", (string?)definition.Attribute("level"));
         Assert.Equal("GCKeyword", (string?)definition.Attribute("keywords"));
         XElement template = provider.Element(ns + "templates")!.Elements(ns + "template")
@@ -401,6 +613,16 @@ public static class ThreadLocalCollectionEvents
         string[] fields = template.Elements(ns + "data")
             .Select(f => $"{f.Attribute("name")!.Value}:{f.Attribute("inType")!.Value}").ToArray();
         Assert.Equal(expected, fields);
+        foreach (string field in new[] { "Trigger", "Outcome", "Retry" })
+        {
+            XElement data = template.Elements(ns + "data").Single(d => (string?)d.Attribute("name") == field);
+            string mapName = (string)data.Attribute("map")!;
+            XElement map = provider.Element(ns + "maps")!.Elements(ns + "valueMap")
+                .Single(m => (string?)m.Attribute("name") == mapName);
+            int count = field == "Outcome" ? 4 : field == "Trigger" ? 2 : 3;
+            Assert.Equal(Enumerable.Range(0, count).Select(i => (uint)i),
+                map.Elements(ns + "map").Select(m => Convert.ToUInt32((string)m.Attribute("value")!, 16)));
+        }
     }
 
     private static ulong ArrayBytes(int length, int elementSize)
@@ -414,6 +636,23 @@ public static class ThreadLocalCollectionEvents
         internal readonly byte[] Buffer = new byte[1024];
 
         ~FinalizableGraph() => GC.KeepAlive(Buffer);
+    }
+
+    private sealed class FinalizableSurvivalGraph
+    {
+        private LocalRoots _roots;
+
+        internal FinalizableSurvivalGraph(nuint region)
+        {
+            for (int i = 0; i < 32; i++)
+            {
+                byte[] buffer = new byte[24 * 1024];
+                Assert.Equal(region, RegionFor(buffer));
+                _roots[i] = buffer;
+            }
+        }
+
+        ~FinalizableSurvivalGraph() => KeepRoots(ref _roots);
     }
 
     private sealed class EscapeProbe : IDisposable
@@ -431,7 +670,7 @@ public static class ThreadLocalCollectionEvents
         internal static readonly EscapedByteMarkers Log = new();
 
         [Event(1, Level = EventLevel.Informational)]
-        public void Begin(int measured) => WriteEvent(1, measured);
+        public void Begin(long measured, long regionId) => WriteEvent(1, measured, regionId);
 
         [Event(2, Level = EventLevel.Informational)]
         public void End() => WriteEvent(2);

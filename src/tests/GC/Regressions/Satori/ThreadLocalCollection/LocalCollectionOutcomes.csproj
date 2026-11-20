@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
+    <CLRTestTargetUnsupported Condition="'$(RuntimeFlavor)' != 'coreclr' or '$(TargetBits)' != '64' or '$(TargetArchitecture)' == 'wasm'">true</CLRTestTargetUnsupported>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildProjectName).cs" />
+    <CMakeProjectReference Include="CMakeLists.txt" />
+  </ItemGroup>
+</Project>

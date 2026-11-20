@@ -155,7 +155,8 @@ ALTERNATE_ENTRY PatchableValue_MarkCards_CardTable
      SetPage:
         cmp     byte ptr [rax], 0
         jne     CardSet
-        mov     byte ptr [rax], 1
+        ; DIRTY on purpose: a racing REMEMBERED store could overwrite another thread's DIRTY.
+        mov     byte ptr [rax], 4
 
      CardSet:
     ; check if concurrent marking is still not in progress

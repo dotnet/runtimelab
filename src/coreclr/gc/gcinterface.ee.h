@@ -194,7 +194,10 @@ public:
     // Escaped sizes are region totals in bytes, sampled at collection entry
     // and after publishing pending finalizers.
     virtual
-    void FireGCThreadLocalCollection(uint32_t count, bool collected, uint64_t occupancyBefore, uint64_t occupancyAfter, double durationNs, uint64_t escapedBytesBefore, uint64_t escapedBytesAfter) PURE_VIRTUAL
+    void FireGCThreadLocalCollection(uint32_t count, uint32_t outcome, uint32_t trigger, uint32_t retry,
+        bool trackingProductive, uint64_t regionId, uint64_t requestedBytes, uint64_t allocationProgress,
+        uint64_t usableBefore, uint64_t usableAfter, uint64_t occupancyBefore, uint64_t occupancyAfter,
+        uint64_t escapedBytesBefore, uint64_t escapedBytesAfter, double durationNs) PURE_VIRTUAL
 };
 
 // This interface provides the interface that the GC will use to speak to the rest
