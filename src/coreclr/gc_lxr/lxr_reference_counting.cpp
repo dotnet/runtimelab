@@ -3653,17 +3653,27 @@ bool LxrReferenceCounting::IsContinuationSlot(size_t slot) const
 #endif // LXR_WALK_NO_CONTINUATION_SKIP_CONTROL
 }
 
+// The lowest bit of each bits-wide field of a 64-bit word. bits is a power of two up to 64. This replaces a loop of up to 64
+// steps that the walks ran on each call.
+static inline uint64_t LowestBitOfEachField(uint32_t bits)
+{
+    switch (bits)
+    {
+    case 1: return ~UINT64_C(0);
+    case 2: return UINT64_C(0x5555555555555555);
+    case 4: return UINT64_C(0x1111111111111111);
+    case 8: return UINT64_C(0x0101010101010101);
+    default: return ~UINT64_C(0) / ((bits >= 64 ? ~UINT64_C(0) : (UINT64_C(1) << bits) - 1));
+    }
+}
+
 size_t LxrReferenceCounting::FindCountedSlotBelow(size_t lowerSlot, size_t slot) const
 {
     // The count plane has 2, 4 or 8 bits per slot. One 64-bit word covers 64 / bits slots, and the arena start is aligned to
     // a block, so a slot index and its position in the word agree.
     uintptr_t arena = GetReservationStart();
     uint32_t bits = static_cast<uint32_t>(1) << m_rc_metadata.GetLogBitsPerValue();
-    uint64_t lowest = 0;
-    for (uint32_t position = 0; position < 64; position += bits)
-    {
-        lowest |= UINT64_C(1) << position;
-    }
+    const uint64_t lowest = LowestBitOfEachField(bits);
     while (true)
     {
         SideMetadataLocation location = m_rc_metadata.Locate(arena + slot * sizeof(uintptr_t));
@@ -8204,11 +8214,7 @@ size_t LxrReferenceCounting::FindNextValidSlot(size_t first, size_t limit) const
     // The walk variant has no ValidObject plane: the starts of the counted objects are the non-zero counts, except the first
     // slot of each continuation line of a long object.
     uint32_t bits = static_cast<uint32_t>(1) << m_rc_metadata.GetLogBitsPerValue();
-    uint64_t lowest = 0;
-    for (uint32_t position = 0; position < 64; position += bits)
-    {
-        lowest |= UINT64_C(1) << position;
-    }
+    const uint64_t lowest = LowestBitOfEachField(bits);
     while (first < largeEnd && first < limit)
     {
         if (first >= immixEnd && first < largeStart)
