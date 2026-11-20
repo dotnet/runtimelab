@@ -647,10 +647,7 @@ public:
     uint64_t GetOvershootMetric(size_t metric) const;
     LxrWorkSchedulerMetrics GetSchedulerMetrics() const { return m_scheduler.GetMetrics(); }
     // 0: pauses that traced in parallel, 1: replay packets that ran, 2: remembered slots that a replay packet copied.
-    uint64_t GetPauseTraceMetric(size_t index) const
-    {
-        return index < 4 ? m_pause_trace_metrics[index].load(std::memory_order_relaxed) : UINT64_MAX;
-    }
+    uint64_t GetPauseTraceMetric(size_t index) const;
     size_t GetPauseSurvivorBytes() const;
     // P22 (D2). Span statistics: 0 = spans closed, 1 = bytes in closed spans, 2 = spans of the last pause.
     uint64_t GetSpanMetric(size_t metric) const { return m_span_metrics[metric].load(std::memory_order_relaxed); }
