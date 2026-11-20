@@ -153,7 +153,8 @@ SetGroup
 SetPage
         ldrb    w17, [x16]
         cbnz    w17, CardSet
-        mov     w17, #1
+        ; DIRTY on purpose: a racing REMEMBERED store could overwrite another thread's DIRTY.
+        mov     w17, #4
         strb    w17, [x16]
 
 CardSet

@@ -193,7 +193,8 @@ LOCAL_LABEL(SetGroup):
 LOCAL_LABEL(SetPage):
         ldrb    w17, [x16]
         cbnz    w17, LOCAL_LABEL(CardSet)
-        mov     w17, #1
+        // DIRTY on purpose: a racing REMEMBERED store could overwrite another thread's DIRTY.
+        mov     w17, #4
         strb    w17, [x16]
 
 LOCAL_LABEL(CardSet):

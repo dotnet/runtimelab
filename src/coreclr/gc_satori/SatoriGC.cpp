@@ -398,7 +398,7 @@ void ErectWriteBarrier(void* context, Object **dst, Object* ref)
 
     if (!pRecycler->IsBarrierConcurrent(/* includeSwitching */ true))
     {
-        page->SetCardForAddress((size_t)dst);
+        page->SetCardForAddressConcurrent((size_t)dst);
         // recheck - the barrier could turn concurrent while we were setting the card.
         if (!pRecycler->IsBarrierConcurrent(/* includeSwitching */ true))
             return;
