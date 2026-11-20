@@ -29,6 +29,7 @@
 
 #include "common.h"
 #include "../gc.h"
+#include "SatoriUtil.h"
 
 class SatoriObject;
 class SatoriHeap;
@@ -70,9 +71,9 @@ private:
     };
 
     size_t m_enqueue;
-    DECLSPEC_ALIGN(64)
+    DECLSPEC_ALIGN(Satori::WIDE_CACHE_GRANULARITY)
     size_t m_dequeue;
-    DECLSPEC_ALIGN(64)
+    DECLSPEC_ALIGN(Satori::WIDE_CACHE_GRANULARITY)
     size_t m_sizeMask;
     int m_overflowedGen;
     int m_scanTicket;

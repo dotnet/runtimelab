@@ -62,16 +62,21 @@ public:
     bool RearmCardsForStillTenured();
     void ResetCardsForEphemeral();
 
-    SatoriRegion* TrySplit(size_t regionSize);
-    bool CanDecommit();
-    bool TryDecommit();
+    bool TryDecommitAbove(size_t address);
     void TryCommit();
-    bool CanCoalesceWithNext();
-    bool TryCoalesceWithNext(bool drainsAreDone);
 
     void ZeroInitAndLink(SatoriRegion* prev);
 
     static size_t RegionSizeForAlloc(size_t allocSize);
+    // How much of a region of the given size, from its start, is always committed. (see InitializeAt)
+    static size_t MinCommitSize(size_t regionSize);
+    // Where AllocateHuge places a huge object of the given size in a blank region of the given size, from the start of the region.
+    static size_t HugeObjectOffset(size_t regionSize, size_t size);
+    // How much of a region of the given size, from its start, a huge object of the given size needs committed.
+    // The claim of the region commits that much, so that AllocateHuge has nothing to commit. (see SatoriAllocator::AllocHuge)
+    static size_t HugeCommitSize(size_t regionSize, size_t size);
+    // How much of a blank region, from its start, its first allocation of the given size needs committed. (see AllocateDirty)
+    static size_t CommitSizeForAlloc(size_t allocSize);
 
     size_t GetAllocStart();
     size_t GetAllocRemaining();
@@ -164,6 +169,10 @@ public:
     size_t Start();
     size_t End();
     size_t Size();
+    // The end of the committed prefix of the region.
+    size_t CommittedEnd();
+    // Everything from here to the end of the committed prefix is known to be zero.
+    size_t UsedEnd();
     bool IsLarge();
 
     SatoriObject* FirstObject();
@@ -237,6 +246,7 @@ public:
     void UnlockFinalizableTrackers();
 
     bool RegisterForFinalization(SatoriObject* finalizable);
+    void RegisterForFinalization(SatoriObject* finalizable, SatoriWorkChunk* tracker);
     bool HasFinalizables();
     bool& HasPendingFinalizables();
 
@@ -448,9 +458,6 @@ private:
     size_t ComputeTlgcWindow();
     size_t ComputeTlgcAllocEnd(size_t minAllocSize, size_t allocBytes);
     size_t ParseableBitmapLimit();
-    bool CanSplitWithoutCommit(size_t size);
-    void SplitCore(size_t regionSize, size_t& newStart, size_t& newCommitted, size_t& newZeroInitedAfter);
-    void UndoSplitCore(size_t regionSize, size_t nextStart, size_t nextCommitted, size_t nextUsed);
 
     template <bool isConservative>
     static void MarkFn(PTR_PTR_Object ppObject, ScanContext* sc, uint32_t flags);
@@ -508,7 +515,6 @@ private:
     bool IsEscapedOrPinned(SatoriObject* o);
 
     bool ValidateIndexEmpty();
-    bool Coalesce(SatoriRegion* next);
 
     template <bool updatePointers, bool individuallyPromoted, bool isEscapeTracking>
     bool Sweep();

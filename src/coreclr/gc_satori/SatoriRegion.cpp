@@ -162,8 +162,7 @@ SatoriRegion* SatoriRegion::InitializeAt(SatoriPage* containingPage, size_t addr
     used = max(address, used);
 
     // Cover the first commit granule when a huge allocation left a page-aligned tail.
-    size_t minCommitted = ALIGN_UP((size_t)&result->m_syncBlock + SatoriUtil::MinZeroInitSize(), SatoriUtil::CommitGranularity());
-    minCommitted = min(minCommitted, address + regionSize);
+    size_t minCommitted = address + MinCommitSize(regionSize);
     if (committed < minCommitted)
     {
         size_t toCommit = minCommitted - committed;
@@ -748,62 +747,6 @@ int SatoriRegion::GetMaxFreeBucket()
     return (int)bucket;
 }
 
-void SatoriRegion::SplitCore(size_t regionSize, size_t& nextStart, size_t& nextCommitted, size_t& nextUsed)
-{
-    _ASSERTE(regionSize % Satori::REGION_SIZE_GRANULARITY == 0);
-    _ASSERTE(regionSize < this->Size());
-    _ASSERTE(m_allocEnd == m_end);
-    _ASSERTE(m_allocStart == m_firstObject.Start());
-
-    size_t newEnd = m_end - regionSize;
-    nextStart = newEnd;
-    nextCommitted = m_committed;
-    nextUsed = m_used;
-
-    m_end = newEnd;
-    m_committed = min(newEnd, m_committed);
-    m_used = min(newEnd, m_used);
-    m_allocEnd = newEnd;
-    m_tlgcAllocEnd = m_allocEnd;
-    m_occupancy = m_allocEnd - m_allocStart;
-
-    _ASSERTE(Size() >= Satori::REGION_SIZE_GRANULARITY);
-}
-
-void SatoriRegion::UndoSplitCore(size_t regionSize, size_t nextStart, size_t nextCommitted, size_t nextUsed)
-{
-    _ASSERTE(m_allocEnd == m_end);
-    _ASSERTE(m_allocStart == m_firstObject.Start());
-    _ASSERTE(nextStart == m_end);
-
-    m_end += regionSize;
-    m_committed = max(m_committed, nextCommitted);
-    m_used = max(m_used, nextUsed);
-    m_allocEnd = m_end;
-    m_tlgcAllocEnd = m_allocEnd;
-    m_occupancy = m_allocEnd - m_allocStart;
-}
-
-SatoriRegion* SatoriRegion::TrySplit(size_t regionSize)
-{
-    size_t nextStart, nextCommitted, nextUsed;
-    SplitCore(regionSize, nextStart, nextCommitted, nextUsed);
-
-    // format the rest as a new region 
-    SatoriRegion* result = InitializeAt(m_containingPage, nextStart, regionSize, nextCommitted, nextUsed);
-    if (result == nullptr)
-    {
-        // OOM
-        this->UndoSplitCore(regionSize, nextStart, nextCommitted, nextUsed);
-    }
-    else
-    {
-        _ASSERTE(result->ValidateBlank());
-    }
-
-    return result;
-}
-
 SatoriPage* SatoriRegion::ContainingPage()
 {
     return m_containingPage;
@@ -814,121 +757,38 @@ SatoriRegion* SatoriRegion::NextInPage()
     return m_containingPage->NextInPage(this);
 }
 
-bool SatoriRegion::CanCoalesceWithNext()
+// What every region has committed from its start: the header, and the memory that its first allocations zero.
+// InitializeAt commits it, and nothing decommits it while the region is a region. (see TryDecommitAbove)
+// Regions are aligned to 2 MB, which the commit granularity divides, so this is the same from the start of any region.
+size_t SatoriRegion::MinCommitSize(size_t regionSize)
 {
-    SatoriRegion* next = NextInPage();
-    if (next)
-    {
-        auto queue = VolatileLoadWithoutBarrier(&next->m_containingQueue);
-        if (queue && queue->Kind() == QueueKind::Allocator)
-        {
-            return true;
-        }
-    }
-
-    return false;
+    return min(ALIGN_UP(offsetof(SatoriRegion, m_syncBlock) + SatoriUtil::MinZeroInitSize(), SatoriUtil::CommitGranularity()), regionSize);
 }
 
-bool SatoriRegion::Coalesce(SatoriRegion* next)
+// Decommits what the region has committed above the address, rounded up to the commit granularity,
+// but not what every region keeps committed. (see MinCommitSize)
+// The finalization queue does that with its region: a run can come committed beyond the array that the queue needs.
+bool SatoriRegion::TryDecommitAbove(size_t address)
 {
-    _ASSERTE(next->m_containingQueue == nullptr);
-    _ASSERTE(next->m_containingPage == m_containingPage);
-    _ASSERTE(next->m_prev == next->m_next);
-    _ASSERTE(m_end == next->Start());
-    _ASSERTE(ValidateBlank());
-    _ASSERTE(next->ValidateBlank());
-
-    size_t next_end = next->m_end;
-    size_t next_allocEnd = next->m_allocEnd;
-
-    if (m_committed == next->Start())
+    _ASSERTE(address >= (size_t)&m_syncBlock && address <= End());
+    size_t decommitStart = max(ALIGN_UP(address, SatoriUtil::CommitGranularity()), Start() + MinCommitSize(Size()));
+    if (decommitStart >= m_committed)
     {
-        m_committed = next->m_committed;
-        m_used = next->m_used;
-    }
-    else
-    {
-        _ASSERTE(next->m_committed > next->Start());
-        size_t toDecommit = next->m_committed - next->Start();
-        _ASSERTE(toDecommit % GCToOSInterface::GetPageSize() == 0);
-        if (!GCToOSInterface::VirtualDecommit(next, toDecommit))
-        {
-            return false;
-        }
-
-        m_containingPage->Heap()->DecBytesCommitted(toDecommit);
-    }
-
-    m_end = next_end;
-    m_allocEnd = next_allocEnd;
-    m_tlgcAllocEnd = m_allocEnd;
-    m_containingPage->OnRegionInitialized(this);
-
-    return true;
-}
-
-// NB: drainsAreDone is for the blocking GC itself, once it is done with all its drains and nothing else is running.
-bool SatoriRegion::TryCoalesceWithNext(bool drainsAreDone)
-{
-    SatoriRegion* next = NextInPage();
-    if (next)
-    {
-        auto queue = VolatileLoadWithoutBarrier(&next->m_containingQueue);
-        if (queue && queue->Kind() == QueueKind::Allocator)
-        {
-            if (queue->TryRemove(next))
-            {
-                // Coalescing decommits next's header, which a blocking GC may still be
-                // reading - its drain-only pops chase m_next through claimed regions.
-                // Taking `next` off the queue orders this check against the GC freeing it:
-                // if we do not see the blocking phase, `next` was freed by an earlier GC
-                // and no current drain can reach it.
-                if ((drainsAreDone || !Recycler()->IsBlockingPhase()) && Coalesce(next))
-                {
-                    return true;
-                }
-
-                // could not coalesce, put the next back.
-                queue->Enqueue(next);
-            }
-        }
-    }
-
-    return false;
-}
-
-bool SatoriRegion::CanDecommit()
-{
-    size_t decommitStart = ALIGN_UP((size_t)&m_syncBlock, SatoriUtil::CommitGranularity());
-    if (decommitStart > m_committed)
-    {
-        _ASSERTE(SatoriUtil::CommitGranularity() > Satori::REGION_SIZE_GRANULARITY);
         return false;
     }
 
-    size_t decommitSize = m_committed - decommitStart;
-    return decommitSize > 0;
-}
-
-bool SatoriRegion::TryDecommit()
-{
-    size_t decommitStart = ALIGN_UP((size_t)&m_syncBlock, SatoriUtil::CommitGranularity());
-    if (decommitStart > m_committed)
-    {
-        _ASSERTE(SatoriUtil::CommitGranularity() > Satori::REGION_SIZE_GRANULARITY);
-        return false;
-    }
+    // The decommit stays inside the last granule, above its start, at a multiple of the commit granularity, so the start of every granule
+    // of the region stays committed. A granule start is where the header of a region that was freed could have been, and a thread may still
+    // be reading it. (see SatoriPage::EnterUnownedHeaderRead, and TryPopDrainOnly in SatoriQueue.h)
+    _ASSERTE(decommitStart > End() - Satori::REGION_SIZE_GRANULARITY);
 
     size_t decommitSize = m_committed - decommitStart;
-    if (decommitSize > 0)
+    if (GCToOSInterface::VirtualDecommit((void*)decommitStart, decommitSize))
     {
-        if (GCToOSInterface::VirtualDecommit((void*)decommitStart, decommitSize))
-        {
-            m_committed = decommitStart;
-            m_used = min(m_used, decommitStart);
-            m_containingPage->Heap()->DecBytesCommitted(decommitSize);
-            return true;
-        }
+        m_committed = decommitStart;
+        m_used = min(m_used, decommitStart);
+        m_containingPage->Heap()->DecBytesCommitted(decommitSize);
+        return true;
     }
 
     return false;
@@ -988,7 +848,7 @@ size_t SatoriRegion::AllocateDirty(size_t size, size_t* dirtyStart, size_t* dirt
         size_t ensureCommitted = chunkEnd + Satori::MIN_FREE_SIZE;
         if (ensureCommitted > m_committed)
         {
-            size_t newComitted = ALIGN_UP(ensureCommitted, SatoriUtil::CommitGranularity());
+            size_t newComitted = SatoriUtil::CommitTarget((size_t)this, m_committed, ensureCommitted);
             size_t toCommit = newComitted - m_committed;
             if (!GCToOSInterface::VirtualCommit((void*)m_committed, toCommit))
             {
@@ -1019,43 +879,56 @@ size_t SatoriRegion::AllocateDirty(size_t size, size_t* dirtyStart, size_t* dirt
     return 0;
 }
 
+// In rare cases a huge object would not cross into the last granule of its region: when the allocation is huge only because
+// of parseability padding, or when the object ends exactly where the last granule starts. Such an object is padded in front.
+size_t SatoriRegion::HugeObjectOffset(size_t regionSize, size_t size)
+{
+    _ASSERTE(regionSize > Satori::REGION_SIZE_GRANULARITY);
+    size_t offset = offsetof(SatoriRegion, m_firstObject);
+    if (offset + size <= regionSize - Satori::REGION_SIZE_GRANULARITY)
+    {
+        offset += Satori::MIN_FREE_SIZE;
+    }
+
+    return offset;
+}
+
+// The region contains one object, so only the pages for the object and its filler are committed.
+// HugeCommitGranularity is a whole number of watermark units that divides a granule, so the commit of the region stays
+// a whole number of watermark units. (see SatoriPage::FreeRegion)
+size_t SatoriRegion::HugeCommitSize(size_t regionSize, size_t size)
+{
+    _ASSERTE(Satori::REGION_SIZE_GRANULARITY % SatoriUtil::HugeCommitGranularity() == 0);
+    _ASSERTE(SatoriUtil::HugeCommitGranularity() % Satori::WATERMARK_UNIT == 0);
+    size_t commitSize = ALIGN_UP(HugeObjectOffset(regionSize, size) + size + Satori::MIN_FREE_SIZE, SatoriUtil::HugeCommitGranularity());
+    _ASSERTE(commitSize <= regionSize);
+    return commitSize;
+}
+
+// The allocation starts at the first object and needs MIN_FREE_SIZE more committed after it, as AllocateDirty does.
+// The commit granularity is a whole number of watermark units.
+size_t SatoriRegion::CommitSizeForAlloc(size_t allocSize)
+{
+    _ASSERTE(SatoriUtil::CommitGranularity() % Satori::WATERMARK_UNIT == 0);
+    return ALIGN_UP(offsetof(SatoriRegion, m_firstObject) + allocSize + Satori::MIN_FREE_SIZE, SatoriUtil::CommitGranularity());
+}
+
 size_t SatoriRegion::AllocateHuge(size_t size, bool zeroInitialize)
 {
     _ASSERTE(ValidateBlank());
     _ASSERTE(GetAllocRemaining() >= size);
     _ASSERTE(m_allocEnd > Start() + Satori::REGION_SIZE_GRANULARITY);
+    _ASSERTE(m_allocStart == (size_t)&m_firstObject);
 
-    size_t chunkStart = m_allocStart;
+    size_t chunkStart = Start() + HugeObjectOffset(Size(), size);
     size_t chunkEnd = chunkStart + size;
-
-    // in rare cases the object does not cross into the last granule.
-    // (when the allocation is huge only because of parseability padding).
-    // in such case pad it in front.
-    if (chunkEnd < End() - Satori::REGION_SIZE_GRANULARITY)
-    {
-        chunkStart += Satori::MIN_FREE_SIZE;
-        chunkEnd += Satori::MIN_FREE_SIZE;
-    }
 
     // huge allocation should cross the end of the first granule.
     _ASSERTE(chunkEnd > Start() + Satori::REGION_SIZE_GRANULARITY);
     _ASSERTE(chunkStart <= Start() + Satori::REGION_SIZE_GRANULARITY);
 
-    // This region contains one object, so commit only the pages needed for it and its filler.
-    size_t ensureCommitted = chunkEnd + Satori::MIN_FREE_SIZE;
-    if (ensureCommitted > m_committed)
-    {
-        size_t newComitted = ALIGN_UP(ensureCommitted, GCToOSInterface::GetPageSize());
-        _ASSERTE(newComitted <= End());
-        size_t toCommit = newComitted - m_committed;
-        if (!GCToOSInterface::VirtualCommit((void*)m_committed, toCommit))
-        {
-            return 0;
-        }
-
-        m_containingPage->Heap()->IncBytesCommitted(toCommit);
-        m_committed = newComitted;
-    }
+    // The claim of the region committed the pages for the object and its filler, before it published the region.
+    _ASSERTE(m_committed >= Start() + HugeCommitSize(Size(), size));
 
     if (zeroInitialize)
     {
@@ -2917,6 +2790,24 @@ bool SatoriRegion::RegisterForFinalization(SatoriObject* finalizable)
 
     UnlockFinalizableTrackers();
     return true;
+}
+
+// The same, with a work chunk that the caller got for the tracking, so that it cannot fail.
+// AllocHuge gets the chunk before it claims the region of a finalizable object. (see SatoriAllocator::AllocHuge)
+void SatoriRegion::RegisterForFinalization(SatoriObject* finalizable, SatoriWorkChunk* tracker)
+{
+    _ASSERTE(finalizable->SameRegion(this));
+    _ASSERTE(this->m_hasFinalizables || this->IsAttachedToAllocatingOwner());
+    _ASSERTE(tracker->Count() == 0);
+
+    LockFinalizableTrackers();
+
+    m_hasFinalizables = true;
+    tracker->SetNext(m_finalizableTrackers);
+    m_finalizableTrackers = tracker;
+    tracker->Push(finalizable);
+
+    UnlockFinalizableTrackers();
 }
 
 // Finalizable trackers are generally accessed exclusively, when EE is stopped.

@@ -60,7 +60,7 @@ void SatoriWorkList::PushSlow(SatoriWorkChunk* item)
         item->m_next = head;
 
         SatoriWorkList orig(head, aba);
-        if (Cas128((int64_t*)this, aba + 1, (int64_t)item, (int64_t*)&orig))
+        if (Interlocked::CompareExchange128((int64_t*)this, aba + 1, (int64_t)item, (int64_t*)&orig))
             break;
 
         SatoriLock::CollisionBackoff(collisions++);
@@ -90,7 +90,7 @@ SatoriWorkChunk* SatoriWorkList::TryPopSlow()
         }
 
         SatoriWorkList orig(head, aba);
-        if (Cas128((int64_t*)this, aba + 1, (int64_t)head->m_next, (int64_t*)&orig))
+        if (Interlocked::CompareExchange128((int64_t*)this, aba + 1, (int64_t)head->m_next, (int64_t*)&orig))
             break;
 
         SatoriLock::CollisionBackoff(collisions++);
@@ -131,7 +131,7 @@ void SatoriWorkList::PushChain(SatoriWorkChunk* first, SatoriWorkChunk* last)
         last->m_next = head;
 
         SatoriWorkList orig(head, aba);
-        if (Cas128((int64_t*)this, aba + 1, (int64_t)first, (int64_t*)&orig))
+        if (Interlocked::CompareExchange128((int64_t*)this, aba + 1, (int64_t)first, (int64_t*)&orig))
             break;
 
         SatoriLock::CollisionBackoff(collisions++);

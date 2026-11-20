@@ -168,8 +168,11 @@ void SatoriRecycler::Initialize(SatoriHeap* heap)
     m_availableMemory = 0;
     m_reusableTargetPercent = SatoriUtil::ReusableTarget();
     m_reusableLimit = 0;
+    m_reusableLimitAtPlan = 0;
+    m_expectedGen1 = MIN_GEN1_BUDGET;
     m_totalLimit = MIN_GEN1_BUDGET;
     m_nextGcIsFullGc = true;
+    m_inUsePeak = 0;
     m_prevCondemnedGeneration = 2;
     m_gcNextTimeTarget = 0;
 
@@ -182,6 +185,9 @@ void SatoriRecycler::Initialize(SatoriHeap* heap)
     m_ccStackMarkState = CC_MARK_STATE_NONE;
     m_ccStackMarkingThreadsNum = 0;
     m_reusableFilterThreadsNum = 0;
+#if _DEBUG
+    m_conservativeScans = 0;
+#endif
 
     m_isLowLatencyMode = SatoriUtil::IsLowLatencyMode();
 
@@ -368,6 +374,11 @@ SatoriRegion* SatoriRecycler::TryGetReusableForLarge()
     _ASSERTE(reusable == nullptr || reusable->Occupancy() < Satori::REGION_SIZE_GRANULARITY);
 
     return  reusable;
+}
+
+bool SatoriRecycler::IsReusableQueue(SatoriQueue<SatoriRegion>* queue)
+{
+    return m_reusableRegions->IsShard(queue) || m_reusableRegionsAlternate->IsShard(queue);
 }
 
 // NOTE: DrainReusableQueue implements the same routing as this, just batched.
@@ -1595,6 +1606,9 @@ void SatoriRecycler::BlockingCollectImpl()
 
     m_gcState = GC_STATE_BLOCKED;
 
+    // The heap has the most in use now, before this GC frees anything.
+    NoteInUse();
+
     // assume that we will relocate. we will rethink later.
     m_isRelocating = m_condemnedGeneration == 2 ? SatoriUtil::IsRelocatingInGen2() : SatoriUtil::IsRelocatingInGen1();
 
@@ -1652,9 +1666,24 @@ void SatoriRecycler::BlockingCollectImpl()
     BlockingMark();
     Plan();
     Relocate();
+    // The relocation targets are taken, and the sources are not freed yet.
+    NoteInUse();
     Update();
 
-    // All regions are swept and every drain is done. When asked, release as much memory as we can before the world restarts.
+#if _DEBUG
+    // The GC asked the trimmer to stop when it started, but only the conservative mode waits for it to stop. In the precise mode
+    // the trimmer can be between claiming a run of granules and publishing it, and the verification below would report the claimed granules.
+    // The stop was requested before the GC's work, so the trimmer is not going to start anything else before the verification.
+    m_trimmer->WaitForStop();
+#endif
+
+#if _DEBUG
+    // The world is stopped, so nothing is being claimed or freed.
+    size_t granuleProblems = m_heap->VerifyGranules(/* report */ true);
+    _ASSERTE(granuleProblems == 0);
+#endif
+
+    // All regions are swept. When asked, release as much memory as we can before the world restarts.
     // This counts as GC work, same as in the stock GC.
     if (m_forceTrim)
     {
@@ -1773,6 +1802,9 @@ void SatoriRecycler::BlockingCollectImpl()
         UpdateGenerationOccupancies();
     }
 
+    // The handshake with the trimmer relies on no GC starting between m_gcState = GC_STATE_NONE above and this call: a GC that started
+    // before it would have its stop request undone here, and in the conservative mode it would mark while the trimmer frees regions.
+    // That holds because the EE is still suspended here and every GC starts from a thread in the cooperative mode.
     m_trimmer->SetOkToRun();
 
     m_gcNextTimeTarget = GetNowMillis() + SatoriUtil::GcRate();
@@ -1958,6 +1990,13 @@ void SatoriRecycler::MarkFn(PTR_PTR_Object ppObject, ScanContext* sc, uint32_t f
     MarkContext* markContext = (MarkContext*)sc->_unused1;
     SatoriObject* o = (SatoriObject*)location;
 
+#if _DEBUG
+    if (isConservative)
+    {
+        markContext->m_recycler->AssertTrimmerInactiveForMarker();
+    }
+#endif
+
     if (flags & GC_CALL_INTERIOR)
     {
         // byrefs may point to stack, use checked here
@@ -2005,6 +2044,13 @@ void SatoriRecycler::UpdateFn(PTR_PTR_Object ppObject, ScanContext* sc, uint32_t
     }
 
     SatoriObject* o = (SatoriObject*)location;
+#if _DEBUG
+    if (isConservative)
+    {
+        ((MarkContext*)sc->_unused1)->m_recycler->AssertTrimmerInactiveForMarker();
+    }
+#endif
+
     if (flags & GC_CALL_INTERIOR)
     {
         MarkContext* markContext = (MarkContext*)sc->_unused1;
@@ -2056,6 +2102,13 @@ void SatoriRecycler::MarkFnConcurrent(PTR_PTR_Object ppObject, ScanContext* sc, 
     MarkContext* markContext = (MarkContext*)sc->_unused1;
     SatoriObject* o = (SatoriObject*)location;
 
+#if _DEBUG
+    if (isConservative)
+    {
+        markContext->m_recycler->AssertTrimmerInactiveForMarker();
+    }
+#endif
+
     if (flags & GC_CALL_INTERIOR)
     {
         // byrefs may point to stack, use checked here
@@ -2065,13 +2118,12 @@ void SatoriRecycler::MarkFnConcurrent(PTR_PTR_Object ppObject, ScanContext* sc, 
             return;
         }
 
-        // since this is concurrent, in a conservative case an allocation could have caused a split
-        // that shortened the found region and the region no longer contains the ref (which means the ref is not real).
-        // Note that the split could only happen before we are done with allocator queue (which is synchronising)
-        // and assign 0+ gen to the region.
-        // So check here in the opposite order - first that region is 0+ gen and then that the size is still right.
-        if (isConservative &&
-            (containingRegion->GenerationAcquire() < 0 || location >= containingRegion->End()))
+        // In the conservative mode the ref may be stale, and point into a region that is not in use: in the cache,
+        // holding work chunks or the finalization queue, or not given out yet. Such a region has generation -1 and nothing to mark.
+        // The region that we have found stays what it is while we mark: regions are not split, and in the conservative mode
+        // no region is freed into the free granules while a thread scans a stack (see SatoriAllocator::FreeToBitmap).
+        // A region that is put to use gets its generation last, with a release (see SetGenerationRelease).
+        if (isConservative && containingRegion->GenerationAcquire() < 0)
         {
             return;
         }
@@ -2120,6 +2172,16 @@ void SatoriRecycler::MarkFnConcurrent(PTR_PTR_Object ppObject, ScanContext* sc, 
         }
     }
 };
+
+#if _DEBUG
+// A conservative marker may follow a stale pointer to the header of a region that is not in use any more.
+// That is safe only while the trimmer, which frees regions in the conservative mode, cannot run: between its acknowledgement
+// of the stop and SetOkToRun.
+void SatoriRecycler::AssertTrimmerInactiveForMarker()
+{
+    _ASSERTE(!m_trimmer->IsActive());
+}
+#endif
 
 bool SatoriRecycler::MarkDemotedAndDrainQueuesConcurrent(int64_t deadline)
 {
@@ -2290,9 +2352,14 @@ void SatoriRecycler::MarkOwnStack(gc_alloc_context* aContext, MarkContext* markC
     sc._unused1 = markContext;
 
     if (SatoriUtil::IsConservativeMode())
+    {
+        ConservativeScanScope scan(this);
         GCToEEInterface::GcScanCurrentStackRoots(isBlockingPhase ? MarkFn<true> : MarkFnConcurrent<true>, &sc);
+    }
     else
+    {
         GCToEEInterface::GcScanCurrentStackRoots(isBlockingPhase ? MarkFn<false> : MarkFnConcurrent<false>, &sc);
+    }
 }
 
 void SatoriRecycler::MarkDemoted(SatoriRegion* curRegion, MarkContext* markContext)
@@ -2363,10 +2430,15 @@ void SatoriRecycler::MarkAllStacksFinalizationAndDemotedRoots()
     bool isBlockingPhase = IsBlockingPhase();
 
     if (SatoriUtil::IsConservativeMode())
+    {
+        ConservativeScanScope scan(this);
         //generations are meaningless here, so we pass -1
         GCToEEInterface::GcScanRoots(isBlockingPhase ? MarkFn<true> : MarkFnConcurrent<true>, -1, -1, &sc);
+    }
     else
+    {
         GCToEEInterface::GcScanRoots(isBlockingPhase ? MarkFn<false> : MarkFnConcurrent<false>, -1, -1, &sc);
+    }
 
     SatoriFinalizationQueue* fQueue = m_heap->FinalizationQueue();
     if (fQueue->TryUpdateScanTicket(this->GetRootScanTicket()) &&
@@ -2537,6 +2609,13 @@ bool SatoriRecycler::DrainMarkQueuesConcurrent(SatoriWorkChunk* srcChunk, int64_
 
     while (srcChunk)
     {
+        // Order preceding mark-bit updates before scanning this chunk's references.
+        // Covers caller-owned chunks, local chunk swaps, and range chunks.
+        // Not needed on x86/x64, where the locked instruction that sets a mark bit is a full fence.
+#if !defined(TARGET_X86) && !defined(TARGET_AMD64)
+        MemoryBarrier();
+#endif
+
         if (srcChunk->IsRange())
         {
             size_t start, end;
@@ -2979,7 +3058,15 @@ bool SatoriRecycler::MarkThroughCardsConcurrent(int64_t deadline)
                         // NB: It is safe to get a region even if region map may be changing because
                         //    a region with remembered/dirty marks must be there and cannot be destroyed.
                         SatoriRegion* region = page->RegionForCardGroup(i);
-                        _ASSERTE(region->Generation() >= 0);
+                        // A region brought into use during marking can expose a dirty group before
+                        // its allocation-generation release is visible here. Acquiring that release
+                        // observes the preceding setup; -1 means defer.
+                        // Mark-start synchronization covers pre-existing tenured remembered-set sources,
+                        // so on -1 we can leave the cards and group state intact for the cleaners.
+                        if (region->GenerationAcquire() < 0)
+                        {
+                            continue;
+                        }
 
                         // we should not be marking when there could be dead objects
                         _ASSERTE(!region->HasMarksSet());
@@ -3059,7 +3146,8 @@ bool SatoriRecycler::MarkThroughCardsConcurrent(int64_t deadline)
                                     [&](SatoriObject** ref)
                                     {
                                         SatoriObject* child = VolatileLoadWithoutBarrier(ref);
-                                        if (child && !child->IsExternal())
+                                        // same region: tenured too, nothing to mark. (first, as it reads no memory)
+                                        if (child && !child->SameRegion(region) && !child->IsExternal())
                                         {
                                             SatoriRegion* childRegion = child->ContainingRegion();
                                             if (!childRegion->MaybeEscapeTrackingAcquire())
@@ -3211,7 +3299,13 @@ bool SatoriRecycler::CleanCardsConcurrent(int64_t deadline)
                         // NB: It is safe to get a region even if region map may be changing because
                         //    a region with remembered/dirty marks must be there and cannot be destroyed.
                         SatoriRegion* region = page->RegionForCardGroup(i);
-                        _ASSERTE(region->Generation() >= 0);
+                        // A region that is put to use is attached first, then gets its generation with a release (see SetGenerationRelease).
+                        // With this acquire, generation set means that MaybeAllocatingAcquire below sees the attach.
+                        // Not set means the region is not ready to be looked at. The blocking cleaner takes the group.
+                        if (region->GenerationAcquire() < 0)
+                        {
+                            continue;
+                        }
 
                         // we should not be marking when there could be dead objects
                         _ASSERTE(!region->HasMarksSet());
@@ -3308,7 +3402,9 @@ bool SatoriRecycler::CleanCardsConcurrent(int64_t deadline)
                                         [&](SatoriObject** ref)
                                         {
                                             SatoriObject* child = VolatileLoadWithoutBarrier(ref);
+                                            // same region and older than condemned: nothing to mark. (first, as it reads no memory)
                                             if (child &&
+                                                !(considerAllMarked && child->SameRegion(region)) &&
                                                 !child->IsExternal())
                                             {
                                                 SatoriRegion* childRegion = child->ContainingRegion();
@@ -3492,7 +3588,9 @@ void SatoriRecycler::MarkThroughCards()
                                     [&](SatoriObject** ref)
                                     {
                                         SatoriObject* child = VolatileLoadWithoutBarrier(ref);
+                                        // same region: tenured too, nothing to mark. (first, as it reads no memory)
                                         if (child &&
+                                            !child->SameRegion(region) &&
                                             !child->IsExternal() &&
                                             !child->IsMarkedOrOlderThan(1))
                                         {
@@ -3647,7 +3745,9 @@ void SatoriRecycler::CleanCards()
                                         [&](SatoriObject** ref)
                                         {
                                             SatoriObject* child = *ref;
+                                            // same region and older than condemned: nothing to mark. (first, as it reads no memory)
                                             if (child &&
+                                                !(considerAllMarked && child->SameRegion(region)) &&
                                                 !child->IsExternal() &&
                                                 !child->IsMarkedOrOlderThan(condemnedGeneration))
                                             {
@@ -4244,6 +4344,8 @@ void SatoriRecycler::Plan()
     m_gen1OverrunPerCycle = max(overrun, (m_gen1OverrunPerCycle * 7 + overrun) / 8);
     size_t expectedGen1 = min(m_availableMemory, m_gen1Budget + m_gen1OverrunPerCycle);
     m_reusableLimit = (int64_t)(expectedGen1 / 100 * m_reusableTargetPercent);
+    m_reusableLimitAtPlan = m_reusableLimit;
+    m_expectedGen1 = expectedGen1;
 
     size_t estimatedReclaim = m_estimatedEphemeralReclaim;
     if (m_condemnedGeneration == 2)
@@ -4802,10 +4904,15 @@ void SatoriRecycler::UpdateRootsWorker()
         );
 
         if (SatoriUtil::IsConservativeMode())
+        {
+            ConservativeScanScope scan(this);
             //generations are meaningless here, so we pass -1
             GCToEEInterface::GcScanRoots(UpdateFn<true>, -1, -1, &sc);
+        }
         else
+        {
             GCToEEInterface::GcScanRoots(UpdateFn<false>, -1, -1, &sc);
+        }
 
         SatoriFinalizationQueue* fQueue = m_heap->FinalizationQueue();
         if (fQueue->TryUpdateScanTicket(this->GetRootScanTicket()) &&
@@ -5237,8 +5344,11 @@ bool SatoriRecycler::DrainDeferredSweepQueueConcurrent(int64_t deadline)
     // no work that we can claim, but we must wait for sweeping to finish and
     // in conservative mode we can't start marking while trimming may change regions,
     // let other threads do their things.
+    // The count is read with an acquire, as the state of the trimmer is (see SatoriTrimmer::IsActive): the sweep frees regions into
+    // the free granules, and a thread that sees it done may go on to scan stacks, which in the conservative mode looks up the region map.
+    // The thread must see every free that the sweep did, so that it cannot find a region that is gone. (see SatoriAllocator::FreeToBitmap)
     int cycles = 0;
-    while (m_deferredSweepCount ||
+    while (VolatileLoad(&m_deferredSweepCount) ||
         (SatoriUtil::IsConservativeMode() && m_trimmer->IsActive()))
     {
         // user threads should not wait, just say we have more work
@@ -5321,6 +5431,73 @@ size_t SatoriRecycler::GetTotalOccupancy()
     return m_occupancy[0] +
            m_occupancy[1] +
            m_occupancy[2];
+}
+
+// Read by the trimmer between GCs, when the GC is not changing the numbers below, except for what sweeping parks. (it stops the trimmer when it starts)
+// The numbers are estimates and read without synchronization.
+size_t SatoriRecycler::GetTrimBudget(size_t heldFree, bool& underPressure)
+{
+    // The next cycle takes about what the gen1 budget lets it take, and first the free space that sweeping parks in reusable regions.
+    // The parked space grows while the sweeping goes on, so this is read again as the trimmer goes.
+    // Once the limit runs out, ShouldReuse still takes from it the regions that it does not park, so no more than the limit counts as parked.
+    size_t expectedGen1 = m_expectedGen1;
+    int64_t limitAtPlan = m_reusableLimitAtPlan;
+    int64_t parked = min(limitAtPlan - m_reusableLimit, limitAtPlan);
+    size_t budget = parked > 0 ? expectedGen1 - min(expectedGen1, (size_t)parked) : expectedGen1;
+
+    // Until the next gen2, the cycles after the next one grow the heap with what they promote, up to the gen2 limit.
+    // The memory that a gen2 frees is then taken again over the cycles before the next gen2, and is not decommitted
+    // only to be committed again. When the live set shrinks, the limit shrinks with it at the next gen2.
+    // (when the next GC is a gen2 because the heap will be over the limit by then, there is nothing to add here)
+    size_t occupancy = GetTotalOccupancy();
+    size_t expectedSize = occupancy + expectedGen1;
+    if (m_totalLimit > expectedSize)
+    {
+        budget += m_totalLimit - expectedSize;
+    }
+
+    // The available memory is what the last GC saw. When it cannot hold the budget, what is above it is decommitted without pacing.
+    // The memory for a held peak is kept only when there is memory for it.
+    size_t available = m_availableMemory;
+    underPressure = available < budget;
+    budget = max(budget, min(heldFree, available));
+
+    return min(budget, available);
+}
+
+// What the heap has in use (committed and not free) is the most right before a GC frees anything, or, when the GC relocates,
+// after it has taken the targets and before it frees the sources. That is what the heap needed, with the free space in its regions
+// and the garbage that it allocated, whatever the fragmentation and the floating garbage were. (see SatoriTrimmer::Loop)
+// The trimmer may be taking the peak at the same time, or, in the precise mode, be decommitting.
+void SatoriRecycler::NoteInUse()
+{
+    size_t inUse = m_heap->InUseBytes();
+    size_t peak = VolatileLoadWithoutBarrier(&m_inUsePeak);
+    while (inUse > peak)
+    {
+        size_t seen = Interlocked::CompareExchange(&m_inUsePeak, inUse, peak);
+        if (seen == peak)
+        {
+            break;
+        }
+
+        peak = seen;
+    }
+}
+
+size_t SatoriRecycler::TakeInUsePeak()
+{
+    size_t peak = VolatileLoadWithoutBarrier(&m_inUsePeak);
+    while (true)
+    {
+        size_t seen = Interlocked::CompareExchange(&m_inUsePeak, (size_t)0, peak);
+        if (seen == peak)
+        {
+            return peak;
+        }
+
+        peak = seen;
+    }
 }
 
 size_t SatoriRecycler::GetGcStartMillis(int generation)

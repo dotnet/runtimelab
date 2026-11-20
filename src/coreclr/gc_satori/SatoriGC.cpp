@@ -728,6 +728,13 @@ Object* SatoriGC::GetContainingObject(void* pInteriorPtr, bool fCollectedGenOnly
         return nullptr;
     }
 
+    // With conservative stack reporting the pointer may be stale, and point into a region that is not in use (in the cache, for one).
+    // It has no objects to look for, as in SatoriRecycler::MarkFn<true>.
+    if (SatoriUtil::IsConservativeMode() && region->Generation() < 0)
+    {
+        return nullptr;
+    }
+
     if (fCollectedGenOnly &&
         region->Generation() > m_heap->Recycler()->GetCondemnedGeneration())
     {
@@ -1035,7 +1042,7 @@ void SatoriGC::SetCardsAfterBulkCopy(size_t dst, size_t src, size_t len)
         SatoriRecycler* recycler = m_heap->Recycler();
         if (!recycler->IsBarrierConcurrent(/* includeSwitching */ true))
         {
-            page->SetCardsForRange(dst, dst + len);
+            page->SetCardsForRangeConcurrent(dst, dst + len);
         }
 
         if (recycler->IsBarrierConcurrent(/* includeSwitching */ true))

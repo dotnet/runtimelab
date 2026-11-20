@@ -68,6 +68,11 @@ public:
     // be concurrent before the toggle's process-wide fence completes.
     static const int BARRIER_STATE_SWITCHING = 3;
 
+#if _DEBUG
+    // a conservative marker runs only while the trimmer cannot free regions.
+    void AssertTrimmerInactiveForMarker();
+#endif
+
     void Initialize(SatoriHeap* heap);
 
     void AddEphemeralRegion(SatoriRegion* region);
@@ -100,11 +105,28 @@ public:
 
     SatoriRegion* TryGetReusable(size_t minFree);
     SatoriRegion* TryGetReusableForLarge();
+    // Whether `queue` is a queue of reusable regions. Compares addresses only, so it can be given any pointer. (see TryTakeReusableNext)
+    bool IsReusableQueue(SatoriQueue<SatoriRegion>* queue);
+
+    // Whether a thread is in a scan of stacks that looks candidate pointers up in the region map. Checked builds only.
+    // No region may be freed into the free granules meanwhile. (see SatoriAllocator::FreeToBitmap)
+#if _DEBUG
+    bool IsConservativeScanInProgress()
+    {
+        return m_conservativeScans != 0;
+    }
+#endif
 
     void RecordOccupancy(int generation, size_t size);
     void RecordDemotedOccupancy(ptrdiff_t demotedOccupancy);
     void UpdateGenerationOccupancies();
     size_t GetTotalOccupancy();
+    // How much free committed memory the trimmer keeps: what the coming GC cycles are expected to take, see SatoriTrimmer::Loop,
+    // and at least heldFree, what brings the heap back to a peak that it had in use recently.
+    // underPressure is set when the memory is too low for the expected cycles, and the budget is then what is available.
+    size_t GetTrimBudget(size_t heldFree, bool& underPressure);
+    // The most memory that the heap had in use at the GCs since the last call. (see NoteInUse)
+    size_t TakeInUsePeak();
     size_t GetOccupancy(int i);
     size_t GetGcStartMillis(int generation);
     size_t GetGcDurationMillis(int generation);
@@ -237,6 +259,35 @@ private:
     volatile int m_ccStackMarkState;
     volatile int m_ccStackMarkingThreadsNum;
 
+#if _DEBUG
+    // The threads that scan stacks with a conservative marker now. (see IsConservativeScanInProgress)
+    volatile int32_t m_conservativeScans;
+#endif
+
+    // Counts a thread that scans stacks with a conservative marker while it is in scope, in Checked builds only.
+    class ConservativeScanScope
+    {
+    public:
+#if _DEBUG
+        ConservativeScanScope(SatoriRecycler* recycler) : m_recycler(recycler)
+        {
+            Interlocked::Increment(&recycler->m_conservativeScans);
+        }
+
+        ~ConservativeScanScope()
+        {
+            Interlocked::Decrement(&m_recycler->m_conservativeScans);
+        }
+
+    private:
+        SatoriRecycler* m_recycler;
+#else
+        ConservativeScanScope(SatoriRecycler*)
+        {
+        }
+#endif
+    };
+
     // threads filtering m_reusableRegions concurrently. prep waits for these to leave
     // before it may swap the queues.
     volatile int m_reusableFilterThreadsNum;
@@ -285,7 +336,12 @@ private:
     // budget and cycle allocations are known, and spent as regions are parked. 0 stops parking any more.
     int m_reusableTargetPercent;
     int64_t m_reusableLimit;
+    // what Plan set m_reusableLimit to, and the allocation that it expects until the next GC. (see GetTrimBudget)
+    int64_t m_reusableLimitAtPlan;
+    size_t m_expectedGen1;
     bool m_nextGcIsFullGc;
+    // the most memory that the heap had in use at the GCs since the trimmer took it. (see NoteInUse)
+    size_t m_inUsePeak;
 
     size_t m_condemnedRegionsCount;
     size_t m_deferredSweepCount;
@@ -311,10 +367,10 @@ private:
 
     // Idle workers poll this while spinning. Keep it on a cache line of its own, away from the counters
     // below, which are updated with interlocked operations. (the next field starts a new line)
-    DECLSPEC_ALIGN(Satori::CACHE_LINE_GRANULARITY)
+    DECLSPEC_ALIGN(Satori::WIDE_CACHE_GRANULARITY)
     volatile int m_gateSignaled;
 
-    DECLSPEC_ALIGN(Satori::CACHE_LINE_GRANULARITY)
+    DECLSPEC_ALIGN(Satori::WIDE_CACHE_GRANULARITY)
     volatile int m_workerWoken;
     volatile int m_activeWorkers;
     volatile int m_totalWorkers;
@@ -408,7 +464,7 @@ private:
     void BlockingCollect1();
     void BlockingCollect2();
     void BlockingCollectImpl();
-
+    void NoteInUse();
     void BlockingMark();
     void MarkNewReachable();
     void DrainAndCleanWorker();

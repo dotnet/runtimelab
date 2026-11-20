@@ -36,12 +36,6 @@
 #include "SatoriPage.h"
 #include "SatoriWorkChunk.h"
 
-inline bool SatoriRegion::CanSplitWithoutCommit(size_t size)
-{
-    size_t minCommitted = ALIGN_UP(m_end - size + offsetof(SatoriRegion, m_syncBlock) + SatoriUtil::MinZeroInitSize(), SatoriUtil::CommitGranularity());
-    return m_committed >= min(minCommitted, m_end);
-}
-
 inline bool SatoriRegion::IsEscapeTracking()
 {
     _ASSERTE(!m_ownerThreadTag || m_generation == 0);
@@ -124,6 +118,16 @@ inline size_t SatoriRegion::End()
 inline size_t SatoriRegion::Size()
 {
     return End() - Start();
+}
+
+inline size_t SatoriRegion::CommittedEnd()
+{
+    return m_committed;
+}
+
+inline size_t SatoriRegion::UsedEnd()
+{
+    return m_used;
 }
 
 inline bool SatoriRegion::IsLarge()
@@ -332,12 +336,15 @@ inline bool SatoriRegion::ClearStaleEscapeMarks()
 inline void SatoriRegion::SetCardsForObject(SatoriObject* o, size_t size)
 {
     _ASSERTE(this->Size() == Satori::REGION_SIZE_GRANULARITY);
+    // The region is tenured by now (see IndividuallyPromote), so a child in it needs no card.
+    _ASSERTE(Generation() >= 2);
 
     o->ForEachObjectRef(
         [&](SatoriObject** ppObject)
         {
             SatoriObject* child = VolatileLoadWithoutBarrier(ppObject);
             if (child &&
+                !child->SameRegion(this) &&
                 !child->IsExternal() &&
                 child->ContainingRegion()->Generation() < 2)
            {
@@ -999,15 +1006,7 @@ inline void SatoriRegion::SetMarkedAtomic(SatoriObject* o)
     //NB: this does not need to be a full fence, if possible. 
     //    just need to set a bit atomically.
     //    ordering WRT other writes is unimportant, as long as the bit is set.
-#ifdef _MSC_VER
-#if defined(TARGET_AMD64)
-    _InterlockedOr64((long long*)&m_bitmap[bitmapIndex], mask);
-#else
-    _InterlockedOr64_nf((long long*)&m_bitmap[bitmapIndex], mask);
-#endif
-#else
-    __atomic_or_fetch(&m_bitmap[bitmapIndex], mask, __ATOMIC_RELAXED);
-#endif
+    Interlocked::OrUnordered(&m_bitmap[bitmapIndex], mask);
 }
 
 inline void SatoriRegion::ClearMarked(SatoriObject* o)
