@@ -81,9 +81,10 @@ struct LxrRcConfiguration
     // Collect interior-lookup timing and counters only when LXRLookupStats is enabled.
     bool lookupStats = false;
     // Count the diagnostic trace and remembered-set statistics (rememberedEntries, replayedEntries, deletionMarks,
-    // forcedScans, concurrentSlices, pause trace metric 2) only when LXRTraceStats is enabled. No product decision reads
-    // them. When this is false, their getters return UINT64_MAX.
-    bool traceStats = false;
+    // forcedScans, concurrentSlices, pause trace metric 2). No product decision reads them. When this is false, their
+    // getters return UINT64_MAX. Engine tests keep this default; the runtime (lxr_gc.cpp) sets it from LXRTraceStats,
+    // which is off by default.
+    bool traceStats = true;
     // The children that a trace packet of a parallel pause collects before it makes a new packet (1 to 8192).
     size_t pauseTraceBatch = 512;
     // When the policy hint says that a trace is next, packets clear the ObjectMark plane while the program runs, and the
