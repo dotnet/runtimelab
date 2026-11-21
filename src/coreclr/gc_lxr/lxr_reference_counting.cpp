@@ -9910,6 +9910,7 @@ LxrRcResult LxrReferenceCounting::ScanTraceSlots(
     // No object moves while the concurrent trace runs (see ProcessConcurrentTraceObject). A child that a pause moves later
     // has count zero, so it is queued, and ProcessTraceObject resolves it when it uses it.
     const bool concurrentPhase = phase == LxrRcPhase::Mutator && tracePhase == LxrTracePhase::Concurrent;
+    (void)concurrentPhase;
     const size_t worker = targets != nullptr ? targets->worker : GetExecutionWorker();
     // Port overhead 5. The Immix capacity shrinks only in a pause with no trace work (ReturnTailSuspended), and a larger
     // capacity is published before its blocks hold objects. A stale smaller limit only queues the child (safe).
@@ -10009,13 +10010,14 @@ LxrRcResult LxrReferenceCounting::ScanTraceSlots(
             // Counted marks have scan, promotion or deletion work behind them. Keep RC-zero readers on the checked queue path.
             uintptr_t childStart = Start(child);
             // Port overhead 5. One range test with the limit read once per scan (the same test as OwnsAddress).
-            // In the concurrent trace, a marked child with count zero only returns at the mark check of
-            // ProcessTraceObject, so the scan does not read its count.
+            // The count load stays in all phases: a queued entry can outlive the concurrent trace (an unsubmitted
+            // packet runs in the next pause), and when the pause moves a zero-count source, the entry must resolve
+            // and mark the destination.
             const bool owned = childStart % sizeof(uintptr_t) == 0 &&
                 (childStart - immixArena < immixLimit || IsLarge(childStart));
             if (!owned ||
                 m_mark_metadata.Load(childStart, SideMetadataMemoryOrder::Relaxed) == 0 ||
-                (!concurrentPhase && m_rc_metadata.Load(childStart, SideMetadataMemoryOrder::Relaxed) == 0))
+                m_rc_metadata.Load(childStart, SideMetadataMemoryOrder::Relaxed) == 0)
             {
                 LxrRcResult result = append(reinterpret_cast<uintptr_t>(child));
                 if (result != LxrRcResult::Success)
