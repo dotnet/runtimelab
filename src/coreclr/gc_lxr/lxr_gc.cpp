@@ -375,6 +375,9 @@ HRESULT LxrGcHeap::Initialize()
         !ReadSetting("LXRManagedHeapHardLimitMB", &managedLimitMB, 10, LxrSideMetadataLayout::AddressLimit >> 20) ||
         !ReadSetting("LXRNativePlaneLimitMB", &nativePlaneLimitMB, 10, SIZE_MAX >> 20, &nativePlaneLimitSpecified) ||
         !ReadSetting("LXRTraceThreshold", &m_policy_configuration.traceThreshold, 10, 100) ||
+        !ReadSetting("LXRTraceLivePercent", &m_policy_configuration.traceLivePercent, 10, 1000) ||
+        !ReadSetting("LXRTraceLiveFactor", &m_policy_configuration.traceLiveFactor, 10, 16) ||
+        !ReadSetting("LXRTraceGuardPercent", &m_policy_configuration.traceGuardPercent, 10, 100) ||
         !ReadSetting("LXRRCStopPercent", &m_policy_configuration.rcStopPercent, 10, 100) ||
         !ReadSetting("LXRMaxSurvivalMB", &m_policy_configuration.maxSurvivalMB, 10, SIZE_MAX >> 20) ||
         !ReadSetting("LXRIncrementsLimit", &m_policy_configuration.incrementsLimit) ||
@@ -505,6 +508,11 @@ HRESULT LxrGcHeap::Initialize()
         m_policy_configuration.nurseryBlocks == 0 || youngMB == 0 || nativePlaneLimitMB == 0)
     {
         Unsupported("LXR capacity and trigger limits must be positive, aligned and bounded.");
+        return E_FAIL;
+    }
+    if (m_policy_configuration.traceLivePercent != 0 && m_policy_configuration.traceLiveFactor != 0)
+    {
+        Unsupported("LXRTraceLivePercent and LXRTraceLiveFactor cannot be used together.");
         return E_FAIL;
     }
     configuration.immixBytes = immixInitial << 20;
@@ -1643,9 +1651,17 @@ LxrRcResult LxrGcHeap::FinishLazy(LxrReferenceCounting* engine, void* context)
         heap->m_mature_live_bytes.store(occupied > young ? occupied - young : 0, std::memory_order_relaxed);
         engine->SetBorrowCeiling(heap->PolicyReserveBytes());
     }
+    // The pacing guard limit: the admitted size at which Immix fills its reserve, or the hard limit if that is lower.
+    // The Immix reserve can be much lower than the hard limit (the hard limit includes the LOS reserve).
+    size_t admitted = engine->GetAdmittedBytes();
+    size_t immixCapacity = engine->GetImmixCapacityBytes();
+    size_t immixReserve = heap->m_heap_configuration.immixReservationBytes;
+    size_t immixRoom = immixReserve > immixCapacity ? immixReserve - immixCapacity : 0;
+    size_t limit = admitted + immixRoom < heap->m_hard_limit ? admitted + immixRoom : heap->m_hard_limit;
     if (!heap->m_policy.FinishLazySweep(
-            heap->m_current_pause_kind, engine->GetAdmittedBytes() / LxrLargeObjectSpace::PageBytes, mature,
-            engine->GetTracePhase() == LxrTracePhase::Concurrent, heap->m_concurrent_enabled.load(), true))
+            heap->m_current_pause_kind, admitted / LxrLargeObjectSpace::PageBytes, mature,
+            engine->GetTracePhase() == LxrTracePhase::Concurrent, heap->m_concurrent_enabled.load(), true,
+            limit / LxrLargeObjectSpace::PageBytes))
     {
         return LxrRcResult::InvariantViolation;
     }
@@ -1695,12 +1711,13 @@ LxrRcResult LxrGcHeap::CollectForPressure(bool emergency, bool user, bool heapFu
             fprintf(stderr,
                 "LXRPOLICY gc=%u cause=%u emergency=%d user=%d heapFull=%d capK=%zu admittedK=%zu usedK=%zu "
                 "freeK=%zu reserveK=%zu occupiedK=%zu nonFreeBlocks=%zu youngK=%zu cleanBlocks=%zu liveK=%zu "
-                "budgetK=%zu targetK=%zu\n",
+                "budgetK=%zu targetK=%zu cycle=%d paced=%d predictedK=%zu\n",
                 m_collections.load() + 1, static_cast<unsigned>(cause), emergency, user, heapFull, capacity >> 10,
                 m_engine.GetAdmittedBytes() >> 10, used << 2, m_engine.GetImmixFreePages() << 2,
                 GetCollectionReservedPages(0) << 2, m_engine.GetImmixOccupiedBytes() >> 10, m_engine.GetNonFreeBlocks(),
                 m_engine.GetYoungAllocationBytes() >> 10, m_engine.GetCleanNurseryBlocks(),
-                m_mature_live_bytes.load() >> 10, m_sizer.BudgetBytes() >> 10, target >> 10);
+                m_mature_live_bytes.load() >> 10, m_sizer.BudgetBytes() >> 10, target >> 10,
+                m_policy.CycleHint(), m_policy.PacedHint(), static_cast<size_t>(m_policy.MatureLivePages()) << 2);
         }
         m_collection_cause.store(cause, std::memory_order_release);
         result = CollectLocked(m_policy.Select(
@@ -2668,6 +2685,12 @@ void LxrGcHeap::EnumerateConfigurationValues(void* context, ConfigurationValueFu
         static_cast<int64_t>(m_native_plane_limit >> 20));
     callback(context, "LXRTraceThreshold", "System.GC.LXRTraceThreshold", GCConfigurationType::Int64,
         static_cast<int64_t>(m_policy_configuration.traceThreshold));
+    callback(context, "LXRTraceLivePercent", "System.GC.LXRTraceLivePercent", GCConfigurationType::Int64,
+        static_cast<int64_t>(m_policy_configuration.traceLivePercent));
+    callback(context, "LXRTraceLiveFactor", "System.GC.LXRTraceLiveFactor", GCConfigurationType::Int64,
+        static_cast<int64_t>(m_policy_configuration.traceLiveFactor));
+    callback(context, "LXRTraceGuardPercent", "System.GC.LXRTraceGuardPercent", GCConfigurationType::Int64,
+        static_cast<int64_t>(m_policy_configuration.traceGuardPercent));
     callback(context, "LXRRCStopPercent", "System.GC.LXRRCStopPercent", GCConfigurationType::Int64,
         static_cast<int64_t>(m_policy_configuration.rcStopPercent));
     callback(context, "LXRMaxSurvivalMB", "System.GC.LXRMaxSurvivalMB", GCConfigurationType::Int64,
