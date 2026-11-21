@@ -1019,6 +1019,8 @@ private:
         Object* object, uintptr_t start, size_t* directBudget, TraceBatch* targets, size_t worker);
     LxrRcResult ProcessTraceScan(TraceScan* scan, bool finish, TraceBatch* targets = nullptr);
     LxrRcResult ScanTraceLocked(TraceScan* scan, bool finish, TraceBatch* targets = nullptr);
+    LxrRcResult ScanTraceUnbatched(TraceScan* scan, bool finish);
+    LxrRcResult ScanTraceSlots(TraceScan* scan, bool finish, TraceBatch* targets, uintptr_t* children);
     LxrRcResult FinishDyingTraceObject(Object* object);
     // P46 (item 13). True while the lazy decrements mark the objects that die and queue their children for the trace. A trace
     // is on, and the epoch is not the first one after InitialMark: the decrements of that epoch come from the epoch before

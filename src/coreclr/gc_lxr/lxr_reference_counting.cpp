@@ -9824,8 +9824,25 @@ LxrRcResult LxrReferenceCounting::ProcessTraceObject(
 
 LxrRcResult LxrReferenceCounting::ScanTraceLocked(TraceScan* scan, bool finish, TraceBatch* targets)
 {
-    CostScope cost(this, 8);
+    // Port overhead 6. A packet takes the children (TraceBatch), so the hot frame has no child buffer. Only a scan
+    // without a packet uses the 8 KB buffer, in its own frame.
+    if (targets != nullptr)
+    {
+        return ScanTraceSlots(scan, finish, targets, nullptr);
+    }
+    return ScanTraceUnbatched(scan, finish);
+}
+
+NOINLINE LxrRcResult LxrReferenceCounting::ScanTraceUnbatched(TraceScan* scan, bool finish)
+{
     uintptr_t children[BufferCapacity];
+    return ScanTraceSlots(scan, finish, nullptr, children);
+}
+
+LxrRcResult LxrReferenceCounting::ScanTraceSlots(
+    TraceScan* scan, bool finish, TraceBatch* targets, uintptr_t* children)
+{
+    CostScope cost(this, 8);
     size_t count = 0;
     size_t visited = 0;
     // Port overhead 1. A packet gives its phases and worker (TraceBatch); only a scan without a packet reads them here.
