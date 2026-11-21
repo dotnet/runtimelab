@@ -1016,7 +1016,7 @@ private:
     LxrRcResult ProcessTraceObject(Object* object, size_t* directBudget, TraceBatch* targets);
     LxrRcResult ProcessPauseTraceObject(Object* object, uintptr_t start, size_t* directBudget, TraceBatch* targets);
     LxrRcResult ProcessConcurrentTraceObject(
-        Object* object, uintptr_t start, size_t* directBudget, TraceBatch* targets);
+        Object* object, uintptr_t start, size_t* directBudget, TraceBatch* targets, size_t worker);
     LxrRcResult ProcessTraceScan(TraceScan* scan, bool finish, TraceBatch* targets = nullptr);
     LxrRcResult ScanTraceLocked(TraceScan* scan, bool finish, TraceBatch* targets = nullptr);
     LxrRcResult FinishDyingTraceObject(Object* object);

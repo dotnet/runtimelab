@@ -603,6 +603,13 @@ struct LxrReferenceCounting::TraceBatch
     LxrReferenceCounting* engine;
     // P6. The worker of the packet, read once from the thread-local state (the oracle sets it once per packet).
     size_t worker;
+    // Port overhead 1. The phases of the packet, read once (the oracle gives the worker and the plan to a packet once,
+    // gc_work/tracing.rs:285-305). They do not change while the packet runs: a pause starts only after the scheduler
+    // has drained the running concurrent packets (LxrWorkScheduler::InterruptConcurrentWork, called by the pause
+    // coordinator before it suspends), the trace phase changes only in a pause, and the pause runs its own packets to
+    // the end before it resumes.
+    LxrRcPhase phase;
+    LxrTracePhase tracePhase;
     size_t count = 0;
     bool registered = false;
     bool accounted = false;
@@ -610,7 +617,9 @@ struct LxrReferenceCounting::TraceBatch
     // P8. The trace loop of a packet swaps this buffer with its level buffer, so a level is not copied.
     uintptr_t* references = storage;
 
-    explicit TraceBatch(LxrReferenceCounting* owner) : engine(owner), worker(owner->GetExecutionWorker())
+    explicit TraceBatch(LxrReferenceCounting* owner)
+        : engine(owner), worker(owner->GetExecutionWorker()), phase(owner->GetPhase()),
+          tracePhase(owner->GetTracePhase())
     {
         // Unpublished targets retain completion ownership until copied work takes over.
 #if !defined(LXR_SIDE_METADATA_TEST_PLATFORM) || !defined(LXR_TRACE_BATCH_EARLY_CONTROL)
@@ -9620,13 +9629,13 @@ LxrRcResult LxrReferenceCounting::ProcessPauseTraceObject(
 // The claim slot replaces the trace lock for a dying object: the allocator can reuse the lines of an object as soon as
 // its count is zero, so FinishDyingTraceObject (Death) waits until no worker scans the object.
 LxrRcResult LxrReferenceCounting::ProcessConcurrentTraceObject(
-    Object* object, uintptr_t start, size_t* directBudget, TraceBatch* targets)
+    Object* object, uintptr_t start, size_t* directBudget, TraceBatch* targets, size_t worker)
 {
     if (!IsObjectStart(object))
     {
         return LxrRcResult::Success;
     }
-    std::atomic<uintptr_t>& claim = m_trace_claims[t_execution_worker].start;
+    std::atomic<uintptr_t>& claim = m_trace_claims[worker].start;
     claim.store(start, std::memory_order_relaxed);
     uintptr_t observed;
     if (!m_mark_metadata.CompareExchange(start, 1, 0, SideMetadataMemoryOrder::SequentiallyConsistent, &observed))
@@ -9635,7 +9644,6 @@ LxrRcResult LxrReferenceCounting::ProcessConcurrentTraceObject(
         return LxrRcResult::Success;
     }
     (void)observed;
-    const size_t worker = targets != nullptr ? targets->worker : GetExecutionWorker();
     CountWorker(worker, TraceObjectsCounter, 1);
     Object* loader = GetLoaderAllocator(object);
     size_t maximumReferences = object->GetGCSafeMethodTable()->ContainsGCPointers()
@@ -9668,11 +9676,16 @@ LxrRcResult LxrReferenceCounting::ProcessTraceObject(
     {
         return LxrRcResult::Success;
     }
+    // Port overhead 1. A packet gives its worker and phases (TraceBatch); only a call without a packet reads the
+    // thread-local worker and the shared phases.
+    const size_t worker = targets != nullptr ? targets->worker : GetExecutionWorker();
+    const LxrRcPhase phase = targets != nullptr ? targets->phase : GetPhase();
+    const LxrTracePhase tracePhase = targets != nullptr ? targets->tracePhase : GetTracePhase();
 #if !defined(LXR_TRACE_LOCK_CONTROL)
     // The concurrent trace on a trace worker (ProcessConcurrentTraceObject). An object with count zero takes the checked
     // path below: it can be a young source that a pause has moved, or an object that is not counted.
-    if (t_execution_worker < m_configuration.workers && m_trace_claims != nullptr && GetPhase() == LxrRcPhase::Mutator &&
-        GetTracePhase() == LxrTracePhase::Concurrent && !m_pause_trace_open.load(std::memory_order_relaxed))
+    if (worker < m_configuration.workers && phase == LxrRcPhase::Mutator && tracePhase == LxrTracePhase::Concurrent &&
+        m_trace_claims != nullptr && !m_pause_trace_open.load(std::memory_order_relaxed))
     {
         uintptr_t start = Start(object);
         if (start % sizeof(uintptr_t) == 0 && OwnsAddress(start))
@@ -9683,7 +9696,7 @@ LxrRcResult LxrReferenceCounting::ProcessTraceObject(
             }
             if (m_rc_metadata.Load(start, SideMetadataMemoryOrder::Relaxed) != 0)
             {
-                return ProcessConcurrentTraceObject(object, start, directBudget, targets);
+                return ProcessConcurrentTraceObject(object, start, directBudget, targets, worker);
             }
         }
     }
@@ -9773,7 +9786,7 @@ LxrRcResult LxrReferenceCounting::ProcessTraceObject(
         return result;
     }
     (void)observed;
-    CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), TraceObjectsCounter, 1);
+    CountWorker(worker, TraceObjectsCounter, 1);
     Object* loader = GetLoaderAllocator(object);
     size_t maximumReferences = object->GetGCSafeMethodTable()->ContainsGCPointers()
         ? ObjectSize(object) / sizeof(uintptr_t) + 1
@@ -9783,10 +9796,9 @@ LxrRcResult LxrReferenceCounting::ProcessTraceObject(
         TraceScan local(object, loader);
         result = ScanTraceLocked(&local, true, targets);
         *directBudget -= maximumReferences;
-        if (m_configuration.traceStats && GetPhase() == LxrRcPhase::Mutator &&
-            GetTracePhase() == LxrTracePhase::Concurrent)
+        if (m_configuration.traceStats && phase == LxrRcPhase::Mutator && tracePhase == LxrTracePhase::Concurrent)
         {
-            CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), ConcurrentSlicesCounter, 1);
+            CountWorker(worker, ConcurrentSlicesCounter, 1);
         }
         ExitTraceLock(index);
         return result;
@@ -9802,10 +9814,13 @@ LxrRcResult LxrReferenceCounting::ScanTraceLocked(TraceScan* scan, bool finish, 
     uintptr_t children[BufferCapacity];
     size_t count = 0;
     size_t visited = 0;
-    const bool pausePhase = GetPhase() == LxrRcPhase::Suspended;
+    // Port overhead 1. A packet gives its phases and worker (TraceBatch); only a scan without a packet reads them here.
+    const LxrRcPhase phase = targets != nullptr ? targets->phase : GetPhase();
+    const LxrTracePhase tracePhase = targets != nullptr ? targets->tracePhase : GetTracePhase();
+    const bool pausePhase = phase == LxrRcPhase::Suspended;
     // No object moves while the concurrent trace runs (see ProcessConcurrentTraceObject). A child that a pause moves later
     // has count zero, so it is queued, and ProcessTraceObject resolves it when it uses it.
-    const bool concurrentPhase = GetPhase() == LxrRcPhase::Mutator && GetTracePhase() == LxrTracePhase::Concurrent;
+    const bool concurrentPhase = phase == LxrRcPhase::Mutator && tracePhase == LxrTracePhase::Concurrent;
     (void)concurrentPhase;
     const size_t worker = targets != nullptr ? targets->worker : GetExecutionWorker();
     auto append = [&](uintptr_t target)
@@ -9886,7 +9901,7 @@ LxrRcResult LxrReferenceCounting::ScanTraceLocked(TraceScan* scan, bool finish, 
                 }
                 // Only a moved child changes the slot: a store of the same value only makes the cache line dirty.
                 if (child != original &&
-                    (GetTracePhase() == LxrTracePhase::Full || GetTracePhase() == LxrTracePhase::FinalMark))
+                    (tracePhase == LxrTracePhase::Full || tracePhase == LxrTracePhase::FinalMark))
                 {
                     *slot = child;
                 }
