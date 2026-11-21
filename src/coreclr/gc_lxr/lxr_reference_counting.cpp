@@ -736,7 +736,8 @@ struct LxrReferenceCounting::DeathContext
 // One cache line group per worker, written only by that worker with plain relaxed stores, and summed when
 // read. The last entry is shared by callers that are not workers and is updated with atomic additions.
 // The hot pause counters (IncrementEntries, DecrementEntries, Promotions, ObjectScans, ObjectSizeQueries,
-// Deaths, RootIncrements, RootDecrements) use the slot of their Metric index.
+// Deaths, RootIncrements, RootDecrements) use the slot of their Metric index. No product decision reads them, so they are
+// counted only when LxrRcConfiguration::traceStats is set (LXRTraceStats).
 struct alignas(64) LxrReferenceCounting::WorkerCounters
 {
     std::atomic<uint64_t> values[40]{};
@@ -776,15 +777,18 @@ namespace
 {
     // P28 (F10). The copy counters are per worker, as the survival counters of the Java LXR (SurvivalRatioPredictorLocal: a local
     // copy that is summed when it is read), not three shared atomics that every worker adds to for every copied object.
+    // PauseCopiedBytes and PromotedBytes size the collector, so they are always counted. CopiedObjects and CopiedBytes are
+    // statistics only: they are counted only when LxrRcConfiguration::traceStats is set.
     constexpr size_t CopiedObjects = Epochs + 1;
     constexpr size_t CopiedBytes = Epochs + 2;
     constexpr size_t PauseCopiedBytes = Epochs + 3;
     constexpr size_t PromotedBytes = Epochs + 4;
     // The trace counts its objects and references per worker: a counter that every worker adds to for every object and
-    // every edge is a contended cache line.
+    // every edge is a contended cache line. They are statistics only and are counted only when traceStats is set.
     constexpr size_t TraceObjectsCounter = Epochs + 5;
     constexpr size_t TraceReferencesCounter = Epochs + 6;
-    // The mature copy counts per worker for the same reason.
+    // The mature copy counts per worker for the same reason. PauseMatureCopiedBytes is always counted (it is the pause
+    // copy volume); MatureCopiedObjects and MatureCopiedBytes are counted only when traceStats is set.
     constexpr size_t MatureCopiedObjects = Epochs + 7;
     constexpr size_t MatureCopiedBytes = Epochs + 8;
     constexpr size_t PauseMatureCopiedBytes = Epochs + 9;
@@ -1442,9 +1446,12 @@ LxrRcResult LxrReferenceCounting::DrainObservedLogs(
                     Object** slot = reinterpret_cast<Object**>(stream.references[index]);
                     current = *slot;
                     unlog(slot, context);
-                    CountWorker(SIZE_MAX, IncrementEntries, 1);
+                    if (m_configuration.traceStats)
+                    {
+                        CountWorker(SIZE_MAX, IncrementEntries, 1);
+                    }
                 }
-                else
+                else if (m_configuration.traceStats)
                 {
                     CountWorker(SIZE_MAX, DecrementEntries, 1);
                 }
@@ -3572,7 +3579,10 @@ LxrRcResult LxrReferenceCounting::GetObjectSize(Object* object, size_t* size, si
     {
         return Fail(LxrRcResult::InvariantViolation);
     }
-    CountWorker(worker, ObjectSizeQueries, 1);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, ObjectSizeQueries, 1);
+    }
     size_t value = object->GetSize();
     if (value > SIZE_MAX - (sizeof(uintptr_t) - 1))
     {
@@ -3874,7 +3884,7 @@ LxrRcResult LxrReferenceCounting::RelocateRoot(Object** slot, bool interior, boo
 LxrNurseryMetrics LxrReferenceCounting::GetNurseryMetrics() const
 {
     return {
-        SumWorker(CopiedObjects), SumWorker(CopiedBytes), m_nursery_metrics[2].load(),
+        TraceStat(SumWorker(CopiedObjects)), TraceStat(SumWorker(CopiedBytes)), m_nursery_metrics[2].load(),
         m_nursery_metrics[3].load(), m_nursery_metrics[4].load(), m_nursery_metrics[5].load(),
         m_pause_copied_bytes.load() + SumWorker(PauseCopiedBytes),
     };
@@ -3884,8 +3894,8 @@ LxrMatureMetrics LxrReferenceCounting::GetMatureMetrics() const
 {
     return {
         m_mature_metrics[0].load(), m_mature_metrics[1].load(), m_mature_metrics[2].load(),
-        m_mature_metrics[3].load(), SumWorker(MatureCopiedObjects) + m_mature_metrics[4].load(),
-        SumWorker(MatureCopiedBytes) + m_mature_metrics[5].load(),
+        m_mature_metrics[3].load(), TraceStat(SumWorker(MatureCopiedObjects) + m_mature_metrics[4].load()),
+        TraceStat(SumWorker(MatureCopiedBytes) + m_mature_metrics[5].load()),
         m_mature_metrics[6].load(), TraceStat(m_mature_metrics[7].load() + SumWorker(RememberedSlotsCounter)), m_mature_metrics[8].load(),
         TraceStat(m_mature_metrics[9].load() + SumWorker(ReplayedSlotsCounter)), m_mature_metrics[10].load(), m_mature_metrics[11].load(),
         m_mature_metrics[12].load(),
@@ -5306,8 +5316,11 @@ LxrRcResult LxrReferenceCounting::TryCopyMatureCandidate(Object** reference)
     // compare-exchange that sets the state to 3 is a full barrier after it. A reader sees the pointer after it has read the state 3.
     VolatileStore(forwarding, destination);
     header->SetGCReservedBits(m_configuration.forwardingMask, m_configuration.forwardingShift, 3);
-    CountWorker(worker, MatureCopiedObjects, 1);
-    CountWorker(worker, MatureCopiedBytes, size);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, MatureCopiedObjects, 1);
+        CountWorker(worker, MatureCopiedBytes, size);
+    }
     // Most copies find the flag set: the read keeps the cache line of the block shared between the workers that copy from it.
     if ((m_evacuation_sources[block].load(std::memory_order_relaxed) & CopiedSource) == 0)
     {
@@ -5486,8 +5499,11 @@ LxrRcResult LxrReferenceCounting::TryCopyNursery(
 #if defined(LXR_SIDE_METADATA_TEST_PLATFORM) && defined(LXR_F10_SHARED_COPY_COUNTERS_CONTROL)
     // Control: the copy counters are not counted.
 #else
-    CountWorker(worker, CopiedObjects, 1);
-    CountWorker(worker, CopiedBytes, size);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, CopiedObjects, 1);
+        CountWorker(worker, CopiedBytes, size);
+    }
     CountWorker(worker, PauseCopiedBytes, size);
 #endif // LXR_SIDE_METADATA_TEST_PLATFORM && LXR_F10_SHARED_COPY_COUNTERS_CONTROL
     *destination = copy;
@@ -5586,7 +5602,10 @@ LxrRcResult LxrReferenceCounting::ProcessIncrement(
     if (result == LxrRcResult::Success && trace && NeedsIncrementTrace(start))
     {
         uintptr_t target = reinterpret_cast<uintptr_t>(object);
-        m_increment_traces.fetch_add(1, std::memory_order_relaxed);
+        if (m_configuration.traceStats)
+        {
+            m_increment_traces.fetch_add(1, std::memory_order_relaxed);
+        }
         result = QueueTrace(&target, 1);
     }
     if (result != LxrRcResult::Success || previous != 0)
@@ -5676,7 +5695,10 @@ LxrRcResult LxrReferenceCounting::ProcessIncrement(
     {
         return result;
     }
-    CountWorker(worker, Promotions, 1);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, Promotions, 1);
+    }
     if (!copied && m_configuration.evacuateNursery &&
         ((object->GetHeader()->GetBits() & BIT_SBLK_GC_RESERVE) != 0 || IsPinnedObject(object)))
     {
@@ -5715,7 +5737,10 @@ LxrRcResult LxrReferenceCounting::ScanIncrements(
     Object* object, bool trace, ReferenceBatch* children, size_t worker)
 {
     LxrRcResult result = LxrRcResult::Success;
-    CountWorker(worker, ObjectScans, 1);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, ObjectScans, 1);
+    }
     GCReferenceRanges::Enumerate(object, [&](Object** first, size_t length)
     {
         for (size_t index = 0; index < length; index++)
@@ -5735,7 +5760,10 @@ LxrRcResult LxrReferenceCounting::ScanIncrements(
                 FromMetadata(m_counts.LoadFast(childStart, &childCount)) == LxrRcResult::Success &&
                 childCount != 0 && !IsMatureCandidate(childStart))
             {
-                CountWorker(worker, IncrementEntries, 1);
+                if (m_configuration.traceStats)
+                {
+                    CountWorker(worker, IncrementEntries, 1);
+                }
 #if defined(LXR_SIDE_METADATA_TEST_PLATFORM) && defined(LXR_F10_INLINE_NO_INC_CONTROL)
                 // Control: the increment of a counted child is left out.
                 if (false)
@@ -5754,7 +5782,10 @@ LxrRcResult LxrReferenceCounting::ScanIncrements(
                 if (trace && NeedsIncrementTrace(childStart))
                 {
                     uintptr_t target = reinterpret_cast<uintptr_t>(child);
-                    m_increment_traces.fetch_add(1, std::memory_order_relaxed);
+                    if (m_configuration.traceStats)
+                    {
+                        m_increment_traces.fetch_add(1, std::memory_order_relaxed);
+                    }
                     result = QueueTrace(&target, 1);
                     if (result != LxrRcResult::Success)
                     {
@@ -5791,7 +5822,10 @@ LxrRcResult LxrReferenceCounting::ScanIncrements(
 LxrRcResult LxrReferenceCounting::ScanDecrements(Object* object, ReferenceBatch* children, size_t worker)
 {
     LxrRcResult result = LxrRcResult::Success;
-    CountWorker(worker, ObjectScans, 1);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, ObjectScans, 1);
+    }
     // P28 (F10). As in the Java LXR (rc.rs: process_dead_object) a child whose count is zero or at the maximum gets no decrement,
     // so it is not queued. While dead objects mark (MarkDeadObjects) every child of a dead object belongs to the snapshot and
     // is queued.
@@ -6005,10 +6039,13 @@ LxrRcResult LxrReferenceCounting::ProcessDecrementEntry(
     }
     uintptr_t start = Start(object);
     uintptr_t count = m_rc_metadata.Load(start, SideMetadataMemoryOrder::Relaxed);
-    CountWorker(worker, DecrementEntries, 1);
-    if (previousRoot)
+    if (m_configuration.traceStats)
     {
-        CountWorker(worker, RootDecrements, 1);
+        CountWorker(worker, DecrementEntries, 1);
+        if (previousRoot)
+        {
+            CountWorker(worker, RootDecrements, 1);
+        }
     }
     if (count == 0 || count == m_counts.GetMaximumCount())
     {
@@ -6022,7 +6059,7 @@ LxrRcResult LxrReferenceCounting::ProcessDecrementEntry(
     {
         return result;
     }
-    if (status == SideMetadataUpdateStatus::Updated && previous == 1)
+    if (m_configuration.traceStats && status == SideMetadataUpdateStatus::Updated && previous == 1)
     {
         CountWorker(worker, Deaths, 1);
     }
@@ -7366,7 +7403,7 @@ LxrRcResult LxrReferenceCounting::ProcessIncrementWork(Work* work, size_t worker
                 reference &= ~static_cast<uintptr_t>(1);
             }
             object = reinterpret_cast<Object*>(reference);
-            if (work->kind == WorkKind::Roots)
+            if (m_configuration.traceStats && work->kind == WorkKind::Roots)
             {
                 CountWorker(worker, RootIncrements, 1);
             }
@@ -7382,7 +7419,10 @@ LxrRcResult LxrReferenceCounting::ProcessIncrementWork(Work* work, size_t worker
                 m_unlogged_metadata.Store(
                     reinterpret_cast<uintptr_t>(slot), 1, SideMetadataMemoryOrder::Relaxed);
             }
-            CountWorker(worker, IncrementEntries, 1);
+            if (m_configuration.traceStats)
+            {
+                CountWorker(worker, IncrementEntries, 1);
+            }
         }
         LxrRcResult result = ProcessIncrement(&object, trace, &children, worker);
         if (result != LxrRcResult::Success)
@@ -7436,7 +7476,10 @@ LxrRcResult LxrReferenceCounting::ProcessChildIncrements(ReferenceBatch* childre
             LxrRcResult result = ProcessIncrement(&object, trace, children, worker);
             if (result != LxrRcResult::Success)
             {
-                CountWorker(worker, IncrementEntries, index + 1);
+                if (m_configuration.traceStats)
+                {
+                    CountWorker(worker, IncrementEntries, index + 1);
+                }
                 return result;
             }
             if (object != nullptr)
@@ -7444,7 +7487,10 @@ LxrRcResult LxrReferenceCounting::ProcessChildIncrements(ReferenceBatch* childre
                 result = RememberMatureSlot(slot, object);
                 if (result != LxrRcResult::Success)
                 {
-                    CountWorker(worker, IncrementEntries, index + 1);
+                    if (m_configuration.traceStats)
+                    {
+                        CountWorker(worker, IncrementEntries, index + 1);
+                    }
                     return result;
                 }
             }
@@ -7454,7 +7500,10 @@ LxrRcResult LxrReferenceCounting::ProcessChildIncrements(ReferenceBatch* childre
             }
             LxrPrefetch::Ahead(slots, count, index, true);
         }
-        CountWorker(worker, IncrementEntries, count);
+        if (m_configuration.traceStats)
+        {
+            CountWorker(worker, IncrementEntries, count);
+        }
     }
     return LxrRcResult::Success;
 }
@@ -7712,12 +7761,12 @@ LxrRcMetrics LxrReferenceCounting::GetMetrics() const
         m_metrics[OldTargetChecks].load() + SumMutatorCounter(&LxrRcMutator::oldTargetChecks);
     return {
         m_metrics[Allocations].load(), m_metrics[AllocatedBytes].load(),
-        loggedSlots, SumWorker(IncrementEntries),
-        SumWorker(DecrementEntries), m_metrics[BufferFlushes].load(),
-        m_metrics[ThreadFlushes].load(), SumWorker(Promotions),
-        SumWorker(Deaths), SumWorker(RootIncrements),
-        SumWorker(RootDecrements), SumWorker(ObjectScans),
-        SumWorker(ObjectSizeQueries), oldTargetChecks,
+        loggedSlots, TraceStat(SumWorker(IncrementEntries)),
+        TraceStat(SumWorker(DecrementEntries)), m_metrics[BufferFlushes].load(),
+        m_metrics[ThreadFlushes].load(), TraceStat(SumWorker(Promotions)),
+        TraceStat(SumWorker(Deaths)), TraceStat(SumWorker(RootIncrements)),
+        TraceStat(SumWorker(RootDecrements)), TraceStat(SumWorker(ObjectScans)),
+        TraceStat(SumWorker(ObjectSizeQueries)), oldTargetChecks,
         m_metrics[ChildRegistrations].load(), m_metrics[BlocksReleased].load(),
         m_metrics[LargeObjectBytesReleased].load(), m_metrics[Epochs].load(),
     };
@@ -7896,7 +7945,7 @@ uint64_t LxrReferenceCounting::GetStorageMetric(size_t metric) const
 {
     if (metric == 57)
     {
-        return m_increment_traces.load(std::memory_order_acquire);
+        return TraceStat(m_increment_traces.load(std::memory_order_acquire));
     }
     if (metric >= 52 && metric < 57)
     {
@@ -9625,7 +9674,10 @@ LxrRcResult LxrReferenceCounting::ProcessPauseTraceObject(
     }
 #endif // LXR_SIDE_METADATA_TEST_PLATFORM && LXR_PAUSE_TRACE_MARK_CONTROL
     (void)observed;
-    CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), TraceObjectsCounter, 1);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), TraceObjectsCounter, 1);
+    }
     if (maximumReferences <= *directBudget)
     {
         TraceScan local(object, loader);
@@ -9658,7 +9710,10 @@ LxrRcResult LxrReferenceCounting::ProcessConcurrentTraceObject(
         return LxrRcResult::Success;
     }
     (void)observed;
-    CountWorker(worker, TraceObjectsCounter, 1);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, TraceObjectsCounter, 1);
+    }
     Object* loader = GetLoaderAllocator(object);
     size_t maximumReferences = object->GetGCSafeMethodTable()->ContainsGCPointers()
         ? ObjectSize(object) / sizeof(uintptr_t) + 1
@@ -9800,7 +9855,10 @@ LxrRcResult LxrReferenceCounting::ProcessTraceObject(
         return result;
     }
     (void)observed;
-    CountWorker(worker, TraceObjectsCounter, 1);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, TraceObjectsCounter, 1);
+    }
     Object* loader = GetLoaderAllocator(object);
     size_t maximumReferences = object->GetGCSafeMethodTable()->ContainsGCPointers()
         ? ObjectSize(object) / sizeof(uintptr_t) + 1
@@ -9971,7 +10029,10 @@ LxrRcResult LxrReferenceCounting::ScanTraceSlots(
             break;
         }
     }
-    CountWorker(worker, TraceReferencesCounter, visited);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, TraceReferencesCounter, visited);
+    }
     if (count != 0)
     {
         LxrRcResult result = QueueTrace(children, count);
@@ -10569,8 +10630,10 @@ LxrTraceMetrics LxrReferenceCounting::GetTraceMetrics() const
 {
     return {
         m_trace_metrics[InitialMarks].load(), m_trace_metrics[FinalMarks].load(),
-        m_trace_metrics[FullMarks].load(), SumWorker(TraceObjectsCounter) + m_trace_metrics[TracedObjects].load(),
-        SumWorker(TraceReferencesCounter) + m_trace_metrics[TracedReferences].load(), m_trace_metrics[SatbEntries].load(),
+        m_trace_metrics[FullMarks].load(),
+        TraceStat(SumWorker(TraceObjectsCounter) + m_trace_metrics[TracedObjects].load()),
+        TraceStat(SumWorker(TraceReferencesCounter) + m_trace_metrics[TracedReferences].load()),
+        m_trace_metrics[SatbEntries].load(),
         TraceStat(m_trace_metrics[DeletionMarks].load() + SumWorker(DeletionMarksCounter)),
         TraceStat(m_trace_metrics[ForcedScans].load() + SumWorker(ForcedScansCounter)),
         m_trace_metrics[SplitPackets].load(), m_trace_metrics[CycleObjects].load(),

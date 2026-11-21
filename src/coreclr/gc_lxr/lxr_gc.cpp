@@ -440,7 +440,7 @@ HRESULT LxrGcHeap::Initialize()
     }
     m_engine.GetPauseTimers().Configure(phaseTimers);
     configuration.lookupStats = m_lookup_stats;
-    // LXRWINDOW prints deletionMarks.
+    // LXRWINDOW prints deletionMarks and deaths.
     configuration.traceStats = traceStats || m_window_stats;
     configuration.selectParallelBlocks = static_cast<uint32_t>(selectParallelBlocks);
     for (const char* unsupported : {

@@ -55,7 +55,9 @@ The settings are read from `DOTNET_LXR*` environment variables. Size settings ar
 - `DOTNET_LXRLookupStats=1`: collects interior-lookup timing and counters and prints cumulative `LXRLOOKUP` statistics
   at each pause. Collection is off by default, independently of `DOTNET_LXRPhaseTimers`.
 - `DOTNET_LXRTraceStats=1`: counts the diagnostic trace and remembered-set statistics (remembered and replayed entries,
-  deletion marks, forced scans, concurrent slices). No collection decision uses them. Counting is off by default, and the
-  metrics read `UINT64_MAX` while it is off. `DOTNET_LXRWindowStats=1` turns it on.
+  deletion marks, forced scans, concurrent slices), the per-entry RC statistics (increment and decrement entries,
+  promotions, deaths, root increments and decrements, object scans, object size queries, increment traces), the copied
+  objects and bytes, and the traced objects and references. No collection decision uses them. Counting is off by
+  default, and the metrics read `UINT64_MAX` while it is off. `DOTNET_LXRWindowStats=1` turns it on.
 
 See `LxrGcHeap::Initialize` in `lxr_gc.cpp` for the full list.
