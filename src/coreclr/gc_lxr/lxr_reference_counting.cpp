@@ -3613,6 +3613,20 @@ Object* LxrReferenceCounting::ResolveForwarded(Object* object) const
         return object;
     }
 #endif // LXR_OBJECT_START_WALK
+    // Port overhead 2. Read the header only where a forwarding state can be: the oracle reads the forwarding bits only for
+    // an object in a defrag source block (policy/immix/immixspace.rs:298-311). A young copy source keeps count zero. A
+    // counted object can move only while the mature source flag of its block is set; source retirement clears the count
+    // before it clears the flag (the same test as in ResolveForwardedChecked).
+    if (m_rc_metadata.Load(start, SideMetadataMemoryOrder::Relaxed) != 0)
+    {
+        size_t block = (start - GetReservationStart()) / ImmixBlockGeometry::BlockBytes;
+        if (m_evacuation_sources == nullptr ||
+            (block < m_block_table_blocks.load(std::memory_order_acquire) &&
+             m_evacuation_sources[block].load(std::memory_order_acquire) == 0))
+        {
+            return object;
+        }
+    }
     ObjHeader* header = object->GetHeader();
     uint32_t state = header->GetGCReservedBits(m_configuration.forwardingMask, m_configuration.forwardingShift);
     if (state == 2)
