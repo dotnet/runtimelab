@@ -1092,6 +1092,7 @@ LaxoriRcResult LaxoriReferenceCounting::InitializeBuffers(size_t slots)
         m_live_objects = m_live_storage.Get();
 #endif // LAXORI_SIDE_METADATA_TEST_PLATFORM
         m_trace_locks = new (std::nothrow) std::atomic<uint8_t>[TraceLockCount]{};
+        m_trace_claims = new (std::nothrow) TraceClaim[m_configuration.workers + 1];
         m_scan_buckets = new (std::nothrow) TraceScanBucket[TraceScanBucketCount];
     }
     m_roots[0] = new (std::nothrow) uintptr_t[m_configuration.maximumRoots]{};
@@ -1131,7 +1132,7 @@ LaxoriRcResult LaxoriReferenceCounting::InitializeBuffers(size_t slots)
     }
     if (m_mutators == nullptr || m_mutator_chunks == nullptr ||
         m_banks == nullptr || (!m_observer &&
-            (m_trace_locks == nullptr || m_scan_buckets == nullptr)) ||
+            (m_trace_locks == nullptr || m_trace_claims == nullptr || m_scan_buckets == nullptr)) ||
         m_roots[0] == nullptr ||
         m_roots[1] == nullptr || (m_configuration.largeObjectBytes != 0 && m_dead_large == nullptr) ||
         (m_configuration.immixBytes != 0 && m_mature_candidates == nullptr))
@@ -1519,6 +1520,7 @@ void LaxoriReferenceCounting::Shutdown()
     m_allocated_list_storage.Shutdown();
     m_block_table_blocks.store(0, std::memory_order_relaxed);
     delete[] m_trace_locks;
+    delete[] m_trace_claims;
     delete[] m_scan_buckets;
     m_banks = nullptr;
     m_mutators = nullptr;
@@ -1533,6 +1535,7 @@ void LaxoriReferenceCounting::Shutdown()
     m_live_objects = nullptr;
 #endif // LAXORI_SIDE_METADATA_TEST_PLATFORM
     m_trace_locks = nullptr;
+    m_trace_claims = nullptr;
     m_scan_buckets = nullptr;
     m_block_flags = nullptr;
     m_zero_state = nullptr;
@@ -9292,6 +9295,56 @@ void LaxoriReferenceCounting::ExitTraceLock(size_t index)
     TraceLockSlot(index).store(0, std::memory_order_release);
 }
 
+// A dying object waits here until no concurrent trace worker scans it under a claim (ProcessConcurrentTraceObject). The
+// caller has failed to set the mark of the object, so the claim of a worker that set it is visible: the claim store is
+// sequenced before the mark compare-exchange of the worker, and the failed compare-exchange reads that mark.
+void LaxoriReferenceCounting::WaitForTraceClaims(uintptr_t start) const
+{
+    for (size_t worker = 0; worker < m_configuration.workers; worker++)
+    {
+        while (m_trace_claims[worker].start.load(std::memory_order_acquire) == start)
+        {
+            YieldProcessor();
+        }
+    }
+}
+
+// Publishes the scan of a large object: other workers run its slices (ProcessTraceScan), and a dying object finishes it
+// (FinishDyingTraceObject finds it through LinkTraceScan). The caller has set the mark of the object.
+LaxoriRcResult LaxoriReferenceCounting::QueueTraceScan(Object* object, Object* loader, uintptr_t start)
+{
+    TraceScan* scan = new (std::nothrow) TraceScan(object, loader);
+    if (scan == nullptr)
+    {
+        return Fail(LaxoriRcResult::OutOfMemory);
+    }
+#ifdef LAXORI_HAS_DIAGNOSTIC_PROBES
+    if (m_storage_diagnostics.load(std::memory_order_relaxed))
+    {
+        m_storage_metrics[4].fetch_add(1, std::memory_order_relaxed);
+        uint64_t current = m_storage_metrics[5].fetch_add(sizeof(TraceScan), std::memory_order_relaxed) +
+            sizeof(TraceScan);
+        uint64_t high = m_storage_metrics[6].load(std::memory_order_relaxed);
+        while (high < current && !m_storage_metrics[6].compare_exchange_weak(
+            high, current, std::memory_order_relaxed))
+        {
+        }
+    }
+#endif // LAXORI_HAS_DIAGNOSTIC_PROBES
+    TraceScan* head = m_scan_work.load(std::memory_order_relaxed);
+    do
+    {
+        scan->next = head;
+    } while (!m_scan_work.compare_exchange_weak(
+        head, scan, std::memory_order_release, std::memory_order_relaxed));
+#if !defined(LAXORI_S7_SCAN_LINK_CONTROL)
+    LinkTraceScan((start - GetReservationStart()) / sizeof(uintptr_t), scan);
+#else
+    (void)start;
+#endif // !LAXORI_S7_SCAN_LINK_CONTROL
+    return QueueTrace(nullptr, 0, scan);
+}
+
 LaxoriRcResult LaxoriReferenceCounting::QueueTrace(
     const uintptr_t* objects, size_t count, TraceScan* scan, bool logged)
 {
@@ -9741,34 +9794,55 @@ LaxoriRcResult LaxoriReferenceCounting::ProcessPauseTraceObject(
         *directBudget -= maximumReferences;
         return result;
     }
-    TraceScan* scan = new (std::nothrow) TraceScan(object, loader);
-    if (scan == nullptr)
+    return QueueTraceScan(object, loader, start);
+}
+
+// The concurrent trace of a counted object, as the oracle traces it (policy/immix/immixspace.rs trace_object_without_moving_rc,
+// plan/lxr/gc_work/tracing.rs): one compare-exchange of the mark claims the object, and the worker scans it without a
+// trace lock. No object moves while the concurrent trace runs: a young copy (in a pause) moves only an object with count
+// zero, and a mature copy happens only in a FinalMark or Full pause. So a counted object needs no forwarding check here.
+// The claim slot replaces the trace lock for a dying object: the allocator can reuse the lines of an object as soon as
+// its count is zero, so FinishDyingTraceObject (Death) waits until no worker scans the object.
+LaxoriRcResult LaxoriReferenceCounting::ProcessConcurrentTraceObject(
+    Object* object, uintptr_t start, size_t* directBudget, TraceBatch* targets)
+{
+    if (!IsObjectStart(object))
     {
-        return Fail(LaxoriRcResult::OutOfMemory);
+        return LaxoriRcResult::Success;
     }
-#ifdef LAXORI_HAS_DIAGNOSTIC_PROBES
-    if (m_storage_diagnostics.load(std::memory_order_relaxed))
+    std::atomic<uintptr_t>& claim = m_trace_claims[t_execution_worker].start;
+    claim.store(start, std::memory_order_relaxed);
+    uintptr_t observed;
+    if (!m_mark_metadata.CompareExchange(start, 1, 0, SideMetadataMemoryOrder::SequentiallyConsistent, &observed))
     {
-        m_storage_metrics[4].fetch_add(1, std::memory_order_relaxed);
-        uint64_t current = m_storage_metrics[5].fetch_add(sizeof(TraceScan), std::memory_order_relaxed) +
-            sizeof(TraceScan);
-        uint64_t high = m_storage_metrics[6].load(std::memory_order_relaxed);
-        while (high < current && !m_storage_metrics[6].compare_exchange_weak(
-            high, current, std::memory_order_relaxed))
+        claim.store(0, std::memory_order_release);
+        return LaxoriRcResult::Success;
+    }
+    (void)observed;
+    const size_t worker = targets != nullptr ? targets->worker : GetExecutionWorker();
+    CountWorker(worker, TraceObjectsCounter, 1);
+    Object* loader = GetLoaderAllocator(object);
+    size_t maximumReferences = object->GetGCSafeMethodTable()->ContainsGCPointers()
+        ? ObjectSize(object) / sizeof(uintptr_t) + 1
+        : (loader == nullptr ? 0 : 1);
+    LaxoriRcResult result;
+    if (maximumReferences <= *directBudget)
+    {
+        TraceScan local(object, loader);
+        result = ScanTraceLocked(&local, true, targets);
+        *directBudget -= maximumReferences;
+        if (m_configuration.traceStats)
         {
+            CountWorker(worker, ConcurrentSlicesCounter, 1);
         }
     }
-#endif // LAXORI_HAS_DIAGNOSTIC_PROBES
-    TraceScan* head = m_scan_work.load(std::memory_order_relaxed);
-    do
+    else
     {
-        scan->next = head;
-    } while (!m_scan_work.compare_exchange_weak(
-        head, scan, std::memory_order_release, std::memory_order_relaxed));
-#if !defined(LAXORI_S7_SCAN_LINK_CONTROL)
-    LinkTraceScan((start - GetReservationStart()) / sizeof(uintptr_t), scan);
-#endif // !LAXORI_S7_SCAN_LINK_CONTROL
-    return QueueTrace(nullptr, 0, scan);
+        // The scan is linked before the claim ends, so a dying object that waits for the claim then finds it.
+        result = QueueTraceScan(object, loader, start);
+    }
+    claim.store(0, std::memory_order_release);
+    return result;
 }
 
 LaxoriRcResult LaxoriReferenceCounting::ProcessTraceObject(
@@ -9778,6 +9852,26 @@ LaxoriRcResult LaxoriReferenceCounting::ProcessTraceObject(
     {
         return LaxoriRcResult::Success;
     }
+#if !defined(LAXORI_TRACE_LOCK_CONTROL)
+    // The concurrent trace on a trace worker (ProcessConcurrentTraceObject). An object with count zero takes the checked
+    // path below: it can be a young source that a pause has moved, or an object that is not counted.
+    if (t_execution_worker < m_configuration.workers && m_trace_claims != nullptr && GetPhase() == LaxoriRcPhase::Mutator &&
+        GetTracePhase() == LaxoriTracePhase::Concurrent && !m_pause_trace_open.load(std::memory_order_relaxed))
+    {
+        uintptr_t start = Start(object);
+        if (start % sizeof(uintptr_t) == 0 && OwnsAddress(start))
+        {
+            if (m_mark_metadata.Load(start, SideMetadataMemoryOrder::Relaxed) != 0)
+            {
+                return LaxoriRcResult::Success;
+            }
+            if (m_rc_metadata.Load(start, SideMetadataMemoryOrder::Relaxed) != 0)
+            {
+                return ProcessConcurrentTraceObject(object, start, directBudget, targets);
+            }
+        }
+    }
+#endif // !LAXORI_TRACE_LOCK_CONTROL
 #if !defined(LAXORI_WALK_TRUSTED_RESOLVE_CONTROL)
     // P4. Most visits find a marked object (67 %). The oracle checks the mark first and resolves only for a defrag
     // source (policy/immix/immixspace.rs:1111-1124). Here the check comes first when the object cannot be forwarded and
@@ -9854,14 +9948,22 @@ LaxoriRcResult LaxoriReferenceCounting::ProcessTraceObject(
         ExitTraceLock(index);
         return result;
     }
+    // The claim is a compare-exchange: a concurrent worker (ProcessConcurrentTraceObject) and a dying object
+    // (FinishDyingTraceObject) set the mark without this lock.
+    uintptr_t observed;
+    if (!m_mark_metadata.CompareExchange(start, 1, 0, SideMetadataMemoryOrder::SequentiallyConsistent, &observed))
+    {
+        ExitTraceLock(index);
+        return result;
+    }
+    (void)observed;
+    CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), TraceObjectsCounter, 1);
     Object* loader = GetLoaderAllocator(object);
     size_t maximumReferences = object->GetGCSafeMethodTable()->ContainsGCPointers()
         ? ObjectSize(object) / sizeof(uintptr_t) + 1
         : (loader == nullptr ? 0 : 1);
     if (maximumReferences <= *directBudget)
     {
-        m_mark_metadata.Store(start, 1, SideMetadataMemoryOrder::SequentiallyConsistent);
-        CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), TraceObjectsCounter, 1);
         TraceScan local(object, loader);
         result = ScanTraceLocked(&local, true, targets);
         *directBudget -= maximumReferences;
@@ -9873,37 +9975,7 @@ LaxoriRcResult LaxoriReferenceCounting::ProcessTraceObject(
         ExitTraceLock(index);
         return result;
     }
-    TraceScan* scan = new (std::nothrow) TraceScan(object, loader);
-    if (scan == nullptr)
-    {
-        ExitTraceLock(index);
-        return Fail(LaxoriRcResult::OutOfMemory);
-    }
-#ifdef LAXORI_HAS_DIAGNOSTIC_PROBES
-    if (m_storage_diagnostics.load(std::memory_order_relaxed))
-    {
-        m_storage_metrics[4].fetch_add(1, std::memory_order_relaxed);
-        uint64_t current = m_storage_metrics[5].fetch_add(sizeof(TraceScan), std::memory_order_relaxed) +
-            sizeof(TraceScan);
-        uint64_t high = m_storage_metrics[6].load(std::memory_order_relaxed);
-        while (high < current && !m_storage_metrics[6].compare_exchange_weak(
-            high, current, std::memory_order_relaxed))
-        {
-        }
-    }
-#endif // LAXORI_HAS_DIAGNOSTIC_PROBES
-    TraceScan* head = m_scan_work.load(std::memory_order_relaxed);
-    do
-    {
-        scan->next = head;
-    } while (!m_scan_work.compare_exchange_weak(
-        head, scan, std::memory_order_release, std::memory_order_relaxed));
-#if !defined(LAXORI_S7_SCAN_LINK_CONTROL)
-    LinkTraceScan(index, scan);
-#endif // !LAXORI_S7_SCAN_LINK_CONTROL
-    m_mark_metadata.Store(start, 1, SideMetadataMemoryOrder::SequentiallyConsistent);
-    CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), TraceObjectsCounter, 1);
-    result = QueueTrace(nullptr, 0, scan);
+    result = QueueTraceScan(object, loader, start);
     ExitTraceLock(index);
     return result;
 }
@@ -9915,6 +9987,10 @@ LaxoriRcResult LaxoriReferenceCounting::ScanTraceLocked(TraceScan* scan, bool fi
     size_t count = 0;
     size_t visited = 0;
     const bool pausePhase = GetPhase() == LaxoriRcPhase::Suspended;
+    // No object moves while the concurrent trace runs (see ProcessConcurrentTraceObject). A child that a pause moves later
+    // has count zero, so it is queued, and ProcessTraceObject resolves it when it uses it.
+    const bool concurrentPhase = GetPhase() == LaxoriRcPhase::Mutator && GetTracePhase() == LaxoriTracePhase::Concurrent;
+    (void)concurrentPhase;
     const size_t worker = targets != nullptr ? targets->worker : GetExecutionWorker();
     auto append = [&](uintptr_t target)
     {
@@ -9958,6 +10034,21 @@ LaxoriRcResult LaxoriReferenceCounting::ScanTraceLocked(TraceScan* scan, bool fi
         visited++;
         if (child != nullptr)
         {
+#if !defined(LAXORI_TRACE_LOCK_CONTROL)
+            if (concurrentPhase)
+            {
+                // The oracle records the slot only for a target in a defrag block (gc_work/tracing.rs scan_and_enqueue).
+                if (m_configuration.evacuateMature && IsMatureCandidate(Start(child)))
+                {
+                    LaxoriRcResult result = RememberMatureCandidateSlot(slot, worker);
+                    if (result != LaxoriRcResult::Success)
+                    {
+                        return result;
+                    }
+                }
+            }
+            else
+#endif // !LAXORI_TRACE_LOCK_CONTROL
             if (m_configuration.evacuateMature)
             {
                 Object* original = child;
@@ -10088,11 +10179,10 @@ LaxoriRcResult LaxoriReferenceCounting::FinishDyingTraceObject(Object* object)
 #else
     uintptr_t start = Start(object);
     size_t index = (start - GetReservationStart()) / sizeof(uintptr_t);
-    EnterTraceLock(index);
     LaxoriRcResult result = LaxoriRcResult::Success;
-    if (m_mark_metadata.Load(start, SideMetadataMemoryOrder::SequentiallyConsistent) == 0)
+    uintptr_t observed;
+    if (m_mark_metadata.CompareExchange(start, 1, 0, SideMetadataMemoryOrder::SequentiallyConsistent, &observed))
     {
-        m_mark_metadata.Store(start, 1, SideMetadataMemoryOrder::SequentiallyConsistent);
         if (m_configuration.traceStats)
         {
             CountWorker(GetExecutionWorker(), DeletionMarksCounter, 1);
@@ -10101,6 +10191,12 @@ LaxoriRcResult LaxoriReferenceCounting::FinishDyingTraceObject(Object* object)
         CountWindow(1, 1);
 #endif // LAXORI_HAS_PHASE_TIMERS
     }
+    else if (m_trace_claims != nullptr)
+    {
+        // A concurrent worker may scan the object without the trace lock (ProcessConcurrentTraceObject).
+        WaitForTraceClaims(start);
+    }
+    EnterTraceLock(index);
     TraceScan* scan = FindTraceScan(index);
     if (result == LaxoriRcResult::Success && scan != nullptr && !scan->complete)
     {

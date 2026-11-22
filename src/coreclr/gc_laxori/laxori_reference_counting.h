@@ -1070,6 +1070,8 @@ private:
     LaxoriRcResult ProcessTraceWork(Work* work, TraceBatch* targets);
     LaxoriRcResult ProcessTraceObject(Object* object, size_t* directBudget, TraceBatch* targets);
     LaxoriRcResult ProcessPauseTraceObject(Object* object, uintptr_t start, size_t* directBudget, TraceBatch* targets);
+    LaxoriRcResult ProcessConcurrentTraceObject(
+        Object* object, uintptr_t start, size_t* directBudget, TraceBatch* targets);
     LaxoriRcResult ProcessTraceScan(TraceScan* scan, bool finish, TraceBatch* targets = nullptr);
     LaxoriRcResult ScanTraceLocked(TraceScan* scan, bool finish, TraceBatch* targets = nullptr);
     LaxoriRcResult FinishDyingTraceObject(Object* object);
@@ -1102,6 +1104,8 @@ private:
     void EnterTraceLock(size_t index);
     bool EnterTraceLockUnlessMarked(size_t index, uintptr_t start);
     void ExitTraceLock(size_t index);
+    void WaitForTraceClaims(uintptr_t start) const;
+    LaxoriRcResult QueueTraceScan(Object* object, Object* loader, uintptr_t start);
     LaxoriRcResult GetObjectSize(Object* object, size_t* size, size_t worker = SIZE_MAX);
     bool IsImmix(uintptr_t start) const;
     bool IsReturnedImmix(uintptr_t start) const;
@@ -1220,6 +1224,13 @@ private:
         TraceScan* head = nullptr;
     };
     std::atomic<uint8_t>* m_trace_locks;
+    // The object that a concurrent trace worker has claimed and scans without a trace lock (0: none). One slot per
+    // worker. FinishDyingTraceObject waits until no slot names the dying object (see ProcessConcurrentTraceObject).
+    struct alignas(64) TraceClaim
+    {
+        std::atomic<uintptr_t> start{0};
+    };
+    TraceClaim* m_trace_claims = nullptr;
     TraceScanBucket* m_scan_buckets;
     std::atomic<size_t> m_scan_index_count{0};
     // P17 S7. Pinning. m_block_flags has one byte per Immix block: ImmixAllocationManager::PinnedBlockFlag (the block
