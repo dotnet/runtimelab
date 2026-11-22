@@ -82,9 +82,12 @@ struct LaxoriRcConfiguration
     // Collect interior-lookup timing and counters only when LAXORILookupStats is enabled.
     bool lookupStats = false;
     // Count the diagnostic trace and remembered-set statistics (rememberedEntries, replayedEntries, deletionMarks,
-    // forcedScans, concurrentSlices, pause trace metric 2). No product decision reads them. When this is false, their
-    // getters return UINT64_MAX. Engine tests keep this default; the runtime (laxori_gc.cpp) sets it from LAXORITraceStats,
-    // which is off by default.
+    // forcedScans, concurrentSlices, pause trace metric 2), the per-entry RC statistics (incrementEntries,
+    // decrementEntries, promotions, deaths, rootIncrements, rootDecrements, objectScans, objectSizeQueries), the copy
+    // statistics (nursery and mature copiedObjects and copiedBytes), the trace objects and references, and storage
+    // metric 57 (increment traces). No product decision reads them. When this is false, their getters return
+    // UINT64_MAX. Engine tests keep this default; the runtime (laxori_gc.cpp) sets it from LAXORITraceStats, which is off by
+    // default.
     bool traceStats = true;
     // The children that a trace packet of a parallel pause collects before it makes a new packet (1 to 8192).
     size_t pauseTraceBatch = 512;
@@ -1216,6 +1219,7 @@ private:
     std::atomic<uint64_t> m_storage_metrics[9]{};
     std::atomic<uint64_t> m_trace_batch_metrics[5]{};
     // P25 (F1). Number of trace packets that a pause queued for a counted object (metric 57 of GetStorageMetric).
+    // It is counted only when LaxoriRcConfiguration::traceStats is set; else metric 57 is UINT64_MAX.
     std::atomic<uint64_t> m_increment_traces{0};
     std::atomic<bool> m_storage_diagnostics{false};
     static constexpr size_t TraceLockCount = 16384;
