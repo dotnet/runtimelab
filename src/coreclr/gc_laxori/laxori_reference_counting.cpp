@@ -609,12 +609,14 @@ struct LaxoriReferenceCounting::ReferenceBatch
 struct LaxoriReferenceCounting::TraceBatch
 {
     LaxoriReferenceCounting* engine;
+    // P6. The worker of the packet, read once from the thread-local state (the oracle sets it once per packet).
+    size_t worker;
     size_t count = 0;
     bool registered = false;
     bool accounted = false;
     uintptr_t references[FullTraceBatchCapacity];
 
-    explicit TraceBatch(LaxoriReferenceCounting* owner) : engine(owner)
+    explicit TraceBatch(LaxoriReferenceCounting* owner) : engine(owner), worker(owner->GetExecutionWorker())
     {
         // Unpublished targets retain completion ownership until copied work takes over.
 #if !defined(LAXORI_SIDE_METADATA_TEST_PLATFORM) || !defined(LAXORI_TRACE_BATCH_EARLY_CONTROL)
@@ -4895,6 +4897,16 @@ LaxoriRcResult LaxoriReferenceCounting::RememberMatureSlot(Object** slot, Object
     {
         return LaxoriRcResult::Success;
     }
+    return RememberMatureCandidateSlot(slot, GetExecutionWorker());
+}
+
+// The target of the slot is a mature candidate.
+LaxoriRcResult LaxoriReferenceCounting::RememberMatureCandidateSlot(Object** slot, size_t worker)
+{
+    if (!(m_marking.load(std::memory_order_relaxed) || m_pause_kind == LaxoriPauseKind::FinalMark))
+    {
+        return LaxoriRcResult::Success;
+    }
     uintptr_t address = reinterpret_cast<uintptr_t>(slot);
     if (!OwnsAddress(address))
     {
@@ -4902,7 +4914,6 @@ LaxoriRcResult LaxoriReferenceCounting::RememberMatureSlot(Object** slot, Object
     }
     uintptr_t reuse = (IsImmix(address) ? m_line_reuse_metadata : m_page_reuse_metadata).Load(
         address, SideMetadataMemoryOrder::SequentiallyConsistent);
-    const size_t worker = GetExecutionWorker();
     RememberedBuffer& buffer = m_remembered_buffers[worker];
     buffer.Enter();
     RememberedChunk* chunk = buffer.chunk;
@@ -5274,8 +5285,18 @@ LaxoriRcResult LaxoriReferenceCounting::TryCopyMature(Object** reference)
 LaxoriRcResult LaxoriReferenceCounting::TryCopyMatureResolved(Object** reference)
 {
     Object* source = *reference;
-    if (source == nullptr || !IsMatureCandidate(Start(source)) ||
-        (GetTracePhase() != LaxoriTracePhase::Full && GetTracePhase() != LaxoriTracePhase::FinalMark))
+    if (source == nullptr || !IsMatureCandidate(Start(source)))
+    {
+        return LaxoriRcResult::Success;
+    }
+    return TryCopyMatureCandidate(reference);
+}
+
+// *reference is not forwarded and is in a mature candidate block.
+LaxoriRcResult LaxoriReferenceCounting::TryCopyMatureCandidate(Object** reference)
+{
+    Object* source = *reference;
+    if (GetTracePhase() != LaxoriTracePhase::Full && GetTracePhase() != LaxoriTracePhase::FinalMark)
     {
         return LaxoriRcResult::Success;
     }
@@ -9666,7 +9687,7 @@ LaxoriRcResult LaxoriReferenceCounting::ProcessPauseTraceObject(
     }
 #endif // LAXORI_SIDE_METADATA_TEST_PLATFORM && LAXORI_PAUSE_TRACE_MARK_CONTROL
     (void)observed;
-    CountWorker(GetExecutionWorker(), TraceObjectsCounter, 1);
+    CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), TraceObjectsCounter, 1);
     if (maximumReferences <= *directBudget)
     {
         TraceScan local(object, loader);
@@ -9761,13 +9782,13 @@ LaxoriRcResult LaxoriReferenceCounting::ProcessTraceObject(
     if (maximumReferences <= *directBudget)
     {
         m_mark_metadata.Store(start, 1, SideMetadataMemoryOrder::SequentiallyConsistent);
-        CountWorker(GetExecutionWorker(), TraceObjectsCounter, 1);
+        CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), TraceObjectsCounter, 1);
         TraceScan local(object, loader);
         result = ScanTraceLocked(&local, true, targets);
         *directBudget -= maximumReferences;
         if (GetPhase() == LaxoriRcPhase::Mutator && GetTracePhase() == LaxoriTracePhase::Concurrent)
         {
-            CountWorker(GetExecutionWorker(), ConcurrentSlicesCounter, 1);
+            CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), ConcurrentSlicesCounter, 1);
         }
         ExitTraceLock(index);
         return result;
@@ -9801,7 +9822,7 @@ LaxoriRcResult LaxoriReferenceCounting::ProcessTraceObject(
     LinkTraceScan(index, scan);
 #endif // !LAXORI_S7_SCAN_LINK_CONTROL
     m_mark_metadata.Store(start, 1, SideMetadataMemoryOrder::SequentiallyConsistent);
-    CountWorker(GetExecutionWorker(), TraceObjectsCounter, 1);
+    CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), TraceObjectsCounter, 1);
     result = QueueTrace(nullptr, 0, scan);
     ExitTraceLock(index);
     return result;
@@ -9814,6 +9835,7 @@ LaxoriRcResult LaxoriReferenceCounting::ScanTraceLocked(TraceScan* scan, bool fi
     size_t count = 0;
     size_t visited = 0;
     const bool pausePhase = GetPhase() == LaxoriRcPhase::Suspended;
+    const size_t worker = targets != nullptr ? targets->worker : GetExecutionWorker();
     auto append = [&](uintptr_t target)
     {
         if (targets != nullptr)
@@ -9859,10 +9881,17 @@ LaxoriRcResult LaxoriReferenceCounting::ScanTraceLocked(TraceScan* scan, bool fi
             if (m_configuration.evacuateMature)
             {
                 Object* original = child;
-                LaxoriRcResult result = RememberMatureSlot(slot, child);
+                // P6. One candidate check serves the remembered slot and the copy (the copy checks only an unforwarded
+                // child, which is this object).
+                const bool candidate = IsMatureCandidate(Start(child));
+                LaxoriRcResult result = candidate ? RememberMatureCandidateSlot(slot, worker) : LaxoriRcResult::Success;
                 if (result == LaxoriRcResult::Success)
                 {
-                    result = TryCopyMature(&child);
+                    child = ResolveForwardedChecked(child);
+                    if (child == original && candidate)
+                    {
+                        result = TryCopyMatureCandidate(&child);
+                    }
                 }
                 if (result != LaxoriRcResult::Success)
                 {
@@ -9898,7 +9927,7 @@ LaxoriRcResult LaxoriReferenceCounting::ScanTraceLocked(TraceScan* scan, bool fi
             break;
         }
     }
-    CountWorker(GetExecutionWorker(), TraceReferencesCounter, visited);
+    CountWorker(worker, TraceReferencesCounter, visited);
     if (count != 0)
     {
         LaxoriRcResult result = QueueTrace(children, count);
@@ -9940,7 +9969,7 @@ LaxoriRcResult LaxoriReferenceCounting::ProcessTraceScan(TraceScan* scan, bool f
     ExitTraceLock(index);
     if (!finish && GetPhase() == LaxoriRcPhase::Mutator && GetTracePhase() == LaxoriTracePhase::Concurrent)
     {
-        CountWorker(GetExecutionWorker(), ConcurrentSlicesCounter, 1);
+        CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), ConcurrentSlicesCounter, 1);
 #ifdef LAXORI_HAS_DIAGNOSTIC_PROBES
         uintptr_t target = reinterpret_cast<uintptr_t>(scan->object);
         if (!complete && m_scan_checkpoint.load(std::memory_order_acquire) == target)
