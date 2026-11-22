@@ -1071,7 +1071,7 @@ private:
     LaxoriRcResult ProcessTraceObject(Object* object, size_t* directBudget, TraceBatch* targets);
     LaxoriRcResult ProcessPauseTraceObject(Object* object, uintptr_t start, size_t* directBudget, TraceBatch* targets);
     LaxoriRcResult ProcessConcurrentTraceObject(
-        Object* object, uintptr_t start, size_t* directBudget, TraceBatch* targets);
+        Object* object, uintptr_t start, size_t* directBudget, TraceBatch* targets, size_t worker);
     LaxoriRcResult ProcessTraceScan(TraceScan* scan, bool finish, TraceBatch* targets = nullptr);
     LaxoriRcResult ScanTraceLocked(TraceScan* scan, bool finish, TraceBatch* targets = nullptr);
     LaxoriRcResult FinishDyingTraceObject(Object* object);
