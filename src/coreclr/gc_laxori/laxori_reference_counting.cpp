@@ -713,7 +713,7 @@ struct LaxoriReferenceCounting::DeathContext
 // Deaths, RootIncrements, RootDecrements) use the slot of their Metric index.
 struct alignas(64) LaxoriReferenceCounting::WorkerCounters
 {
-    std::atomic<uint64_t> values[32]{};
+    std::atomic<uint64_t> values[40]{};
 };
 
 // A copied source keeps its first field only until the copy is published, so the size of a forwarded source
@@ -762,7 +762,15 @@ namespace
     constexpr size_t MatureCopiedObjects = Epochs + 7;
     constexpr size_t MatureCopiedBytes = Epochs + 8;
     constexpr size_t PauseMatureCopiedBytes = Epochs + 9;
-    static_assert(PauseMatureCopiedBytes < 32);
+    // Statistics that were shared atomics on per-object or per-entry paths. The oracle has none there: its per-object
+    // statistics are compiled out (crate::stat, feature "instrumentation"). These keep exact totals per worker.
+    constexpr size_t ConcurrentSlicesCounter = Epochs + 10;
+    constexpr size_t RememberedSlotsCounter = Epochs + 11;
+    constexpr size_t ReplayedSlotsCounter = Epochs + 12;
+    constexpr size_t PauseReplayedSlotsCounter = Epochs + 13;
+    constexpr size_t DeletionMarksCounter = Epochs + 14;
+    constexpr size_t ForcedScansCounter = Epochs + 15;
+    static_assert(ForcedScansCounter < 40);
 }
 
 LaxoriRcMutator::LaxoriRcMutator()
@@ -3987,8 +3995,8 @@ LaxoriMatureMetrics LaxoriReferenceCounting::GetMatureMetrics() const
         m_mature_metrics[0].load(), m_mature_metrics[1].load(), m_mature_metrics[2].load(),
         m_mature_metrics[3].load(), SumWorker(MatureCopiedObjects) + m_mature_metrics[4].load(),
         SumWorker(MatureCopiedBytes) + m_mature_metrics[5].load(),
-        m_mature_metrics[6].load(), m_mature_metrics[7].load(), m_mature_metrics[8].load(),
-        m_mature_metrics[9].load(), m_mature_metrics[10].load(), m_mature_metrics[11].load(),
+        m_mature_metrics[6].load(), m_mature_metrics[7].load() + SumWorker(RememberedSlotsCounter), m_mature_metrics[8].load(),
+        m_mature_metrics[9].load() + SumWorker(ReplayedSlotsCounter), m_mature_metrics[10].load(), m_mature_metrics[11].load(),
         m_mature_metrics[12].load(),
         static_cast<size_t>(SumWorker(PauseMatureCopiedBytes)) + m_pause_mature_copied_bytes.load(),
     };
@@ -4878,7 +4886,7 @@ LaxoriRcResult LaxoriReferenceCounting::RememberMatureSlot(Object** slot, Object
                 {
                     head->entries[index] = {slot, static_cast<uint8_t>(reuse)};
                     head->published[index].store(1, std::memory_order_release);
-                    m_mature_metrics[7].fetch_add(1, std::memory_order_relaxed);
+                    CountWorker(GetExecutionWorker(), RememberedSlotsCounter, 1);
                     return LaxoriRcResult::Success;
                 }
             }
@@ -4983,6 +4991,8 @@ LaxoriRcResult LaxoriReferenceCounting::ReplayRememberedChunk(RememberedChunk* c
 {
     uintptr_t targets[BufferCapacity];
     size_t targetCount = 0;
+    uint64_t replayed = 0;
+    uint64_t pauseReplayed = 0;
     {
         for (size_t index = 0; index < chunk->reserved.load(std::memory_order_acquire); index++)
         {
@@ -5122,13 +5132,13 @@ LaxoriRcResult LaxoriReferenceCounting::ReplayRememberedChunk(RememberedChunk* c
                         result = QueueTrace(targets, targetCount);
                         targetCount = 0;
                     }
-                    m_pause_trace_metrics[2].fetch_add(1, std::memory_order_relaxed);
+                    pauseReplayed++;
                 }
                 else
                 {
                     result = QueueTrace(&value, 1);
                 }
-                m_mature_metrics[9].fetch_add(1, std::memory_order_relaxed);
+                replayed++;
             }
             if (result != LaxoriRcResult::Success)
             {
@@ -5136,6 +5146,9 @@ LaxoriRcResult LaxoriReferenceCounting::ReplayRememberedChunk(RememberedChunk* c
             }
         }
     }
+    const size_t worker = GetExecutionWorker();
+    CountWorker(worker, ReplayedSlotsCounter, replayed);
+    CountWorker(worker, PauseReplayedSlotsCounter, pauseReplayed);
     return targetCount == 0 ? LaxoriRcResult::Success : QueueTrace(targets, targetCount);
 }
 
@@ -9684,7 +9697,7 @@ LaxoriRcResult LaxoriReferenceCounting::ProcessTraceObject(
         *directBudget -= maximumReferences;
         if (GetPhase() == LaxoriRcPhase::Mutator && GetTracePhase() == LaxoriTracePhase::Concurrent)
         {
-            m_trace_metrics[ConcurrentSlices].fetch_add(1, std::memory_order_relaxed);
+            CountWorker(GetExecutionWorker(), ConcurrentSlicesCounter, 1);
         }
         ExitTraceLock(index);
         return result;
@@ -9857,7 +9870,7 @@ LaxoriRcResult LaxoriReferenceCounting::ProcessTraceScan(TraceScan* scan, bool f
     ExitTraceLock(index);
     if (!finish && GetPhase() == LaxoriRcPhase::Mutator && GetTracePhase() == LaxoriTracePhase::Concurrent)
     {
-        m_trace_metrics[ConcurrentSlices].fetch_add(1, std::memory_order_relaxed);
+        CountWorker(GetExecutionWorker(), ConcurrentSlicesCounter, 1);
 #ifdef LAXORI_HAS_DIAGNOSTIC_PROBES
         uintptr_t target = reinterpret_cast<uintptr_t>(scan->object);
         if (!complete && m_scan_checkpoint.load(std::memory_order_acquire) == target)
@@ -9898,7 +9911,7 @@ LaxoriRcResult LaxoriReferenceCounting::FinishDyingTraceObject(Object* object)
     if (m_mark_metadata.Load(start, SideMetadataMemoryOrder::SequentiallyConsistent) == 0)
     {
         m_mark_metadata.Store(start, 1, SideMetadataMemoryOrder::SequentiallyConsistent);
-        m_trace_metrics[DeletionMarks].fetch_add(1, std::memory_order_relaxed);
+        CountWorker(GetExecutionWorker(), DeletionMarksCounter, 1);
 #ifdef LAXORI_HAS_PHASE_TIMERS
         CountWindow(1, 1);
 #endif // LAXORI_HAS_PHASE_TIMERS
@@ -9906,7 +9919,7 @@ LaxoriRcResult LaxoriReferenceCounting::FinishDyingTraceObject(Object* object)
     TraceScan* scan = FindTraceScan(index);
     if (result == LaxoriRcResult::Success && scan != nullptr && !scan->complete)
     {
-        m_trace_metrics[ForcedScans].fetch_add(1, std::memory_order_relaxed);
+        CountWorker(GetExecutionWorker(), ForcedScansCounter, 1);
         result = ScanTraceLocked(scan, true);
     }
     ExitTraceLock(index);
@@ -10367,16 +10380,28 @@ LaxoriRcResult LaxoriReferenceCounting::HoldTrace(bool hold)
         ? PublishTraceWork() : LaxoriRcResult::Success;
 }
 
+uint64_t LaxoriReferenceCounting::GetPauseTraceMetric(size_t index) const
+{
+    if (index >= 4)
+    {
+        return UINT64_MAX;
+    }
+    uint64_t value = m_pause_trace_metrics[index].load(std::memory_order_relaxed);
+    return index == 2 ? value + SumWorker(PauseReplayedSlotsCounter) : value;
+}
+
 LaxoriTraceMetrics LaxoriReferenceCounting::GetTraceMetrics() const
 {
     return {
         m_trace_metrics[InitialMarks].load(), m_trace_metrics[FinalMarks].load(),
         m_trace_metrics[FullMarks].load(), SumWorker(TraceObjectsCounter) + m_trace_metrics[TracedObjects].load(),
         SumWorker(TraceReferencesCounter) + m_trace_metrics[TracedReferences].load(), m_trace_metrics[SatbEntries].load(),
-        m_trace_metrics[DeletionMarks].load(), m_trace_metrics[ForcedScans].load(),
+        m_trace_metrics[DeletionMarks].load() + SumWorker(DeletionMarksCounter),
+        m_trace_metrics[ForcedScans].load() + SumWorker(ForcedScansCounter),
         m_trace_metrics[SplitPackets].load(), m_trace_metrics[CycleObjects].load(),
         m_trace_metrics[CycleBytes].load(), m_trace_metrics[Interruptions].load(),
-        m_trace_metrics[ConcurrentSlices].load(), m_trace_metrics[CheckpointInterruptions].load(),
+        m_trace_metrics[ConcurrentSlices].load() + SumWorker(ConcurrentSlicesCounter),
+        m_trace_metrics[CheckpointInterruptions].load(),
         WindowMetric(0), WindowMetric(1), WindowMetric(2), WindowMetric(3), WindowMetric(4), WindowMetric(5),
         WindowMetric(6),
     };
