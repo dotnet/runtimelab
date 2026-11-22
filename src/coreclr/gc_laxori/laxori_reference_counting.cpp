@@ -614,7 +614,9 @@ struct LaxoriReferenceCounting::TraceBatch
     size_t count = 0;
     bool registered = false;
     bool accounted = false;
-    uintptr_t references[FullTraceBatchCapacity];
+    uintptr_t storage[FullTraceBatchCapacity];
+    // P8. The trace loop of a packet swaps this buffer with its level buffer, so a level is not copied.
+    uintptr_t* references = storage;
 
     explicit TraceBatch(LaxoriReferenceCounting* owner) : engine(owner), worker(owner->GetExecutionWorker())
     {
@@ -9419,11 +9421,15 @@ LaxoriRcResult LaxoriReferenceCounting::ProcessTraceWork(Work* work, TraceBatch*
     // until no child is left (cm.rs: LAXORIConcurrentTraceObjects::do_work). A chain of children costs one packet. Only a
     // batch that fills up (8 192 children) becomes a new packet, so that other workers can take it. Before, every
     // object that had children made its own packet.
+    // P8. The level and the batch swap buffers, as the oracle swaps two Vecs (gc_work/tracing.rs:279-300).
+    uintptr_t spare[FullTraceBatchCapacity];
+    uintptr_t* unused = spare;
     while (result == LaxoriRcResult::Success && targets != nullptr && targets->count != 0 && !ShouldStopTraceLoop())
     {
         size_t levelCount = targets->count;
-        uintptr_t level[FullTraceBatchCapacity];
-        memcpy(level, targets->references, levelCount * sizeof(uintptr_t));
+        uintptr_t* level = targets->references;
+        targets->references = unused;
+        unused = level;
         targets->count = 0;
         size_t directBudget = BufferCapacity;
         for (size_t index = 0; index < levelCount; index++)
@@ -9448,6 +9454,11 @@ LaxoriRcResult LaxoriReferenceCounting::ProcessTraceWork(Work* work, TraceBatch*
     if (result == LaxoriRcResult::Success && targets != nullptr)
     {
         result = targets->Flush();
+    }
+    if (targets != nullptr)
+    {
+        // `spare` ends with this frame.
+        targets->references = targets->storage;
     }
     uint64_t previous = m_trace_pending.fetch_sub(1, std::memory_order_acq_rel);
     if (previous == 0)
