@@ -10036,7 +10036,10 @@ LaxoriRcResult LaxoriReferenceCounting::ScanTraceLocked(TraceScan* scan, bool fi
         count = 0;
         return result;
     };
-    while (!scan->complete)
+    // Port overhead 3. Only the scanner writes complete (under the trace lock, or a scan on its stack), so its loop reads it
+    // relaxed. The store is a release: a reader that sees complete with an acquire load also sees the scan state. No reader
+    // needs a full barrier (a seq_cst store is an xchg on x64).
+    while (!scan->complete.load(std::memory_order_relaxed))
     {
         if (scan->cursor == scan->range.count)
         {
@@ -10052,7 +10055,7 @@ LaxoriRcResult LaxoriReferenceCounting::ScanTraceLocked(TraceScan* scan, bool fi
                     }
                     scan->loaderAllocator = nullptr;
                 }
-                scan->complete = true;
+                scan->complete.store(true, std::memory_order_release);
                 break;
             }
         }
