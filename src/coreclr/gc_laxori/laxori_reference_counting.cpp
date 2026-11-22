@@ -5175,7 +5175,13 @@ LaxoriRcResult LaxoriReferenceCounting::TryCopyMature(Object** reference)
 {
     Object* source = *reference;
     *reference = ResolveForwardedChecked(source);
-    if (*reference != source || source == nullptr || !IsMatureCandidate(Start(source)) ||
+    return *reference != source ? LaxoriRcResult::Success : TryCopyMatureResolved(reference);
+}
+
+LaxoriRcResult LaxoriReferenceCounting::TryCopyMatureResolved(Object** reference)
+{
+    Object* source = *reference;
+    if (source == nullptr || !IsMatureCandidate(Start(source)) ||
         (GetTracePhase() != LaxoriTracePhase::Full && GetTracePhase() != LaxoriTracePhase::FinalMark))
     {
         return LaxoriRcResult::Success;
@@ -9634,7 +9640,7 @@ LaxoriRcResult LaxoriReferenceCounting::ProcessTraceObject(
     }
     if (m_configuration.evacuateMature)
     {
-        LaxoriRcResult copied = TryCopyMature(&object);
+        LaxoriRcResult copied = TryCopyMatureResolved(&object);
         if (copied != LaxoriRcResult::Success)
         {
             return copied;
