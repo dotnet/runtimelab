@@ -81,6 +81,10 @@ struct LaxoriRcConfiguration
     bool parallelPauseTrace = true;
     // Collect interior-lookup timing and counters only when LAXORILookupStats is enabled.
     bool lookupStats = false;
+    // Count the diagnostic trace and remembered-set statistics (rememberedEntries, replayedEntries, deletionMarks,
+    // forcedScans, concurrentSlices, pause trace metric 2) only when LAXORITraceStats is enabled. No product decision reads
+    // them. When this is false, their getters return UINT64_MAX.
+    bool traceStats = false;
     // The children that a trace packet of a parallel pause collects before it makes a new packet (1 to 8192).
     size_t pauseTraceBatch = 512;
     // When the policy hint says that a trace is next, packets clear the ObjectMark plane while the program runs, and the
@@ -858,6 +862,7 @@ private:
     LaxoriRcResult Fail(LaxoriRcResult result);
     void CountWorker(size_t worker, size_t counter, uint64_t amount);
     uint64_t SumWorker(size_t counter) const;
+    uint64_t TraceStat(uint64_t value) const { return m_configuration.traceStats ? value : UINT64_MAX; }
     uint64_t SumMutatorCounter(std::atomic<uint64_t> LaxoriRcMutator::* counter) const;
     LaxoriRcResult InitializeBuffers(size_t slots);
     bool CommitPlanes(size_t first, size_t count, bool initialize = true);

@@ -338,6 +338,7 @@ HRESULT LaxoriGcHeap::Initialize()
     bool noMutatorRecycling = false;
     bool overshoot = true;
     bool phaseTimers = true;
+    bool traceStats = false;
     size_t nurseryCapMB = 0;
     size_t selectParallelBlocks = configuration.selectParallelBlocks;
     bool immixReserveSpecified = false;
@@ -398,6 +399,7 @@ HRESULT LaxoriGcHeap::Initialize()
         !ReadBooleanSetting("LAXORIPolicyTrace", &m_policy_trace) ||
         !ReadBooleanSetting("LAXORILookupStats", &m_lookup_stats) ||
         !ReadBooleanSetting("LAXORIWindowStats", &m_window_stats) ||
+        !ReadBooleanSetting("LAXORITraceStats", &traceStats) ||
         !ReadBooleanSetting("LAXORIPrezero", &configuration.prezero) ||
         !ReadBooleanSetting("LAXORIPrezeroThread", &configuration.prezeroThread) ||
         !ReadSetting("LAXORIPrezeroMarginBlocks", &configuration.prezeroMarginBlocks, 10, 4096) ||
@@ -434,6 +436,8 @@ HRESULT LaxoriGcHeap::Initialize()
     }
     m_engine.GetPauseTimers().Configure(phaseTimers);
     configuration.lookupStats = m_lookup_stats;
+    // LAXORIWINDOW prints deletionMarks.
+    configuration.traceStats = traceStats || m_window_stats;
     configuration.selectParallelBlocks = static_cast<uint32_t>(selectParallelBlocks);
     for (const char* unsupported : {
             "LAXORIMaxPauseMillis", "LAXORITransparentHugepage",
