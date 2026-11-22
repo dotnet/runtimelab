@@ -10019,8 +10019,11 @@ LaxoriRcResult LaxoriReferenceCounting::ScanTraceLocked(TraceScan* scan, bool fi
     // No object moves while the concurrent trace runs (see ProcessConcurrentTraceObject). A child that a pause moves later
     // has count zero, so it is queued, and ProcessTraceObject resolves it when it uses it.
     const bool concurrentPhase = phase == LaxoriRcPhase::Mutator && tracePhase == LaxoriTracePhase::Concurrent;
-    (void)concurrentPhase;
     const size_t worker = targets != nullptr ? targets->worker : GetExecutionWorker();
+    // Port overhead 5. The Immix capacity shrinks only in a pause with no trace work (ReturnTailSuspended), and a larger
+    // capacity is published before its blocks hold objects. A stale smaller limit only queues the child (safe).
+    const uintptr_t immixArena = reinterpret_cast<uintptr_t>(m_arena);
+    const size_t immixLimit = m_arena != nullptr ? m_immix_capacity.load(std::memory_order_acquire) : 0;
     auto append = [&](uintptr_t target)
     {
         if (targets != nullptr)
@@ -10114,9 +10117,14 @@ LaxoriRcResult LaxoriReferenceCounting::ScanTraceLocked(TraceScan* scan, bool fi
             // Remember the slot and resolve/copy first: a marked source can move to an unmarked destination.
             // Counted marks have scan, promotion or deletion work behind them. Keep RC-zero readers on the checked queue path.
             uintptr_t childStart = Start(child);
-            if (!OwnsAddress(childStart) || childStart % sizeof(uintptr_t) != 0 ||
+            // Port overhead 5. One range test with the limit read once per scan (the same test as OwnsAddress).
+            // In the concurrent trace, a marked child with count zero only returns at the mark check of
+            // ProcessTraceObject, so the scan does not read its count.
+            const bool owned = childStart % sizeof(uintptr_t) == 0 &&
+                (childStart - immixArena < immixLimit || IsLarge(childStart));
+            if (!owned ||
                 m_mark_metadata.Load(childStart, SideMetadataMemoryOrder::Relaxed) == 0 ||
-                m_rc_metadata.Load(childStart, SideMetadataMemoryOrder::Relaxed) == 0)
+                (!concurrentPhase && m_rc_metadata.Load(childStart, SideMetadataMemoryOrder::Relaxed) == 0))
             {
                 LaxoriRcResult result = append(reinterpret_cast<uintptr_t>(child));
                 if (result != LaxoriRcResult::Success)
