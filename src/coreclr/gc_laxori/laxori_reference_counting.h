@@ -79,6 +79,8 @@ struct LaxoriRcConfiguration
     // FinalMark and Full pauses trace, replay the remembered slots and copy mature objects on all workers (the pause thread
     // helps). False runs them on the pause thread alone, as before.
     bool parallelPauseTrace = true;
+    // Collect interior-lookup timing and counters only when LAXORILookupStats is enabled.
+    bool lookupStats = false;
     // The children that a trace packet of a parallel pause collects before it makes a new packet (1 to 8192).
     size_t pauseTraceBatch = 512;
     // When the policy hint says that a trace is next, packets clear the ObjectMark plane while the program runs, and the
@@ -701,7 +703,7 @@ public:
     size_t GetPauseSurvivorBytes() const;
     // P22 (D2). Span statistics: 0 = spans closed, 1 = bytes in closed spans, 2 = spans of the last pause.
     uint64_t GetSpanMetric(size_t metric) const { return m_span_metrics[metric].load(std::memory_order_relaxed); }
-    // Interior lookups (FindContainingObject): 0 = calls, 1 = ticks, 2 = answered by the young spans, 3 = checked
+    // Interior lookups (lookupStats only): 0 = calls, 1 = ticks, 2 = answered by the young spans, 3 = checked
     // resolutions of a stale value that walked a span.
     uint64_t GetLookupMetric(size_t metric) const
     {

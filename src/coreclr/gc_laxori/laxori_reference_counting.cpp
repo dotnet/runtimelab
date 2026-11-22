@@ -3793,7 +3793,10 @@ Object* LaxoriReferenceCounting::ResolveForwardedChecked(Object* object) const
     {
         return object;
     }
-    m_lookup_metrics[3].fetch_add(1, std::memory_order_relaxed);
+    if (m_configuration.lookupStats)
+    {
+        m_lookup_metrics[3].fetch_add(1, std::memory_order_relaxed);
+    }
     Object* found = nullptr;
     if (FindInYoungSpans(reinterpret_cast<uintptr_t>(object), &found, false) != LaxoriRcResult::Success || found != object)
     {
@@ -7601,6 +7604,10 @@ static int64_t LookupClock()
 
 LaxoriRcResult LaxoriReferenceCounting::FindContainingObject(uintptr_t address, Object** object, bool requireCounted) const
 {
+    if (!m_configuration.lookupStats)
+    {
+        return FindContainingObjectCore(address, object, requireCounted);
+    }
     int64_t begin = LookupClock();
     LaxoriRcResult result = FindContainingObjectCore(address, object, requireCounted);
     m_lookup_metrics[0].fetch_add(1, std::memory_order_relaxed);
@@ -7649,7 +7656,10 @@ LaxoriRcResult LaxoriReferenceCounting::FindContainingObjectCore(uintptr_t addre
         &&
         FindInYoungSpans(address, object, requireCounted) == LaxoriRcResult::Success)
     {
-        m_lookup_metrics[2].fetch_add(1, std::memory_order_relaxed);
+        if (m_configuration.lookupStats)
+        {
+            m_lookup_metrics[2].fetch_add(1, std::memory_order_relaxed);
+        }
         return LaxoriRcResult::Success;
     }
 #ifdef LAXORI_OBJECT_START_WALK
