@@ -2,6 +2,9 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 #include "gcinternal.h"
+#ifdef FEATURE_LXR_RC_VERTICAL
+#include "lxrrcverticaltest.h"
+#endif
 
 #ifdef SERVER_GC
 namespace SVR
@@ -207,6 +210,37 @@ HRESULT GCHeap::Initialize()
     STRESS_LOG0 (LF_GC, LL_ALWAYS, "TraceGC is not turned on");
 #endif
     HRESULT hr = S_OK;
+
+    ObjectReferenceEnumerationParameters* objectReferenceEnumeration =
+        GetObjectReferenceEnumerationParameters();
+    if (objectReferenceEnumeration == nullptr)
+    {
+        return E_FAIL;
+    }
+    if ((objectReferenceEnumeration->request == ObjectReferenceEnumerationRequest::Enabled) &&
+        ((objectReferenceEnumeration->request_status !=
+          ObjectReferenceEnumerationRequestStatus::Accepted) ||
+         (objectReferenceEnumeration->get_loader_allocator_object_slot == nullptr)))
+    {
+        return E_NOTIMPL;
+    }
+
+    ObjectHeaderBitsParameters* objectHeaderBits = GetObjectHeaderBitsParameters();
+    if (objectHeaderBits == nullptr)
+    {
+        return E_FAIL;
+    }
+    if ((objectHeaderBits->request == ObjectHeaderBitsRequest::Enabled) &&
+        ((objectHeaderBits->request_status != ObjectHeaderBitsRequestStatus::Accepted) ||
+         (objectHeaderBits->object_byte_offset == 0) ||
+         (objectHeaderBits->storage_word_size != sizeof(uint32_t)) ||
+         (objectHeaderBits->bit_mask == 0) ||
+         (objectHeaderBits->granted_protocol != ObjectHeaderBitsProtocol::ClaimAndPublish) ||
+         (objectHeaderBits->granted_memory_order !=
+          ObjectHeaderBitsMemoryOrder::SequentiallyConsistent)))
+    {
+        return E_NOTIMPL;
+    }
 
     qpf = (uint64_t)minipal_hires_tick_frequency();
     qpf_ms = 1000.0 / (double)qpf;
@@ -1593,6 +1627,12 @@ GCHeap::Alloc(gc_alloc_context* context, size_t size, uint32_t flags REQD_ALIGN_
 void
 GCHeap::FixAllocContext (gc_alloc_context* context, void* arg, void *heap)
 {
+#ifdef FEATURE_LXR_RC_VERTICAL
+    if (arg == nullptr && heap == nullptr)
+    {
+        LxrRcVerticalOnThreadDetach(context);
+    }
+#endif
     alloc_context* acontext = static_cast<alloc_context*>(context);
 #ifdef MULTIPLE_HEAPS
 
@@ -2588,6 +2628,60 @@ void GCHeap::SetFinalizationRun (Object* obj)
 
 #endif //FEATURE_PREMORTEM_FINALIZATION
 
+#ifdef _DEBUG
+void ValidateObjectReferenceRanges(Object* obj)
+{
+    uint8_t* object = reinterpret_cast<uint8_t*>(obj);
+    if (!header(object)->ContainsGCPointers())
+    {
+        return;
+    }
+
+    GCReferenceRangeIterator iterator(obj);
+    GCReferenceRange range = {};
+    bool hasRange = iterator.Next(&range);
+    size_t rangeIndex = 0;
+
+    go_through_object_nostart(method_table(object), object, size(object), slot,
+    {
+        _ASSERTE(hasRange);
+        _ASSERTE((range.start + rangeIndex) == reinterpret_cast<Object**>(slot));
+        _ASSERTE(*(range.start + rangeIndex) == reinterpret_cast<Object*>(*slot));
+
+        rangeIndex++;
+        if (rangeIndex == range.count)
+        {
+            rangeIndex = 0;
+            hasRange = iterator.Next(&range);
+        }
+    });
+
+    _ASSERTE(!hasRange);
+    _ASSERTE(range.start == nullptr);
+    _ASSERTE(range.count == 0);
+
+#if defined(FEATURE_OBJECT_REFERENCE_ENUMERATION_TEST) && !defined(FEATURE_NATIVEAOT)
+    if (GCConfig::GetObjectReferenceEnumerationTest() &&
+        header(object)->GetMethodTable()->Collectible())
+    {
+        ObjectReferenceEnumerationParameters* parameters =
+            g_theGCHeap->GetObjectReferenceEnumerationParameters();
+        _ASSERTE(
+            parameters->request_status ==
+            ObjectReferenceEnumerationRequestStatus::Accepted);
+        _ASSERTE(parameters->get_loader_allocator_object_slot != nullptr);
+
+        Object** loaderAllocatorSlot =
+            parameters->get_loader_allocator_object_slot(method_table(object));
+        _ASSERTE(loaderAllocatorSlot != nullptr);
+        _ASSERTE(
+            reinterpret_cast<uint8_t*>(*loaderAllocatorSlot) ==
+            get_class_object(object));
+    }
+#endif // FEATURE_OBJECT_REFERENCE_ENUMERATION_TEST && !FEATURE_NATIVEAOT
+}
+#endif // _DEBUG
+
 void GCHeap::DiagWalkObject (Object* obj, walk_fn fn, void* context)
 {
     uint8_t* o = (uint8_t*)obj;
@@ -2611,6 +2705,9 @@ void GCHeap::DiagWalkObject2 (Object* obj, walk_fn2 fn, void* context)
     uint8_t* o = (uint8_t*)obj;
     if (o)
     {
+#ifdef _DEBUG
+        ValidateObjectReferenceRanges(obj);
+#endif // _DEBUG
         go_through_object_cl (method_table (o), o, size(o), oo,
                                     {
                                         if (*oo)
@@ -2741,6 +2838,120 @@ void GCHeap::NullBridgeObjectsWeakRefs(size_t length, void* unreachableObjectHan
 #else
     assert(false);
 #endif
+}
+
+#ifdef FEATURE_OBJECT_REFERENCE_ENUMERATION_TEST
+namespace
+{
+Object** LOCALGC_CALLCONV InvalidLoaderAllocatorObjectSlot(MethodTable* methodTable)
+{
+    UNREFERENCED_PARAMETER(methodTable);
+    return nullptr;
+}
+}
+#endif // FEATURE_OBJECT_REFERENCE_ENUMERATION_TEST
+
+ObjectReferenceEnumerationParameters* GCHeap::GetObjectReferenceEnumerationParameters()
+{
+    static ObjectReferenceEnumerationParameters parameters = {};
+    static bool initialized;
+
+#ifdef FEATURE_OBJECT_REFERENCE_ENUMERATION_TEST
+    if (!initialized && GCConfig::GetObjectReferenceEnumerationTest())
+    {
+        parameters.request = ObjectReferenceEnumerationRequest::Enabled;
+
+        switch (GCConfig::GetObjectReferenceEnumerationTestMalformed())
+        {
+            case 1:
+                parameters.request_status =
+                    ObjectReferenceEnumerationRequestStatus::Accepted;
+                break;
+            case 2:
+                parameters.get_loader_allocator_object_slot =
+                    InvalidLoaderAllocatorObjectSlot;
+                break;
+            case 3:
+                return nullptr;
+            case 4:
+                parameters.request =
+                    static_cast<ObjectReferenceEnumerationRequest>(-1);
+                break;
+            default:
+                break;
+        }
+    }
+#endif // FEATURE_OBJECT_REFERENCE_ENUMERATION_TEST
+
+    initialized = true;
+    return &parameters;
+}
+
+ObjectHeaderBitsParameters* GCHeap::GetObjectHeaderBitsParameters()
+{
+    static ObjectHeaderBitsParameters parameters = {};
+    static bool initialized;
+
+#ifdef FEATURE_OBJECT_HEADER_BITS_TEST
+    if (!initialized && GCConfig::GetObjectHeaderBitsTest())
+    {
+        constexpr uint32_t RequiredAtomicOperations =
+            static_cast<uint32_t>(ObjectHeaderBitsAtomicOperation::Load) |
+            static_cast<uint32_t>(ObjectHeaderBitsAtomicOperation::CompareExchange) |
+            static_cast<uint32_t>(ObjectHeaderBitsAtomicOperation::Store) |
+            static_cast<uint32_t>(ObjectHeaderBitsAtomicOperation::Wait);
+
+        parameters.request = ObjectHeaderBitsRequest::Enabled;
+        parameters.version = GC_OBJECT_HEADER_BITS_PARAMETERS_VERSION;
+        parameters.size = sizeof(ObjectHeaderBitsParameters);
+        parameters.requested_bit_count = 2;
+        parameters.requested_state_count = 3;
+        parameters.requested_protocol = ObjectHeaderBitsProtocol::ClaimAndPublish;
+        parameters.required_atomic_operations = RequiredAtomicOperations;
+        parameters.required_memory_order =
+            ObjectHeaderBitsMemoryOrder::SequentiallyConsistent;
+
+        switch (GCConfig::GetObjectHeaderBitsTestMalformed())
+        {
+            case 1:
+                parameters.request_status = ObjectHeaderBitsRequestStatus::Accepted;
+                break;
+            case 2:
+                parameters.version++;
+                break;
+            case 3:
+                parameters.size--;
+                break;
+            case 4:
+                parameters.object_byte_offset = -4;
+                break;
+            case 5:
+                parameters.requested_bit_count++;
+                break;
+            case 6:
+                parameters.required_atomic_operations |= 0x80000000;
+                break;
+            case 7:
+                return nullptr;
+            case 8:
+                parameters.requested_protocol =
+                    static_cast<ObjectHeaderBitsProtocol>(-1);
+                break;
+            case 9:
+                parameters.request = static_cast<ObjectHeaderBitsRequest>(-1);
+                break;
+            case 10:
+                parameters.required_memory_order =
+                    static_cast<ObjectHeaderBitsMemoryOrder>(-1);
+                break;
+            default:
+                break;
+        }
+    }
+#endif // FEATURE_OBJECT_HEADER_BITS_TEST
+
+    initialized = true;
+    return &parameters;
 }
 
 HRESULT GCHeap::WaitUntilConcurrentGCCompleteAsync(int millisecondsTimeout)

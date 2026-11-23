@@ -70,6 +70,7 @@ set(COMMON_RUNTIME_SOURCES
     ${GC_DIR}/handletablecore.cpp
     ${GC_DIR}/handletablescan.cpp
     ${GC_DIR}/objecthandle.cpp
+    ../../gc_lxr/side_metadata.cpp
     ${GC_DIR}/softwarewritewatch.cpp
     ${CLR_SRC_NATIVE_DIR}/minipal/xoshiro128pp.c
 )
@@ -136,6 +137,7 @@ if (WIN32)
     ${GC_DIR}/handletable.inl
     ${GC_DIR}/handletablepriv.h
     ${GC_DIR}/objecthandle.h
+    ../../gc_lxr/side_metadata.h
     ${GC_DIR}/softwarewritewatch.h)
 
   include_directories(windows)

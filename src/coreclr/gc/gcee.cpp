@@ -228,7 +228,7 @@ void GCHeap::GetFastGCFunctions(FastGCFunctions* functions)
     functions->context = nullptr;
     functions->write_barrier = nullptr;
     functions->is_in_gc_heap = nullptr;
-    functions->check_escape = nullptr;
+    functions->pre_store = nullptr;
     functions->bulk_move_with_write_barrier = nullptr;
 }
 

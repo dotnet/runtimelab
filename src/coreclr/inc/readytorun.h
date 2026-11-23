@@ -77,6 +77,11 @@
 // READYTORUN_HELPER_ResumeAfterCatch at catch resumption points). Only WebAssembly emits or
 // consumes the scaffolding, so the flag is only ever set on WebAssembly images.
 // R2R Version 29.3 adds READYTORUN_HELPER_BulkWriteBarrierSmall.
+// R2R flag READYTORUN_FLAG_OLD_VALUE_WRITE_BARRIERS (the image keeps a write barrier for every reference
+// store). A runtime with a garbage collector that needs the old value of every overwritten reference only uses images
+// that have the flag. The version number is not changed: a runtime that does not know the flag can use such an image.
+// GC6.8 shared barriers require SHARED_OLD_VALUE_WRITE_BARRIERS instead of the legacy marker. New compilers emit
+// only the shared marker, so both new and old old-value runtimes reject the other generation's images and use JIT.
 
 struct READYTORUN_CORE_HEADER
 {
@@ -118,6 +123,8 @@ enum ReadyToRunFlag
     READYTORUN_FLAG_STRIPPED_INLINING_INFO      = 0x00000400,   // Inlining info has been stripped from the image
     READYTORUN_FLAG_STRIPPED_DEBUG_INFO         = 0x00000800,   // Debug info has been stripped from the image
     READYTORUN_FLAG_VERIFY_GC_MODE_TRANSITIONS  = 0x00001000,   // Code in this image verifies that GC mode transitions are legal. WebAssembly only; its catch resumption points call READYTORUN_HELPER_ResumeAfterCatch.
+    READYTORUN_FLAG_OLD_VALUE_WRITE_BARRIERS    = 0x00004000,   // Every reference store has a write barrier (also null, frozen and provably non-heap values); CoreLib old-value paths are used
+    READYTORUN_FLAG_SHARED_OLD_VALUE_WRITE_BARRIERS = 0x00008000, // Old-value store coverage with collector-owned shared copy/clear and typed fill stores
 };
 
 enum class ReadyToRunSectionType : uint32_t
@@ -389,7 +396,9 @@ enum ReadyToRunHelper
     READYTORUN_HELPER_ByRefWriteBarrier         = 0x32, // No longer supported as of READYTORUN_MAJOR_VERSION 19.0
     READYTORUN_HELPER_BulkWriteBarrier          = 0x33,
     READYTORUN_HELPER_BulkWriteBarrierSmall     = 0x34,
-
+    // P21 (D1): layout-aware bulk helpers, used by code compiled for a collector that needs the old value of every store.
+    READYTORUN_HELPER_BulkWriteBarrierWithLayout      = 0x35,
+    READYTORUN_HELPER_BulkWriteBarrierClearWithLayout = 0x36,
     // Array helpers
     READYTORUN_HELPER_Stelem_Ref                = 0x38,
     READYTORUN_HELPER_Ldelema_Ref               = 0x39,

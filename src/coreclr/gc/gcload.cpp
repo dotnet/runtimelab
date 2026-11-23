@@ -59,6 +59,15 @@ GC_VersionInfo(/* InOut */ VersionInfo* info)
 #endif
     info->MajorVersion = GC_INTERFACE_MAJOR_VERSION;
     info->MinorVersion = GC_INTERFACE_MINOR_VERSION;
+#ifdef BUILD_AS_STANDALONE
+    // EE 6.0 includes NativeAOT and hosts with incompatible tail slots. These collectors need only the original prefix.
+    if (g_runtimeSupportedVersion.MajorVersion < EE_INTERFACE_MAJOR_VERSION ||
+        (g_runtimeSupportedVersion.MajorVersion == EE_INTERFACE_MAJOR_VERSION &&
+         g_runtimeSupportedVersion.MinorVersion < EE_INTERFACE_MINOR_VERSION))
+    {
+        info->MinorVersion = 0;
+    }
+#endif
     info->BuildVersion = 0;
 #ifdef FEATURE_SATORI_GC
 	info->Name = "Satori GC";

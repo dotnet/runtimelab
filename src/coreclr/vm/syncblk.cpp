@@ -737,10 +737,10 @@ DWORD SyncBlockCache::NewSyncBlockSlot(Object *obj)
 
     CardTableSetBit (indexNewEntry);
 
-    if (GCHeapUtilities::GetFastGCFunctions().check_escape != nullptr)
+    if (GCHeapUtilities::GetFastGCFunctions().pre_store != nullptr)
     {
         // TODO: I've derived this from EscapeCheckOnHandleCreation(), but it is not 100% match.
-        GCHeapUtilities::GetFastGCFunctions().check_escape(&obj, obj);
+        GCHeapUtilities::PreStoreCheck(&obj, obj);
         // make sure the object is published after we are done marking escapes
         //VolatileStoreBarrier();
         VOLATILE_MEMORY_BARRIER();
@@ -1837,18 +1837,3 @@ BOOL SyncBlock::TryGetLockInfo(DWORD *pThreadId, DWORD *pRecursionLevel)
         return FALSE;
     }
 }
-
-#if defined(HOST_64BIT) && defined(_DEBUG)
-void ObjHeader::IllegalAlignPad()
-{
-    WRAPPER_NO_CONTRACT;
-	if (g_heap_type != GC_HEAP_CUSTOM)
-	{
-#ifdef LOGGING
-    void** object = ((void**) this) + 1;
-    STRESS_LOG1(LF_ASSERT, LL_ALWAYS, "\n\n******** Illegal ObjHeader m_alignpad not 0, m_alignpad value: %d\n", m_alignpad);
-#endif
-    _ASSERTE(m_alignpad == 0);
-	}
-}
-#endif // HOST_64BIT && _DEBUG

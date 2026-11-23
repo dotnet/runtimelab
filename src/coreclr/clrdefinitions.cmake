@@ -32,6 +32,17 @@ if(CLR_CMAKE_TARGET_LINUX_MUSL)
   add_definitions(-DNO_FIXED_STACK_LIMIT)
 endif(CLR_CMAKE_TARGET_LINUX_MUSL)
 
+if(CLR_CMAKE_TARGET_LINUX AND NOT CLR_CMAKE_TARGET_LINUX_MUSL AND CLR_CMAKE_TARGET_ARCH_AMD64)
+  # The assembly helpers (allocation, P/Invoke) read their thread-local data through a TLS descriptor, not through a call
+  # to __tls_get_addr. With glibc older than 2.39 (bug 19924), __tls_get_addr takes a slow path on every call in a thread
+  # whose TLS generation is older than that of a library that was loaded later, until the thread touches the TLS of that
+  # library. A TLS descriptor compares the generation of the accessed module only, so it does not have this problem.
+  # arm64 already uses TLS descriptors. Set CLR_CMAKE_DISABLE_TLS_DESCRIPTORS to build the old sequence.
+  if(NOT CLR_CMAKE_DISABLE_TLS_DESCRIPTORS)
+    add_definitions(-DFEATURE_TLS_DESCRIPTORS)
+  endif()
+endif()
+
 add_definitions(-DDEBUGGING_SUPPORTED)
 
 if (FEATURE_CORPROFILER)
