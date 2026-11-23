@@ -78,6 +78,16 @@ struct LxrRcConfiguration
     // FinalMark and Full pauses trace, replay the remembered slots and copy mature objects on all workers (the pause thread
     // helps). False runs them on the pause thread alone, as before.
     bool parallelPauseTrace = true;
+    // Collect interior-lookup timing and counters only when LXRLookupStats is enabled.
+    bool lookupStats = false;
+    // Count the diagnostic trace and remembered-set statistics (rememberedEntries, replayedEntries, deletionMarks,
+    // forcedScans, concurrentSlices, pause trace metric 2), the per-entry RC statistics (incrementEntries,
+    // decrementEntries, promotions, deaths, rootIncrements, rootDecrements, objectScans, objectSizeQueries), the copy
+    // statistics (nursery and mature copiedObjects and copiedBytes), the trace objects and references, and storage
+    // metric 57 (increment traces). No product decision reads them. When this is false, their getters return
+    // UINT64_MAX. Engine tests keep this default; the runtime (lxr_gc.cpp) sets it from LXRTraceStats, which is off by
+    // default.
+    bool traceStats = true;
     // The children that a trace packet of a parallel pause collects before it makes a new packet (1 to 8192).
     size_t pauseTraceBatch = 512;
     // When the policy hint says that a trace is next, packets clear the ObjectMark plane while the program runs, and the
@@ -644,15 +654,12 @@ public:
     };
     uint64_t GetOvershootMetric(size_t metric) const;
     LxrWorkSchedulerMetrics GetSchedulerMetrics() const { return m_scheduler.GetMetrics(); }
-    // 0: pauses that traced in parallel, 1: replay packets that ran, 2: remembered slots that a replay packet copied.
-    uint64_t GetPauseTraceMetric(size_t index) const
-    {
-        return index < 4 ? m_pause_trace_metrics[index].load(std::memory_order_relaxed) : UINT64_MAX;
-    }
+    // 0: pauses that traced in parallel, 1: replay packets, 2: copied remembered slots, 3: parallel finalizer traces.
+    uint64_t GetPauseTraceMetric(size_t index) const;
     size_t GetPauseSurvivorBytes() const;
     // P22 (D2). Span statistics: 0 = spans closed, 1 = bytes in closed spans, 2 = spans of the last pause.
     uint64_t GetSpanMetric(size_t metric) const { return m_span_metrics[metric].load(std::memory_order_relaxed); }
-    // Interior lookups (FindContainingObject): 0 = calls, 1 = ticks, 2 = answered by the young spans, 3 = checked
+    // Interior lookups (lookupStats only): 0 = calls, 1 = ticks, 2 = answered by the young spans, 3 = checked
     // resolutions of a stale value that walked a span.
     uint64_t GetLookupMetric(size_t metric) const
     {
@@ -810,6 +817,7 @@ private:
     LxrRcResult Fail(LxrRcResult result);
     void CountWorker(size_t worker, size_t counter, uint64_t amount);
     uint64_t SumWorker(size_t counter) const;
+    uint64_t TraceStat(uint64_t value) const { return m_configuration.traceStats ? value : UINT64_MAX; }
     uint64_t SumMutatorCounter(std::atomic<uint64_t> LxrRcMutator::* counter) const;
     LxrRcResult InitializeBuffers(size_t slots);
     bool CommitPlanes(size_t first, size_t count, bool initialize = true);
@@ -908,6 +916,9 @@ private:
         bool* incrementedInPlace, uintptr_t* previous);
     LxrRcResult AllocateCopy(size_t size, size_t worker, uintptr_t* start);
     LxrRcResult TryCopyMature(Object** object);
+    // The caller has applied ResolveForwardedChecked. A concurrent copy can still win the claim below.
+    LxrRcResult TryCopyMatureResolved(Object** object);
+    LxrRcResult TryCopyMatureCandidate(Object** object);
     LxrRcResult SelectMatureCandidates();
     // P50 (item 8a). SelectMatureCandidates picks one of two implementations that give the same evacuation set. The serial one
     // is the loop of the first version (one pass over the blocks, then one pass over the candidates). The parallel one
@@ -933,8 +944,11 @@ private:
     bool IsPinnedObject(Object* object) const;
     bool IsMatureCandidate(uintptr_t address);
     LxrRcResult RememberMatureSlot(Object** slot, Object* target);
+    LxrRcResult RememberMatureCandidateSlot(Object** slot, size_t worker);
     LxrRcResult ReplayMatureRememberedSlots();
     void DeleteRememberedChunks();
+    LxrRcResult FlushRememberedBuffers();
+    void PushRememberedChunk(RememberedChunk* chunk);
     LxrRcResult FixForwardingReaders();
     void FixPacketReferences(Work* work);
     LxrRcResult ReleaseSetup();
@@ -995,7 +1009,7 @@ private:
         const uintptr_t* objects, size_t count, TraceScan* scan = nullptr, bool logged = false);
     LxrRcResult DispatchTraceWork(Work* work);
     LxrRcResult ProcessUnsubmittedTrace(bool* progressed);
-    bool OpenPauseTrace(LxrRcResult* result);
+    bool OpenPauseTrace(LxrRcResult* result, bool finalizerTrace = false);
     void ClosePauseTrace();
     LxrRcResult PublishTraceWork();
     LxrRcResult ProcessTraceWork(Work* work);
@@ -1004,8 +1018,12 @@ private:
     LxrRcResult ProcessTraceWork(Work* work, TraceBatch* targets);
     LxrRcResult ProcessTraceObject(Object* object, size_t* directBudget, TraceBatch* targets);
     LxrRcResult ProcessPauseTraceObject(Object* object, uintptr_t start, size_t* directBudget, TraceBatch* targets);
+    LxrRcResult ProcessConcurrentTraceObject(
+        Object* object, uintptr_t start, size_t* directBudget, TraceBatch* targets, size_t worker);
     LxrRcResult ProcessTraceScan(TraceScan* scan, bool finish, TraceBatch* targets = nullptr);
     LxrRcResult ScanTraceLocked(TraceScan* scan, bool finish, TraceBatch* targets = nullptr);
+    LxrRcResult ScanTraceUnbatched(TraceScan* scan, bool finish);
+    LxrRcResult ScanTraceSlots(TraceScan* scan, bool finish, TraceBatch* targets, uintptr_t* children);
     LxrRcResult FinishDyingTraceObject(Object* object);
     // P46 (item 13). True while the lazy decrements mark the objects that die and queue their children for the trace. A trace
     // is on, and the epoch is not the first one after InitialMark: the decrements of that epoch come from the epoch before
@@ -1034,7 +1052,10 @@ private:
     LxrRcResult PrepareTrace();
     LxrRcResult SweepCycles();
     void EnterTraceLock(size_t index);
+    bool EnterTraceLockUnlessMarked(size_t index, uintptr_t start);
     void ExitTraceLock(size_t index);
+    void WaitForTraceClaims(uintptr_t start) const;
+    LxrRcResult QueueTraceScan(Object* object, Object* loader, uintptr_t start);
     LxrRcResult GetObjectSize(Object* object, size_t* size, size_t worker = SIZE_MAX);
     bool IsImmix(uintptr_t start) const;
     bool IsReturnedImmix(uintptr_t start) const;
@@ -1144,6 +1165,7 @@ private:
     std::atomic<uint64_t> m_storage_metrics[9]{};
     std::atomic<uint64_t> m_trace_batch_metrics[5]{};
     // P25 (F1). Number of trace packets that a pause queued for a counted object (metric 57 of GetStorageMetric).
+    // It is counted only when LxrRcConfiguration::traceStats is set; else metric 57 is UINT64_MAX.
     std::atomic<uint64_t> m_increment_traces{0};
     std::atomic<bool> m_storage_diagnostics{false};
     static constexpr size_t TraceLockCount = 16384;
@@ -1154,6 +1176,13 @@ private:
         TraceScan* head = nullptr;
     };
     std::atomic<uint8_t>* m_trace_locks;
+    // The object that a concurrent trace worker has claimed and scans without a trace lock (0: none). One slot per
+    // worker. FinishDyingTraceObject waits until no slot names the dying object (see ProcessConcurrentTraceObject).
+    struct alignas(64) TraceClaim
+    {
+        std::atomic<uintptr_t> start{0};
+    };
+    TraceClaim* m_trace_claims = nullptr;
     TraceScanBucket* m_scan_buckets;
     std::atomic<size_t> m_scan_index_count{0};
     // P17 S7. Pinning. m_block_flags has one byte per Immix block: ImmixAllocationManager::PinnedBlockFlag (the block
@@ -1251,6 +1280,10 @@ private:
     std::atomic<size_t> m_pause_copied_bytes{0};
     std::atomic<uint8_t>* m_evacuation_sources = nullptr;
     std::atomic<RememberedChunk*> m_remembered_chunks{nullptr};
+    // P3. One chunk per worker, plus one shared slot for threads that are not workers (as the per-worker buffers of the
+    // oracle, MatureEvecRemSet::gc_buffers). A full chunk goes to m_remembered_chunks.
+    struct RememberedBuffer;
+    RememberedBuffer* m_remembered_buffers = nullptr;
     // The chunks that a replay works through. The replay takes them from m_remembered_chunks, so that the entries that the
     // trace of the replay adds are not replayed. A chunk is deleted when the replay has ended.
     RememberedChunk* m_replay_chunks = nullptr;
@@ -1259,7 +1292,7 @@ private:
     // The number of children that a trace packet collects before it hands them to the scheduler as a new packet. A pause that
     // traces on all workers uses a smaller number, so that the work spreads to the idle workers soon.
     std::atomic<size_t> m_trace_batch_limit{FullTraceBatchCapacity};
-    // 0: parallel drains, 1: replay chunk packets, 2: remembered entries that were copied by the replay packets.
+    // 0: parallel pauses, 1: replay chunk packets, 2: copied remembered entries, 3: parallel finalizer traces.
     std::atomic<uint64_t> m_pause_trace_metrics[4]{};
     std::atomic<uint64_t> m_mature_metrics[13]{};
     std::atomic<uint64_t> m_cost_ticks[9]{};

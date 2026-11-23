@@ -13,6 +13,14 @@
 struct LaxoriPolicyConfiguration
 {
     size_t traceThreshold = 20;
+    // Port-specific trace pacing (N1). 0 switches each rule off; at most one of them may be set.
+    // traceLivePercent (LAXORITraceLivePercent): start a trace when garbage >= this percent of the predicted mature live pages.
+    // traceLiveFactor (LAXORITraceLiveFactor): the oracle rule with total = max(admitted pages, factor * predicted live pages).
+    // traceGuardPercent (LAXORITraceGuardPercent): when the admitted pages are within this percent of the admission limit (the
+    // hard limit, or the admitted size at which Immix fills its reserve if that is lower), the oracle rule is used again.
+    size_t traceLivePercent = 0;
+    size_t traceLiveFactor = 0;
+    size_t traceGuardPercent = 25;
     size_t rcStopPercent = 15;
     size_t maxSurvivalMB = 128;
     size_t incrementsLimit = SIZE_MAX;
@@ -185,6 +193,15 @@ public:
         LaxoriPauseKind pause, size_t totalPages, size_t maturePages, bool marking,
         bool concurrentEnabled, bool drained)
     {
+        return FinishLazySweep(pause, totalPages, maturePages, marking, concurrentEnabled, drained, SIZE_MAX);
+    }
+
+    // limitPages: the admission limit in pages for the pacing guard: the hard limit of the managed heap, or the admitted
+    // size at which Immix fills its reserve if that is lower. SIZE_MAX means no limit.
+    bool FinishLazySweep(
+        LaxoriPauseKind pause, size_t totalPages, size_t maturePages, bool marking,
+        bool concurrentEnabled, bool drained, size_t limitPages)
+    {
         if (!drained || totalPages == 0 || totalPages > SIZE_MAX / 100 ||
             maturePages > SIZE_MAX / 100)
         {
@@ -198,11 +215,12 @@ public:
         {
             m_mature.store((3.0 * static_cast<double>(maturePages) + MatureLivePages()) / 4.0,
                 std::memory_order_release);
+            m_mature_updated.store(true, std::memory_order_release);
         }
         size_t predicted = static_cast<size_t>(MatureLivePages());
         size_t garbage = maturePages > predicted ? maturePages - predicted : 0;
-        m_cycle.store(!marking && concurrentEnabled &&
-            garbage * 100 >= m_configuration.traceThreshold * totalPages, std::memory_order_release);
+        m_cycle.store(!marking && concurrentEnabled && CycleWanted(garbage, predicted, totalPages, limitPages),
+            std::memory_order_release);
         size_t minimum = totalPages * m_configuration.rcStopPercent / 100;
         size_t cap = size_t{1} << (30 - 12);
         minimum = minimum < cap ? minimum : cap;
@@ -269,11 +287,44 @@ public:
     }
     bool CycleHint() const { return m_cycle.load(std::memory_order_acquire); }
     bool EmergencyHint() const { return m_emergency.load(std::memory_order_acquire); }
+    // True when the last decision used a pacing rule (not the oracle rule), for the policy trace.
+    bool PacedHint() const { return m_paced.load(std::memory_order_acquire); }
 
     // Pages of one Immix block: with overshoot the trigger keeps one block free for the mutator and nothing for the copy.
     static constexpr size_t OvershootFreePages = 8;
 
 private:
+    // The oracle (plan/lxr/global.rs next_gc_is_cycle_gc) starts a trace when garbage >= traceThreshold percent of the
+    // total heap pages. Its total is the fixed -Xmx heap of the gc_trigger. The port has no -Xmx: the heap sizer keeps the
+    // admitted capacity near live + nursery budget (laxori_heap_sizing.h), so the same percent of a smaller total starts a
+    // trace after less garbage, and the trace runs more often relative to the live data. The pacing rules measure the
+    // garbage against the predicted live pages instead. They are off by default, and the guard returns to the oracle rule
+    // near the admission limit, where a late trace could end in a heap-full or emergency collection. Before the first live
+    // prediction (no FinalMark or Full pause yet) the oracle rule is used.
+    bool CycleWanted(size_t garbage, size_t predicted, size_t totalPages, size_t limitPages)
+    {
+        bool oracle = garbage * 100 >= m_configuration.traceThreshold * totalPages;
+        size_t livePercent = m_configuration.traceLivePercent;
+        size_t liveFactor = m_configuration.traceLiveFactor;
+        bool guard = limitPages != SIZE_MAX && limitPages <= SIZE_MAX / 100 &&
+            totalPages * 100 >= (100 - m_configuration.traceGuardPercent) * limitPages;
+        if ((livePercent == 0 && liveFactor == 0) || guard || !m_mature_updated.load(std::memory_order_acquire) ||
+            predicted == 0 || predicted > SIZE_MAX / 100 / (liveFactor > 1 ? liveFactor : 1))
+        {
+            m_paced.store(false, std::memory_order_release);
+            return oracle;
+        }
+        m_paced.store(true, std::memory_order_release);
+        if (livePercent != 0)
+        {
+            return garbage * 100 >= livePercent * predicted;
+        }
+        size_t total = liveFactor * predicted;
+        total = total > totalPages ? total : totalPages;
+        total = total < limitPages ? total : limitPages;
+        return garbage * 100 >= m_configuration.traceThreshold * total;
+    }
+
     bool CopyReserveExhausted(const LaxoriPolicyPressure& pressure) const
     {
 #if defined(LAXORI_SIDE_METADATA_TEST_PLATFORM) && defined(LAXORI_S5B_RESERVE_TRIGGER_CONTROL)
@@ -294,6 +345,8 @@ private:
     bool m_reserve_measured = false;
     std::atomic<bool> m_cycle{false};
     std::atomic<bool> m_emergency{false};
+    std::atomic<bool> m_mature_updated{false};
+    std::atomic<bool> m_paced{false};
     size_t m_allocated = 0;
     size_t m_evacuable = 0;
     size_t m_copied = 0;
