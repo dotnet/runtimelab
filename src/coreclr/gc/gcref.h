@@ -194,6 +194,18 @@ public:
         }
     }
 
+    bool TryRestrictToRange(size_t offset, size_t bytes)
+    {
+        if (m_seriesCount == 0 || m_objectSize < sizeof(ObjHeader) ||
+            offset > m_objectSize - sizeof(ObjHeader) ||
+            bytes > m_objectSize - sizeof(ObjHeader) - offset)
+        {
+            return false;
+        }
+        RestrictToRange(offset, bytes);
+        return true;
+    }
+
     void Relocate(Object* object)
     {
         uint8_t* destination = reinterpret_cast<uint8_t*>(object);
@@ -329,6 +341,25 @@ private:
     size_t m_rangeStart;
     size_t m_rangeEnd;
 };
+
+FORCEINLINE bool IsGCReferenceSlot(Object* object, uintptr_t address)
+{
+    uintptr_t objectAddress = reinterpret_cast<uintptr_t>(object);
+    if (address < objectAddress ||
+        (address & (sizeof(Object*) - 1)) != 0)
+    {
+        return false;
+    }
+
+    GCReferenceRangeIterator iterator(object);
+    if (!iterator.TryRestrictToRange(address - objectAddress, sizeof(Object*)))
+    {
+        return false;
+    }
+
+    GCReferenceRange range;
+    return iterator.Next(&range);
+}
 #endif // !DACCESS_COMPILE
 
 #endif // _GCREF_H_

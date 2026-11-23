@@ -194,6 +194,27 @@ struct LxrReferenceCounting::RememberedChunk
     RememberedChunk* next = nullptr;
 };
 
+// The lock is taken by the owner for each entry and by FlushRememberedBuffers. It is on the cache line of the owner, so an
+// entry costs an uncontended exchange on a local line, not a CAS on a line that every worker writes.
+struct alignas(64) LxrReferenceCounting::RememberedBuffer
+{
+    std::atomic_flag lock = ATOMIC_FLAG_INIT;
+    RememberedChunk* chunk = nullptr;
+
+    void Enter()
+    {
+        while (lock.test_and_set(std::memory_order_acquire))
+        {
+            YieldProcessor();
+        }
+    }
+
+    void Exit()
+    {
+        lock.clear(std::memory_order_release);
+    }
+};
+
 class LxrReferenceCounting::CostScope final
 {
 public:
@@ -580,12 +601,25 @@ struct LxrReferenceCounting::ReferenceBatch
 struct LxrReferenceCounting::TraceBatch
 {
     LxrReferenceCounting* engine;
+    // P6. The worker of the packet, read once from the thread-local state (the oracle sets it once per packet).
+    size_t worker;
+    // Port overhead 1. The phases of the packet, read once (the oracle gives the worker and the plan to a packet once,
+    // gc_work/tracing.rs:285-305). They do not change while the packet runs: a pause starts only after the scheduler
+    // has drained the running concurrent packets (LxrWorkScheduler::InterruptConcurrentWork, called by the pause
+    // coordinator before it suspends), the trace phase changes only in a pause, and the pause runs its own packets to
+    // the end before it resumes.
+    LxrRcPhase phase;
+    LxrTracePhase tracePhase;
     size_t count = 0;
     bool registered = false;
     bool accounted = false;
-    uintptr_t references[FullTraceBatchCapacity];
+    uintptr_t storage[FullTraceBatchCapacity];
+    // P8. The trace loop of a packet swaps this buffer with its level buffer, so a level is not copied.
+    uintptr_t* references = storage;
 
-    explicit TraceBatch(LxrReferenceCounting* owner) : engine(owner)
+    explicit TraceBatch(LxrReferenceCounting* owner)
+        : engine(owner), worker(owner->GetExecutionWorker()), phase(owner->GetPhase()),
+          tracePhase(owner->GetTracePhase())
     {
         // Unpublished targets retain completion ownership until copied work takes over.
 #if !defined(LXR_SIDE_METADATA_TEST_PLATFORM) || !defined(LXR_TRACE_BATCH_EARLY_CONTROL)
@@ -702,10 +736,11 @@ struct LxrReferenceCounting::DeathContext
 // One cache line group per worker, written only by that worker with plain relaxed stores, and summed when
 // read. The last entry is shared by callers that are not workers and is updated with atomic additions.
 // The hot pause counters (IncrementEntries, DecrementEntries, Promotions, ObjectScans, ObjectSizeQueries,
-// Deaths, RootIncrements, RootDecrements) use the slot of their Metric index.
+// Deaths, RootIncrements, RootDecrements) use the slot of their Metric index. No product decision reads them, so they are
+// counted only when LxrRcConfiguration::traceStats is set (LXRTraceStats).
 struct alignas(64) LxrReferenceCounting::WorkerCounters
 {
-    std::atomic<uint64_t> values[32]{};
+    std::atomic<uint64_t> values[40]{};
 };
 
 // A copied source keeps its first field only until the copy is published, so the size of a forwarded source
@@ -742,19 +777,31 @@ namespace
 {
     // P28 (F10). The copy counters are per worker, as the survival counters of the Java LXR (SurvivalRatioPredictorLocal: a local
     // copy that is summed when it is read), not three shared atomics that every worker adds to for every copied object.
+    // PauseCopiedBytes and PromotedBytes size the collector, so they are always counted. CopiedObjects and CopiedBytes are
+    // statistics only: they are counted only when LxrRcConfiguration::traceStats is set.
     constexpr size_t CopiedObjects = Epochs + 1;
     constexpr size_t CopiedBytes = Epochs + 2;
     constexpr size_t PauseCopiedBytes = Epochs + 3;
     constexpr size_t PromotedBytes = Epochs + 4;
     // The trace counts its objects and references per worker: a counter that every worker adds to for every object and
-    // every edge is a contended cache line.
+    // every edge is a contended cache line. They are statistics only and are counted only when traceStats is set.
     constexpr size_t TraceObjectsCounter = Epochs + 5;
     constexpr size_t TraceReferencesCounter = Epochs + 6;
-    // The mature copy counts per worker for the same reason.
+    // The mature copy counts per worker for the same reason. PauseMatureCopiedBytes is always counted (it is the pause
+    // copy volume); MatureCopiedObjects and MatureCopiedBytes are counted only when traceStats is set.
     constexpr size_t MatureCopiedObjects = Epochs + 7;
     constexpr size_t MatureCopiedBytes = Epochs + 8;
     constexpr size_t PauseMatureCopiedBytes = Epochs + 9;
-    static_assert(PauseMatureCopiedBytes < 32);
+    // Statistics that were shared atomics on per-object or per-entry paths. The oracle has none there: its per-object
+    // statistics are compiled out (crate::stat, feature "instrumentation"). No product decision reads them, so they are
+    // counted only when LxrRcConfiguration::traceStats is set (LXRTraceStats), with exact totals per worker.
+    constexpr size_t ConcurrentSlicesCounter = Epochs + 10;
+    constexpr size_t RememberedSlotsCounter = Epochs + 11;
+    constexpr size_t ReplayedSlotsCounter = Epochs + 12;
+    constexpr size_t PauseReplayedSlotsCounter = Epochs + 13;
+    constexpr size_t DeletionMarksCounter = Epochs + 14;
+    constexpr size_t ForcedScansCounter = Epochs + 15;
+    static_assert(ForcedScansCounter < 40);
 }
 
 LxrRcMutator::LxrRcMutator()
@@ -1021,6 +1068,11 @@ LxrRcResult LxrReferenceCounting::InitializeBuffers(size_t slots)
     {
         return LxrRcResult::OutOfMemory;
     }
+    m_remembered_buffers = new (std::nothrow) RememberedBuffer[m_configuration.workers + 1];
+    if (m_remembered_buffers == nullptr)
+    {
+        return LxrRcResult::OutOfMemory;
+    }
     m_mutators = new (std::nothrow) LxrRcMutator[m_configuration.maximumMutators];
     m_mutator_chunks = new (std::nothrow) LogChunk[2 * m_configuration.maximumMutators];
     m_banks = new (std::nothrow) LogBank[2];
@@ -1045,6 +1097,7 @@ LxrRcResult LxrReferenceCounting::InitializeBuffers(size_t slots)
         m_live_objects = m_live_storage.Get();
 #endif // LXR_SIDE_METADATA_TEST_PLATFORM
         m_trace_locks = new (std::nothrow) std::atomic<uint8_t>[TraceLockCount]{};
+        m_trace_claims = new (std::nothrow) TraceClaim[m_configuration.workers + 1];
         m_scan_buckets = new (std::nothrow) TraceScanBucket[TraceScanBucketCount];
     }
     m_roots[0] = new (std::nothrow) uintptr_t[m_configuration.maximumRoots]{};
@@ -1087,7 +1140,7 @@ LxrRcResult LxrReferenceCounting::InitializeBuffers(size_t slots)
     }
     if (m_mutators == nullptr || m_mutator_chunks == nullptr ||
         m_banks == nullptr || (!m_observer &&
-            (m_trace_locks == nullptr || m_scan_buckets == nullptr)) ||
+            (m_trace_locks == nullptr || m_trace_claims == nullptr || m_scan_buckets == nullptr)) ||
         m_roots[0] == nullptr ||
         m_roots[1] == nullptr || (m_configuration.largeObjectBytes != 0 && m_dead_large == nullptr) ||
         (m_configuration.immixBytes != 0 && m_mature_candidates == nullptr))
@@ -1393,9 +1446,12 @@ LxrRcResult LxrReferenceCounting::DrainObservedLogs(
                     Object** slot = reinterpret_cast<Object**>(stream.references[index]);
                     current = *slot;
                     unlog(slot, context);
-                    CountWorker(SIZE_MAX, IncrementEntries, 1);
+                    if (m_configuration.traceStats)
+                    {
+                        CountWorker(SIZE_MAX, IncrementEntries, 1);
+                    }
                 }
-                else
+                else if (m_configuration.traceStats)
                 {
                     CountWorker(SIZE_MAX, DecrementEntries, 1);
                 }
@@ -1456,6 +1512,7 @@ void LxrReferenceCounting::Shutdown()
     DeleteCopyLogs();
     DeleteReleaseChunks();
     delete[] m_copy_logs;
+    delete[] m_remembered_buffers;
     delete[] m_worker_counters;
     m_evacuation_sources_storage.Shutdown();
     delete[] m_mutator_chunks;
@@ -1474,11 +1531,13 @@ void LxrReferenceCounting::Shutdown()
     m_allocated_list_storage.Shutdown();
     m_block_table_blocks.store(0, std::memory_order_relaxed);
     delete[] m_trace_locks;
+    delete[] m_trace_claims;
     delete[] m_scan_buckets;
     m_banks = nullptr;
     m_mutators = nullptr;
     m_copy_allocators = nullptr;
     m_copy_logs = nullptr;
+    m_remembered_buffers = nullptr;
     m_worker_counters = nullptr;
     m_evacuation_sources = nullptr;
     m_mutator_chunks = nullptr;
@@ -1487,6 +1546,7 @@ void LxrReferenceCounting::Shutdown()
     m_live_objects = nullptr;
 #endif // LXR_SIDE_METADATA_TEST_PLATFORM
     m_trace_locks = nullptr;
+    m_trace_claims = nullptr;
     m_scan_buckets = nullptr;
     m_block_flags = nullptr;
     m_zero_state = nullptr;
@@ -3519,7 +3579,10 @@ LxrRcResult LxrReferenceCounting::GetObjectSize(Object* object, size_t* size, si
     {
         return Fail(LxrRcResult::InvariantViolation);
     }
-    CountWorker(worker, ObjectSizeQueries, 1);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, ObjectSizeQueries, 1);
+    }
     size_t value = object->GetSize();
     if (value > SIZE_MAX - (sizeof(uintptr_t) - 1))
     {
@@ -3560,6 +3623,20 @@ Object* LxrReferenceCounting::ResolveForwarded(Object* object) const
         return object;
     }
 #endif // LXR_OBJECT_START_WALK
+    // Port overhead 2. Read the header only where a forwarding state can be: the oracle reads the forwarding bits only for
+    // an object in a defrag source block (policy/immix/immixspace.rs:298-311). A young copy source keeps count zero. A
+    // counted object can move only while the mature source flag of its block is set; source retirement clears the count
+    // before it clears the flag (the same test as in ResolveForwardedChecked).
+    if (m_rc_metadata.Load(start, SideMetadataMemoryOrder::Relaxed) != 0)
+    {
+        size_t block = (start - GetReservationStart()) / ImmixBlockGeometry::BlockBytes;
+        if (m_evacuation_sources == nullptr ||
+            (block < m_block_table_blocks.load(std::memory_order_acquire) &&
+             m_evacuation_sources[block].load(std::memory_order_acquire) == 0))
+        {
+            return object;
+        }
+    }
     ObjHeader* header = object->GetHeader();
     uint32_t state = header->GetGCReservedBits(m_configuration.forwardingMask, m_configuration.forwardingShift);
     if (state == 2)
@@ -3580,7 +3657,7 @@ Object* LxrReferenceCounting::ResolveForwarded(Object* object) const
 
 Object* LxrReferenceCounting::ResolveForwardedChecked(Object* object) const
 {
-#if !defined(LXR_OBJECT_START_WALK) || (defined(LXR_WALK_TRUSTED_RESOLVE_CONTROL))
+#if defined(LXR_WALK_TRUSTED_RESOLVE_CONTROL)
     // (Control for the walk variant: a stale value is trusted like a start.)
     return ResolveForwarded(object);
 #else
@@ -3593,13 +3670,29 @@ Object* LxrReferenceCounting::ResolveForwardedChecked(Object* object) const
     {
         return object;
     }
-    size_t slot = (start - GetReservationStart()) / sizeof(uintptr_t);
+    size_t block = (start - GetReservationStart()) / ImmixBlockGeometry::BlockBytes;
     if (m_rc_metadata.Load(start, SideMetadataMemoryOrder::Relaxed) != 0)
     {
+        // A young copy source keeps count zero. A counted source can move only while its mature source flag is set.
+        // Source retirement clears the count before clearing the flag, after trace and replay work has drained.
+        if (m_evacuation_sources == nullptr ||
+            (block < m_block_table_blocks.load(std::memory_order_acquire) &&
+             m_evacuation_sources[block].load(std::memory_order_acquire) == 0))
+        {
+            return object;
+        }
+#ifdef LXR_OBJECT_START_WALK
         // A counted start has a valid header. The first slot of a continuation line also holds a count, but it lies inside
         // another object, and its header is arbitrary data.
+        size_t slot = (start - GetReservationStart()) / sizeof(uintptr_t);
         return IsContinuationSlot(slot) ? object : ResolveForwarded(object);
+#else
+        return ResolveForwarded(object);
+#endif // LXR_OBJECT_START_WALK
     }
+#ifndef LXR_OBJECT_START_WALK
+    return ResolveForwarded(object);
+#else
     // Count zero: a young object, a dead object, or an address inside an object. Only the young object that the pause
     // claimed as a copy source has a forwarding state. The sources are in the spans of the pause, which exist until
     // Resume; a value that no span starts an object at is not a source. The header is read first only to skip the walk
@@ -3609,7 +3702,10 @@ Object* LxrReferenceCounting::ResolveForwardedChecked(Object* object) const
     {
         return object;
     }
-    m_lookup_metrics[3].fetch_add(1, std::memory_order_relaxed);
+    if (m_configuration.lookupStats)
+    {
+        m_lookup_metrics[3].fetch_add(1, std::memory_order_relaxed);
+    }
     Object* found = nullptr;
     if (FindInYoungSpans(reinterpret_cast<uintptr_t>(object), &found, false) != LxrRcResult::Success || found != object)
     {
@@ -3617,6 +3713,7 @@ Object* LxrReferenceCounting::ResolveForwardedChecked(Object* object) const
     }
     return ResolveForwarded(object);
 #endif // !LXR_OBJECT_START_WALK
+#endif // LXR_WALK_TRUSTED_RESOLVE_CONTROL
 }
 
 #ifdef LXR_OBJECT_START_WALK
@@ -3633,17 +3730,27 @@ bool LxrReferenceCounting::IsContinuationSlot(size_t slot) const
 #endif // LXR_WALK_NO_CONTINUATION_SKIP_CONTROL
 }
 
+// The lowest bit of each bits-wide field of a 64-bit word. bits is a power of two up to 64. This replaces a loop of up to 64
+// steps that the walks ran on each call.
+static inline uint64_t LowestBitOfEachField(uint32_t bits)
+{
+    switch (bits)
+    {
+    case 1: return ~UINT64_C(0);
+    case 2: return UINT64_C(0x5555555555555555);
+    case 4: return UINT64_C(0x1111111111111111);
+    case 8: return UINT64_C(0x0101010101010101);
+    default: return ~UINT64_C(0) / ((bits >= 64 ? ~UINT64_C(0) : (UINT64_C(1) << bits) - 1));
+    }
+}
+
 size_t LxrReferenceCounting::FindCountedSlotBelow(size_t lowerSlot, size_t slot) const
 {
     // The count plane has 2, 4 or 8 bits per slot. One 64-bit word covers 64 / bits slots, and the arena start is aligned to
     // a block, so a slot index and its position in the word agree.
     uintptr_t arena = GetReservationStart();
     uint32_t bits = static_cast<uint32_t>(1) << m_rc_metadata.GetLogBitsPerValue();
-    uint64_t lowest = 0;
-    for (uint32_t position = 0; position < 64; position += bits)
-    {
-        lowest |= UINT64_C(1) << position;
-    }
+    const uint64_t lowest = LowestBitOfEachField(bits);
     while (true)
     {
         SideMetadataLocation location = m_rc_metadata.Locate(arena + slot * sizeof(uintptr_t));
@@ -3777,7 +3884,7 @@ LxrRcResult LxrReferenceCounting::RelocateRoot(Object** slot, bool interior, boo
 LxrNurseryMetrics LxrReferenceCounting::GetNurseryMetrics() const
 {
     return {
-        SumWorker(CopiedObjects), SumWorker(CopiedBytes), m_nursery_metrics[2].load(),
+        TraceStat(SumWorker(CopiedObjects)), TraceStat(SumWorker(CopiedBytes)), m_nursery_metrics[2].load(),
         m_nursery_metrics[3].load(), m_nursery_metrics[4].load(), m_nursery_metrics[5].load(),
         m_pause_copied_bytes.load() + SumWorker(PauseCopiedBytes),
     };
@@ -3787,10 +3894,10 @@ LxrMatureMetrics LxrReferenceCounting::GetMatureMetrics() const
 {
     return {
         m_mature_metrics[0].load(), m_mature_metrics[1].load(), m_mature_metrics[2].load(),
-        m_mature_metrics[3].load(), SumWorker(MatureCopiedObjects) + m_mature_metrics[4].load(),
-        SumWorker(MatureCopiedBytes) + m_mature_metrics[5].load(),
-        m_mature_metrics[6].load(), m_mature_metrics[7].load(), m_mature_metrics[8].load(),
-        m_mature_metrics[9].load(), m_mature_metrics[10].load(), m_mature_metrics[11].load(),
+        m_mature_metrics[3].load(), TraceStat(SumWorker(MatureCopiedObjects) + m_mature_metrics[4].load()),
+        TraceStat(SumWorker(MatureCopiedBytes) + m_mature_metrics[5].load()),
+        m_mature_metrics[6].load(), TraceStat(m_mature_metrics[7].load() + SumWorker(RememberedSlotsCounter)), m_mature_metrics[8].load(),
+        TraceStat(m_mature_metrics[9].load() + SumWorker(ReplayedSlotsCounter)), m_mature_metrics[10].load(), m_mature_metrics[11].load(),
         m_mature_metrics[12].load(),
         static_cast<size_t>(SumWorker(PauseMatureCopiedBytes)) + m_pause_mature_copied_bytes.load(),
     };
@@ -4661,6 +4768,16 @@ LxrRcResult LxrReferenceCounting::RememberMatureSlot(Object** slot, Object* targ
     {
         return LxrRcResult::Success;
     }
+    return RememberMatureCandidateSlot(slot, GetExecutionWorker());
+}
+
+// The target of the slot is a mature candidate.
+LxrRcResult LxrReferenceCounting::RememberMatureCandidateSlot(Object** slot, size_t worker)
+{
+    if (!(m_marking.load(std::memory_order_relaxed) || m_pause_kind == LxrPauseKind::FinalMark))
+    {
+        return LxrRcResult::Success;
+    }
     uintptr_t address = reinterpret_cast<uintptr_t>(slot);
     if (!OwnsAddress(address))
     {
@@ -4668,38 +4785,77 @@ LxrRcResult LxrReferenceCounting::RememberMatureSlot(Object** slot, Object* targ
     }
     uintptr_t reuse = (IsImmix(address) ? m_line_reuse_metadata : m_page_reuse_metadata).Load(
         address, SideMetadataMemoryOrder::SequentiallyConsistent);
-    for (;;)
+    RememberedBuffer& buffer = m_remembered_buffers[worker];
+    buffer.Enter();
+    RememberedChunk* chunk = buffer.chunk;
+    if (chunk == nullptr || chunk->reserved.load(std::memory_order_relaxed) == BufferCapacity)
     {
-        RememberedChunk* head = m_remembered_chunks.load(std::memory_order_acquire);
-        if (head != nullptr)
+        RememberedChunk* fresh = new (std::nothrow) RememberedChunk;
+        if (fresh == nullptr)
         {
-            size_t index = head->reserved.load(std::memory_order_relaxed);
-            while (index < BufferCapacity)
-            {
-                if (head->reserved.compare_exchange_weak(index, index + 1, std::memory_order_relaxed))
-                {
-                    head->entries[index] = {slot, static_cast<uint8_t>(reuse)};
-                    head->published[index].store(1, std::memory_order_release);
-                    m_mature_metrics[7].fetch_add(1, std::memory_order_relaxed);
-                    return LxrRcResult::Success;
-                }
-            }
-        }
-        RememberedChunk* chunk = new (std::nothrow) RememberedChunk;
-        if (chunk == nullptr)
-        {
+            buffer.Exit();
             return Fail(LxrRcResult::OutOfMemory);
         }
+        if (chunk != nullptr)
+        {
+            PushRememberedChunk(chunk);
+        }
+        buffer.chunk = fresh;
+        chunk = fresh;
+    }
+    size_t index = chunk->reserved.load(std::memory_order_relaxed);
+    chunk->entries[index] = {slot, static_cast<uint8_t>(reuse)};
+    chunk->published[index].store(1, std::memory_order_relaxed);
+    chunk->reserved.store(index + 1, std::memory_order_relaxed);
+    buffer.Exit();
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, RememberedSlotsCounter, 1);
+    }
+    return LxrRcResult::Success;
+}
+
+void LxrReferenceCounting::PushRememberedChunk(RememberedChunk* chunk)
+{
+    RememberedChunk* head = m_remembered_chunks.load(std::memory_order_relaxed);
+    do
+    {
         chunk->next = head;
-        if (!m_remembered_chunks.compare_exchange_strong(head, chunk, std::memory_order_acq_rel))
+    } while (!m_remembered_chunks.compare_exchange_weak(head, chunk, std::memory_order_release, std::memory_order_relaxed));
+}
+
+// Moves the chunk of every worker to m_remembered_chunks (the oracle's flush_all). The lock of each buffer orders the entries
+// of its owner before the move, so the flush is correct also when a worker still records.
+LxrRcResult LxrReferenceCounting::FlushRememberedBuffers()
+{
+    if (m_remembered_buffers == nullptr)
+    {
+        return LxrRcResult::Success;
+    }
+    for (size_t worker = 0; worker <= m_configuration.workers; worker++)
+    {
+        RememberedBuffer& buffer = m_remembered_buffers[worker];
+        buffer.Enter();
+        RememberedChunk* chunk = buffer.chunk;
+        buffer.chunk = nullptr;
+        buffer.Exit();
+        if (chunk == nullptr)
+        {
+            continue;
+        }
+        if (chunk->reserved.load(std::memory_order_relaxed) == 0)
         {
             delete chunk;
+            continue;
         }
+        PushRememberedChunk(chunk);
     }
+    return LxrRcResult::Success;
 }
 
 void LxrReferenceCounting::DeleteRememberedChunks()
 {
+    FlushRememberedBuffers();
     RememberedChunk* chunk = m_remembered_chunks.exchange(nullptr, std::memory_order_acq_rel);
     while (chunk != nullptr)
     {
@@ -4722,6 +4878,11 @@ LxrRcResult LxrReferenceCounting::ReplayMatureRememberedSlots()
     CostScope cost(this, 6);
     // The replay works through the chunks that exist now. The trace of the objects that it copies adds entries to a new
     // list, and these are never replayed (they are deleted at the end, as before).
+    LxrRcResult flushed = FlushRememberedBuffers();
+    if (flushed != LxrRcResult::Success)
+    {
+        return flushed;
+    }
     RememberedChunk* chunks = m_remembered_chunks.exchange(nullptr, std::memory_order_acq_rel);
     m_replay_chunks = chunks;
     LxrRcResult status = LxrRcResult::Success;
@@ -4785,6 +4946,8 @@ LxrRcResult LxrReferenceCounting::ReplayRememberedChunk(RememberedChunk* chunk, 
 {
     uintptr_t targets[BufferCapacity];
     size_t targetCount = 0;
+    uint64_t replayed = 0;
+    uint64_t pauseReplayed = 0;
     {
         for (size_t index = 0; index < chunk->reserved.load(std::memory_order_acquire); index++)
         {
@@ -4858,16 +5021,8 @@ LxrRcResult LxrReferenceCounting::ReplayRememberedChunk(RememberedChunk* chunk, 
                 m_mature_metrics[12].fetch_add(1, std::memory_order_relaxed);
                 continue;
             }
-            bool referenceField = false;
             // Byte tags may wrap. Inspect only a current metadata-live owner's shape, never stale payload.
-            GCReferenceRanges::Enumerate(owner, [&](Object** first, size_t count)
-            {
-                uintptr_t start = reinterpret_cast<uintptr_t>(first);
-                referenceField = address >= start && (address - start) / sizeof(Object*) < count &&
-                    (address - start) % sizeof(Object*) == 0;
-                return !referenceField;
-            });
-            if (!referenceField)
+            if (!IsGCReferenceSlot(owner, address))
             {
                 m_mature_metrics[12].fetch_add(1, std::memory_order_relaxed);
                 continue;
@@ -4932,19 +5087,25 @@ LxrRcResult LxrReferenceCounting::ReplayRememberedChunk(RememberedChunk* chunk, 
                         result = QueueTrace(targets, targetCount);
                         targetCount = 0;
                     }
-                    m_pause_trace_metrics[2].fetch_add(1, std::memory_order_relaxed);
+                    pauseReplayed++;
                 }
                 else
                 {
                     result = QueueTrace(&value, 1);
                 }
-                m_mature_metrics[9].fetch_add(1, std::memory_order_relaxed);
+                replayed++;
             }
             if (result != LxrRcResult::Success)
             {
                 return result;
             }
         }
+    }
+    if (m_configuration.traceStats)
+    {
+        const size_t worker = GetExecutionWorker();
+        CountWorker(worker, ReplayedSlotsCounter, replayed);
+        CountWorker(worker, PauseReplayedSlotsCounter, pauseReplayed);
     }
     return targetCount == 0 ? LxrRcResult::Success : QueueTrace(targets, targetCount);
 }
@@ -4995,8 +5156,24 @@ LxrRcResult LxrReferenceCounting::TryCopyMature(Object** reference)
 {
     Object* source = *reference;
     *reference = ResolveForwardedChecked(source);
-    if (*reference != source || source == nullptr || !IsMatureCandidate(Start(source)) ||
-        (GetTracePhase() != LxrTracePhase::Full && GetTracePhase() != LxrTracePhase::FinalMark))
+    return *reference != source ? LxrRcResult::Success : TryCopyMatureResolved(reference);
+}
+
+LxrRcResult LxrReferenceCounting::TryCopyMatureResolved(Object** reference)
+{
+    Object* source = *reference;
+    if (source == nullptr || !IsMatureCandidate(Start(source)))
+    {
+        return LxrRcResult::Success;
+    }
+    return TryCopyMatureCandidate(reference);
+}
+
+// *reference is not forwarded and is in a mature candidate block.
+LxrRcResult LxrReferenceCounting::TryCopyMatureCandidate(Object** reference)
+{
+    Object* source = *reference;
+    if (GetTracePhase() != LxrTracePhase::Full && GetTracePhase() != LxrTracePhase::FinalMark)
     {
         return LxrRcResult::Success;
     }
@@ -5139,8 +5316,11 @@ LxrRcResult LxrReferenceCounting::TryCopyMature(Object** reference)
     // compare-exchange that sets the state to 3 is a full barrier after it. A reader sees the pointer after it has read the state 3.
     VolatileStore(forwarding, destination);
     header->SetGCReservedBits(m_configuration.forwardingMask, m_configuration.forwardingShift, 3);
-    CountWorker(worker, MatureCopiedObjects, 1);
-    CountWorker(worker, MatureCopiedBytes, size);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, MatureCopiedObjects, 1);
+        CountWorker(worker, MatureCopiedBytes, size);
+    }
     // Most copies find the flag set: the read keeps the cache line of the block shared between the workers that copy from it.
     if ((m_evacuation_sources[block].load(std::memory_order_relaxed) & CopiedSource) == 0)
     {
@@ -5319,8 +5499,11 @@ LxrRcResult LxrReferenceCounting::TryCopyNursery(
 #if defined(LXR_SIDE_METADATA_TEST_PLATFORM) && defined(LXR_F10_SHARED_COPY_COUNTERS_CONTROL)
     // Control: the copy counters are not counted.
 #else
-    CountWorker(worker, CopiedObjects, 1);
-    CountWorker(worker, CopiedBytes, size);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, CopiedObjects, 1);
+        CountWorker(worker, CopiedBytes, size);
+    }
     CountWorker(worker, PauseCopiedBytes, size);
 #endif // LXR_SIDE_METADATA_TEST_PLATFORM && LXR_F10_SHARED_COPY_COUNTERS_CONTROL
     *destination = copy;
@@ -5419,7 +5602,10 @@ LxrRcResult LxrReferenceCounting::ProcessIncrement(
     if (result == LxrRcResult::Success && trace && NeedsIncrementTrace(start))
     {
         uintptr_t target = reinterpret_cast<uintptr_t>(object);
-        m_increment_traces.fetch_add(1, std::memory_order_relaxed);
+        if (m_configuration.traceStats)
+        {
+            m_increment_traces.fetch_add(1, std::memory_order_relaxed);
+        }
         result = QueueTrace(&target, 1);
     }
     if (result != LxrRcResult::Success || previous != 0)
@@ -5509,7 +5695,10 @@ LxrRcResult LxrReferenceCounting::ProcessIncrement(
     {
         return result;
     }
-    CountWorker(worker, Promotions, 1);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, Promotions, 1);
+    }
     if (!copied && m_configuration.evacuateNursery &&
         ((object->GetHeader()->GetBits() & BIT_SBLK_GC_RESERVE) != 0 || IsPinnedObject(object)))
     {
@@ -5548,7 +5737,10 @@ LxrRcResult LxrReferenceCounting::ScanIncrements(
     Object* object, bool trace, ReferenceBatch* children, size_t worker)
 {
     LxrRcResult result = LxrRcResult::Success;
-    CountWorker(worker, ObjectScans, 1);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, ObjectScans, 1);
+    }
     GCReferenceRanges::Enumerate(object, [&](Object** first, size_t length)
     {
         for (size_t index = 0; index < length; index++)
@@ -5568,7 +5760,10 @@ LxrRcResult LxrReferenceCounting::ScanIncrements(
                 FromMetadata(m_counts.LoadFast(childStart, &childCount)) == LxrRcResult::Success &&
                 childCount != 0 && !IsMatureCandidate(childStart))
             {
-                CountWorker(worker, IncrementEntries, 1);
+                if (m_configuration.traceStats)
+                {
+                    CountWorker(worker, IncrementEntries, 1);
+                }
 #if defined(LXR_SIDE_METADATA_TEST_PLATFORM) && defined(LXR_F10_INLINE_NO_INC_CONTROL)
                 // Control: the increment of a counted child is left out.
                 if (false)
@@ -5587,7 +5782,10 @@ LxrRcResult LxrReferenceCounting::ScanIncrements(
                 if (trace && NeedsIncrementTrace(childStart))
                 {
                     uintptr_t target = reinterpret_cast<uintptr_t>(child);
-                    m_increment_traces.fetch_add(1, std::memory_order_relaxed);
+                    if (m_configuration.traceStats)
+                    {
+                        m_increment_traces.fetch_add(1, std::memory_order_relaxed);
+                    }
                     result = QueueTrace(&target, 1);
                     if (result != LxrRcResult::Success)
                     {
@@ -5624,7 +5822,10 @@ LxrRcResult LxrReferenceCounting::ScanIncrements(
 LxrRcResult LxrReferenceCounting::ScanDecrements(Object* object, ReferenceBatch* children, size_t worker)
 {
     LxrRcResult result = LxrRcResult::Success;
-    CountWorker(worker, ObjectScans, 1);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, ObjectScans, 1);
+    }
     // P28 (F10). As in the Java LXR (rc.rs: process_dead_object) a child whose count is zero or at the maximum gets no decrement,
     // so it is not queued. While dead objects mark (MarkDeadObjects) every child of a dead object belongs to the snapshot and
     // is queued.
@@ -5838,10 +6039,13 @@ LxrRcResult LxrReferenceCounting::ProcessDecrementEntry(
     }
     uintptr_t start = Start(object);
     uintptr_t count = m_rc_metadata.Load(start, SideMetadataMemoryOrder::Relaxed);
-    CountWorker(worker, DecrementEntries, 1);
-    if (previousRoot)
+    if (m_configuration.traceStats)
     {
-        CountWorker(worker, RootDecrements, 1);
+        CountWorker(worker, DecrementEntries, 1);
+        if (previousRoot)
+        {
+            CountWorker(worker, RootDecrements, 1);
+        }
     }
     if (count == 0 || count == m_counts.GetMaximumCount())
     {
@@ -5855,7 +6059,7 @@ LxrRcResult LxrReferenceCounting::ProcessDecrementEntry(
     {
         return result;
     }
-    if (status == SideMetadataUpdateStatus::Updated && previous == 1)
+    if (m_configuration.traceStats && status == SideMetadataUpdateStatus::Updated && previous == 1)
     {
         CountWorker(worker, Deaths, 1);
     }
@@ -7199,7 +7403,7 @@ LxrRcResult LxrReferenceCounting::ProcessIncrementWork(Work* work, size_t worker
                 reference &= ~static_cast<uintptr_t>(1);
             }
             object = reinterpret_cast<Object*>(reference);
-            if (work->kind == WorkKind::Roots)
+            if (m_configuration.traceStats && work->kind == WorkKind::Roots)
             {
                 CountWorker(worker, RootIncrements, 1);
             }
@@ -7215,7 +7419,10 @@ LxrRcResult LxrReferenceCounting::ProcessIncrementWork(Work* work, size_t worker
                 m_unlogged_metadata.Store(
                     reinterpret_cast<uintptr_t>(slot), 1, SideMetadataMemoryOrder::Relaxed);
             }
-            CountWorker(worker, IncrementEntries, 1);
+            if (m_configuration.traceStats)
+            {
+                CountWorker(worker, IncrementEntries, 1);
+            }
         }
         LxrRcResult result = ProcessIncrement(&object, trace, &children, worker);
         if (result != LxrRcResult::Success)
@@ -7269,7 +7476,10 @@ LxrRcResult LxrReferenceCounting::ProcessChildIncrements(ReferenceBatch* childre
             LxrRcResult result = ProcessIncrement(&object, trace, children, worker);
             if (result != LxrRcResult::Success)
             {
-                CountWorker(worker, IncrementEntries, index + 1);
+                if (m_configuration.traceStats)
+                {
+                    CountWorker(worker, IncrementEntries, index + 1);
+                }
                 return result;
             }
             if (object != nullptr)
@@ -7277,7 +7487,10 @@ LxrRcResult LxrReferenceCounting::ProcessChildIncrements(ReferenceBatch* childre
                 result = RememberMatureSlot(slot, object);
                 if (result != LxrRcResult::Success)
                 {
-                    CountWorker(worker, IncrementEntries, index + 1);
+                    if (m_configuration.traceStats)
+                    {
+                        CountWorker(worker, IncrementEntries, index + 1);
+                    }
                     return result;
                 }
             }
@@ -7287,7 +7500,10 @@ LxrRcResult LxrReferenceCounting::ProcessChildIncrements(ReferenceBatch* childre
             }
             LxrPrefetch::Ahead(slots, count, index, true);
         }
-        CountWorker(worker, IncrementEntries, count);
+        if (m_configuration.traceStats)
+        {
+            CountWorker(worker, IncrementEntries, count);
+        }
     }
     return LxrRcResult::Success;
 }
@@ -7393,6 +7609,10 @@ static int64_t LookupClock()
 
 LxrRcResult LxrReferenceCounting::FindContainingObject(uintptr_t address, Object** object, bool requireCounted) const
 {
+    if (!m_configuration.lookupStats)
+    {
+        return FindContainingObjectCore(address, object, requireCounted);
+    }
     int64_t begin = LookupClock();
     LxrRcResult result = FindContainingObjectCore(address, object, requireCounted);
     m_lookup_metrics[0].fetch_add(1, std::memory_order_relaxed);
@@ -7441,7 +7661,10 @@ LxrRcResult LxrReferenceCounting::FindContainingObjectCore(uintptr_t address, Ob
         &&
         FindInYoungSpans(address, object, requireCounted) == LxrRcResult::Success)
     {
-        m_lookup_metrics[2].fetch_add(1, std::memory_order_relaxed);
+        if (m_configuration.lookupStats)
+        {
+            m_lookup_metrics[2].fetch_add(1, std::memory_order_relaxed);
+        }
         return LxrRcResult::Success;
     }
 #ifdef LXR_OBJECT_START_WALK
@@ -7538,12 +7761,12 @@ LxrRcMetrics LxrReferenceCounting::GetMetrics() const
         m_metrics[OldTargetChecks].load() + SumMutatorCounter(&LxrRcMutator::oldTargetChecks);
     return {
         m_metrics[Allocations].load(), m_metrics[AllocatedBytes].load(),
-        loggedSlots, SumWorker(IncrementEntries),
-        SumWorker(DecrementEntries), m_metrics[BufferFlushes].load(),
-        m_metrics[ThreadFlushes].load(), SumWorker(Promotions),
-        SumWorker(Deaths), SumWorker(RootIncrements),
-        SumWorker(RootDecrements), SumWorker(ObjectScans),
-        SumWorker(ObjectSizeQueries), oldTargetChecks,
+        loggedSlots, TraceStat(SumWorker(IncrementEntries)),
+        TraceStat(SumWorker(DecrementEntries)), m_metrics[BufferFlushes].load(),
+        m_metrics[ThreadFlushes].load(), TraceStat(SumWorker(Promotions)),
+        TraceStat(SumWorker(Deaths)), TraceStat(SumWorker(RootIncrements)),
+        TraceStat(SumWorker(RootDecrements)), TraceStat(SumWorker(ObjectScans)),
+        TraceStat(SumWorker(ObjectSizeQueries)), oldTargetChecks,
         m_metrics[ChildRegistrations].load(), m_metrics[BlocksReleased].load(),
         m_metrics[LargeObjectBytesReleased].load(), m_metrics[Epochs].load(),
     };
@@ -7722,7 +7945,7 @@ uint64_t LxrReferenceCounting::GetStorageMetric(size_t metric) const
 {
     if (metric == 57)
     {
-        return m_increment_traces.load(std::memory_order_acquire);
+        return TraceStat(m_increment_traces.load(std::memory_order_acquire));
     }
     if (metric >= 52 && metric < 57)
     {
@@ -8179,11 +8402,7 @@ size_t LxrReferenceCounting::FindNextValidSlot(size_t first, size_t limit) const
     // The walk variant has no ValidObject plane: the starts of the counted objects are the non-zero counts, except the first
     // slot of each continuation line of a long object.
     uint32_t bits = static_cast<uint32_t>(1) << m_rc_metadata.GetLogBitsPerValue();
-    uint64_t lowest = 0;
-    for (uint32_t position = 0; position < 64; position += bits)
-    {
-        lowest |= UINT64_C(1) << position;
-    }
+    const uint64_t lowest = LowestBitOfEachField(bits);
     while (first < largeEnd && first < limit)
     {
         if (first >= immixEnd && first < largeStart)
@@ -8922,18 +9141,96 @@ LxrRcResult LxrReferenceCounting::WalkForwarded(LxrRcWalkForwarded visit, void* 
 
 void LxrReferenceCounting::EnterTraceLock(size_t index)
 {
+    std::atomic<uint8_t>& lock = TraceLockSlot(index);
     uint8_t expected = 0;
-    while (!TraceLockSlot(index).compare_exchange_weak(
-        expected, 1, std::memory_order_acquire, std::memory_order_relaxed))
+    while (!lock.compare_exchange_weak(expected, 1, std::memory_order_acquire, std::memory_order_relaxed))
     {
+        // Wait with plain loads: a CAS on each retry takes the cache line away from the holder.
+        do
+        {
+            YieldProcessor();
+        } while (lock.load(std::memory_order_relaxed) != 0);
         expected = 0;
-        YieldProcessor();
     }
+}
+
+// P5. As EnterTraceLock, but a waiter returns false, without the lock, when the object at start becomes marked. The
+// holder marks a small object before it scans it, so a waiter for a popular object does not wait for the whole scan
+// and then find the mark (the oracle loser of attempt_mark returns at once, policy/immix/immixspace.rs:1111-1124). The
+// lock stays: a dying object waits in FinishDyingTraceObject until the scan ends, because the allocator can reuse its
+// line as soon as the counts are zero.
+bool LxrReferenceCounting::EnterTraceLockUnlessMarked(size_t index, uintptr_t start)
+{
+    std::atomic<uint8_t>& lock = TraceLockSlot(index);
+    uint8_t expected = 0;
+    while (!lock.compare_exchange_weak(expected, 1, std::memory_order_acquire, std::memory_order_relaxed))
+    {
+        do
+        {
+            if (m_mark_metadata.Load(start, SideMetadataMemoryOrder::Relaxed) != 0)
+            {
+                return false;
+            }
+            YieldProcessor();
+        } while (lock.load(std::memory_order_relaxed) != 0);
+        expected = 0;
+    }
+    return true;
 }
 
 void LxrReferenceCounting::ExitTraceLock(size_t index)
 {
     TraceLockSlot(index).store(0, std::memory_order_release);
+}
+
+// A dying object waits here until no concurrent trace worker scans it under a claim (ProcessConcurrentTraceObject). The
+// caller has failed to set the mark of the object, so the claim of a worker that set it is visible: the claim store is
+// sequenced before the mark compare-exchange of the worker, and the failed compare-exchange reads that mark.
+void LxrReferenceCounting::WaitForTraceClaims(uintptr_t start) const
+{
+    for (size_t worker = 0; worker < m_configuration.workers; worker++)
+    {
+        while (m_trace_claims[worker].start.load(std::memory_order_acquire) == start)
+        {
+            YieldProcessor();
+        }
+    }
+}
+
+// Publishes the scan of a large object: other workers run its slices (ProcessTraceScan), and a dying object finishes it
+// (FinishDyingTraceObject finds it through LinkTraceScan). The caller has set the mark of the object.
+LxrRcResult LxrReferenceCounting::QueueTraceScan(Object* object, Object* loader, uintptr_t start)
+{
+    TraceScan* scan = new (std::nothrow) TraceScan(object, loader);
+    if (scan == nullptr)
+    {
+        return Fail(LxrRcResult::OutOfMemory);
+    }
+#ifdef LXR_HAS_DIAGNOSTIC_PROBES
+    if (m_storage_diagnostics.load(std::memory_order_relaxed))
+    {
+        m_storage_metrics[4].fetch_add(1, std::memory_order_relaxed);
+        uint64_t current = m_storage_metrics[5].fetch_add(sizeof(TraceScan), std::memory_order_relaxed) +
+            sizeof(TraceScan);
+        uint64_t high = m_storage_metrics[6].load(std::memory_order_relaxed);
+        while (high < current && !m_storage_metrics[6].compare_exchange_weak(
+            high, current, std::memory_order_relaxed))
+        {
+        }
+    }
+#endif // LXR_HAS_DIAGNOSTIC_PROBES
+    TraceScan* head = m_scan_work.load(std::memory_order_relaxed);
+    do
+    {
+        scan->next = head;
+    } while (!m_scan_work.compare_exchange_weak(
+        head, scan, std::memory_order_release, std::memory_order_relaxed));
+#if !defined(LXR_S7_SCAN_LINK_CONTROL)
+    LinkTraceScan((start - GetReservationStart()) / sizeof(uintptr_t), scan);
+#else
+    (void)start;
+#endif // !LXR_S7_SCAN_LINK_CONTROL
+    return QueueTrace(nullptr, 0, scan);
 }
 
 LxrRcResult LxrReferenceCounting::QueueTrace(
@@ -9100,11 +9397,15 @@ LxrRcResult LxrReferenceCounting::ProcessTraceWork(Work* work, TraceBatch* targe
     // until no child is left (cm.rs: LXRConcurrentTraceObjects::do_work). A chain of children costs one packet. Only a
     // batch that fills up (8 192 children) becomes a new packet, so that other workers can take it. Before, every
     // object that had children made its own packet.
+    // P8. The level and the batch swap buffers, as the oracle swaps two Vecs (gc_work/tracing.rs:279-300).
+    uintptr_t spare[FullTraceBatchCapacity];
+    uintptr_t* unused = spare;
     while (result == LxrRcResult::Success && targets != nullptr && targets->count != 0 && !ShouldStopTraceLoop())
     {
         size_t levelCount = targets->count;
-        uintptr_t level[FullTraceBatchCapacity];
-        memcpy(level, targets->references, levelCount * sizeof(uintptr_t));
+        uintptr_t* level = targets->references;
+        targets->references = unused;
+        unused = level;
         targets->count = 0;
         size_t directBudget = BufferCapacity;
         for (size_t index = 0; index < levelCount; index++)
@@ -9129,6 +9430,11 @@ LxrRcResult LxrReferenceCounting::ProcessTraceWork(Work* work, TraceBatch* targe
     if (result == LxrRcResult::Success && targets != nullptr)
     {
         result = targets->Flush();
+    }
+    if (targets != nullptr)
+    {
+        // `spare` ends with this frame.
+        targets->references = targets->storage;
     }
     uint64_t previous = m_trace_pending.fetch_sub(1, std::memory_order_acq_rel);
     if (previous == 0)
@@ -9368,7 +9674,10 @@ LxrRcResult LxrReferenceCounting::ProcessPauseTraceObject(
     }
 #endif // LXR_SIDE_METADATA_TEST_PLATFORM && LXR_PAUSE_TRACE_MARK_CONTROL
     (void)observed;
-    CountWorker(GetExecutionWorker(), TraceObjectsCounter, 1);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), TraceObjectsCounter, 1);
+    }
     if (maximumReferences <= *directBudget)
     {
         TraceScan local(object, loader);
@@ -9376,39 +9685,117 @@ LxrRcResult LxrReferenceCounting::ProcessPauseTraceObject(
         *directBudget -= maximumReferences;
         return result;
     }
-    TraceScan* scan = new (std::nothrow) TraceScan(object, loader);
-    if (scan == nullptr)
+    return QueueTraceScan(object, loader, start);
+}
+
+// The concurrent trace of a counted object, as the oracle traces it (policy/immix/immixspace.rs trace_object_without_moving_rc,
+// plan/lxr/gc_work/tracing.rs): one compare-exchange of the mark claims the object, and the worker scans it without a
+// trace lock. No object moves while the concurrent trace runs: a young copy (in a pause) moves only an object with count
+// zero, and a mature copy happens only in a FinalMark or Full pause. So a counted object needs no forwarding check here.
+// The claim slot replaces the trace lock for a dying object: the allocator can reuse the lines of an object as soon as
+// its count is zero, so FinishDyingTraceObject (Death) waits until no worker scans the object.
+LxrRcResult LxrReferenceCounting::ProcessConcurrentTraceObject(
+    Object* object, uintptr_t start, size_t* directBudget, TraceBatch* targets, size_t worker)
+{
+    if (!IsObjectStart(object))
     {
-        return Fail(LxrRcResult::OutOfMemory);
+        return LxrRcResult::Success;
     }
-#ifdef LXR_HAS_DIAGNOSTIC_PROBES
-    if (m_storage_diagnostics.load(std::memory_order_relaxed))
+    std::atomic<uintptr_t>& claim = m_trace_claims[worker].start;
+    claim.store(start, std::memory_order_relaxed);
+    uintptr_t observed;
+    if (!m_mark_metadata.CompareExchange(start, 1, 0, SideMetadataMemoryOrder::SequentiallyConsistent, &observed))
     {
-        m_storage_metrics[4].fetch_add(1, std::memory_order_relaxed);
-        uint64_t current = m_storage_metrics[5].fetch_add(sizeof(TraceScan), std::memory_order_relaxed) +
-            sizeof(TraceScan);
-        uint64_t high = m_storage_metrics[6].load(std::memory_order_relaxed);
-        while (high < current && !m_storage_metrics[6].compare_exchange_weak(
-            high, current, std::memory_order_relaxed))
+        claim.store(0, std::memory_order_release);
+        return LxrRcResult::Success;
+    }
+    (void)observed;
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, TraceObjectsCounter, 1);
+    }
+    Object* loader = GetLoaderAllocator(object);
+    size_t maximumReferences = object->GetGCSafeMethodTable()->ContainsGCPointers()
+        ? ObjectSize(object) / sizeof(uintptr_t) + 1
+        : (loader == nullptr ? 0 : 1);
+    LxrRcResult result;
+    if (maximumReferences <= *directBudget)
+    {
+        TraceScan local(object, loader);
+        result = ScanTraceLocked(&local, true, targets);
+        *directBudget -= maximumReferences;
+        if (m_configuration.traceStats)
         {
+            CountWorker(worker, ConcurrentSlicesCounter, 1);
         }
     }
-#endif // LXR_HAS_DIAGNOSTIC_PROBES
-    TraceScan* head = m_scan_work.load(std::memory_order_relaxed);
-    do
+    else
     {
-        scan->next = head;
-    } while (!m_scan_work.compare_exchange_weak(
-        head, scan, std::memory_order_release, std::memory_order_relaxed));
-#if !defined(LXR_S7_SCAN_LINK_CONTROL)
-    LinkTraceScan((start - GetReservationStart()) / sizeof(uintptr_t), scan);
-#endif // !LXR_S7_SCAN_LINK_CONTROL
-    return QueueTrace(nullptr, 0, scan);
+        // The scan is linked before the claim ends, so a dying object that waits for the claim then finds it.
+        result = QueueTraceScan(object, loader, start);
+    }
+    claim.store(0, std::memory_order_release);
+    return result;
 }
 
 LxrRcResult LxrReferenceCounting::ProcessTraceObject(
     Object* object, size_t* directBudget, TraceBatch* targets)
 {
+    if (object == nullptr)
+    {
+        return LxrRcResult::Success;
+    }
+    // Port overhead 1. A packet gives its worker and phases (TraceBatch); only a call without a packet reads the
+    // thread-local worker and the shared phases.
+    const size_t worker = targets != nullptr ? targets->worker : GetExecutionWorker();
+    const LxrRcPhase phase = targets != nullptr ? targets->phase : GetPhase();
+    const LxrTracePhase tracePhase = targets != nullptr ? targets->tracePhase : GetTracePhase();
+#if !defined(LXR_TRACE_LOCK_CONTROL)
+    // The concurrent trace on a trace worker (ProcessConcurrentTraceObject). An object with count zero takes the checked
+    // path below: it can be a young source that a pause has moved, or an object that is not counted.
+    if (worker < m_configuration.workers && phase == LxrRcPhase::Mutator && tracePhase == LxrTracePhase::Concurrent &&
+        m_trace_claims != nullptr && !m_pause_trace_open.load(std::memory_order_relaxed))
+    {
+        uintptr_t start = Start(object);
+        if (start % sizeof(uintptr_t) == 0 && OwnsAddress(start))
+        {
+            if (m_mark_metadata.Load(start, SideMetadataMemoryOrder::Relaxed) != 0)
+            {
+                return LxrRcResult::Success;
+            }
+            if (m_rc_metadata.Load(start, SideMetadataMemoryOrder::Relaxed) != 0)
+            {
+                return ProcessConcurrentTraceObject(object, start, directBudget, targets, worker);
+            }
+        }
+    }
+#endif // !LXR_TRACE_LOCK_CONTROL
+#if !defined(LXR_WALK_TRUSTED_RESOLVE_CONTROL)
+    // P4. Most visits find a marked object (67 %). The oracle checks the mark first and resolves only for a defrag
+    // source (policy/immix/immixspace.rs:1111-1124). Here the check comes first when the object cannot be forwarded and
+    // cannot be a mature candidate: it is in the LOS, or it has a count and its block is not an evacuation source.
+    // ResolveForwardedChecked and TryCopyMatureResolved then return the object unchanged, so the result is the same.
+    // A source block keeps the full path: a copy has mark zero, and a visit through the marked source must mark it.
+    {
+        uintptr_t early = Start(object);
+        if (early % sizeof(uintptr_t) == 0 && OwnsAddress(early) &&
+            m_mark_metadata.Load(early, SideMetadataMemoryOrder::Relaxed) != 0)
+        {
+            if ((!m_configuration.evacuateNursery && !m_configuration.evacuateMature) || !IsImmix(early))
+            {
+                return LxrRcResult::Success;
+            }
+            size_t block = (early - GetReservationStart()) / ImmixBlockGeometry::BlockBytes;
+            if (m_rc_metadata.Load(early, SideMetadataMemoryOrder::Relaxed) != 0 &&
+                (m_evacuation_sources == nullptr ||
+                 (block < m_block_table_blocks.load(std::memory_order_acquire) &&
+                  m_evacuation_sources[block].load(std::memory_order_acquire) == 0)))
+            {
+                return LxrRcResult::Success;
+            }
+        }
+    }
+#endif // !LXR_WALK_TRUSTED_RESOLVE_CONTROL
     object = ResolveForwardedChecked(object);
     if (object == nullptr)
     {
@@ -9431,7 +9818,7 @@ LxrRcResult LxrReferenceCounting::ProcessTraceObject(
     }
     if (m_configuration.evacuateMature)
     {
-        LxrRcResult copied = TryCopyMature(&object);
+        LxrRcResult copied = TryCopyMatureResolved(&object);
         if (copied != LxrRcResult::Success)
         {
             return copied;
@@ -9447,7 +9834,10 @@ LxrRcResult LxrReferenceCounting::ProcessTraceObject(
         return ProcessPauseTraceObject(object, start, directBudget, targets);
     }
     size_t index = (start - GetReservationStart()) / sizeof(uintptr_t);
-    EnterTraceLock(index);
+    if (!EnterTraceLockUnlessMarked(index, start))
+    {
+        return LxrRcResult::Success;
+    }
     uintptr_t count = m_rc_metadata.Load(start, SideMetadataMemoryOrder::SequentiallyConsistent);
     uintptr_t mark = m_mark_metadata.Load(start, SideMetadataMemoryOrder::SequentiallyConsistent);
     LxrRcResult result = LxrRcResult::Success;
@@ -9456,66 +9846,76 @@ LxrRcResult LxrReferenceCounting::ProcessTraceObject(
         ExitTraceLock(index);
         return result;
     }
+    // The claim is a compare-exchange: a concurrent worker (ProcessConcurrentTraceObject) and a dying object
+    // (FinishDyingTraceObject) set the mark without this lock.
+    uintptr_t observed;
+    if (!m_mark_metadata.CompareExchange(start, 1, 0, SideMetadataMemoryOrder::SequentiallyConsistent, &observed))
+    {
+        ExitTraceLock(index);
+        return result;
+    }
+    (void)observed;
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, TraceObjectsCounter, 1);
+    }
     Object* loader = GetLoaderAllocator(object);
     size_t maximumReferences = object->GetGCSafeMethodTable()->ContainsGCPointers()
         ? ObjectSize(object) / sizeof(uintptr_t) + 1
         : (loader == nullptr ? 0 : 1);
     if (maximumReferences <= *directBudget)
     {
-        m_mark_metadata.Store(start, 1, SideMetadataMemoryOrder::SequentiallyConsistent);
-        CountWorker(GetExecutionWorker(), TraceObjectsCounter, 1);
         TraceScan local(object, loader);
         result = ScanTraceLocked(&local, true, targets);
         *directBudget -= maximumReferences;
-        if (GetPhase() == LxrRcPhase::Mutator && GetTracePhase() == LxrTracePhase::Concurrent)
+        if (m_configuration.traceStats && phase == LxrRcPhase::Mutator && tracePhase == LxrTracePhase::Concurrent)
         {
-            m_trace_metrics[ConcurrentSlices].fetch_add(1, std::memory_order_relaxed);
+            CountWorker(worker, ConcurrentSlicesCounter, 1);
         }
         ExitTraceLock(index);
         return result;
     }
-    TraceScan* scan = new (std::nothrow) TraceScan(object, loader);
-    if (scan == nullptr)
-    {
-        ExitTraceLock(index);
-        return Fail(LxrRcResult::OutOfMemory);
-    }
-#ifdef LXR_HAS_DIAGNOSTIC_PROBES
-    if (m_storage_diagnostics.load(std::memory_order_relaxed))
-    {
-        m_storage_metrics[4].fetch_add(1, std::memory_order_relaxed);
-        uint64_t current = m_storage_metrics[5].fetch_add(sizeof(TraceScan), std::memory_order_relaxed) +
-            sizeof(TraceScan);
-        uint64_t high = m_storage_metrics[6].load(std::memory_order_relaxed);
-        while (high < current && !m_storage_metrics[6].compare_exchange_weak(
-            high, current, std::memory_order_relaxed))
-        {
-        }
-    }
-#endif // LXR_HAS_DIAGNOSTIC_PROBES
-    TraceScan* head = m_scan_work.load(std::memory_order_relaxed);
-    do
-    {
-        scan->next = head;
-    } while (!m_scan_work.compare_exchange_weak(
-        head, scan, std::memory_order_release, std::memory_order_relaxed));
-#if !defined(LXR_S7_SCAN_LINK_CONTROL)
-    LinkTraceScan(index, scan);
-#endif // !LXR_S7_SCAN_LINK_CONTROL
-    m_mark_metadata.Store(start, 1, SideMetadataMemoryOrder::SequentiallyConsistent);
-    CountWorker(GetExecutionWorker(), TraceObjectsCounter, 1);
-    result = QueueTrace(nullptr, 0, scan);
+    result = QueueTraceScan(object, loader, start);
     ExitTraceLock(index);
     return result;
 }
 
 LxrRcResult LxrReferenceCounting::ScanTraceLocked(TraceScan* scan, bool finish, TraceBatch* targets)
 {
-    CostScope cost(this, 8);
+    // Port overhead 6. A packet takes the children (TraceBatch), so the hot frame has no child buffer. Only a scan
+    // without a packet uses the 8 KB buffer, in its own frame.
+    if (targets != nullptr)
+    {
+        return ScanTraceSlots(scan, finish, targets, nullptr);
+    }
+    return ScanTraceUnbatched(scan, finish);
+}
+
+NOINLINE LxrRcResult LxrReferenceCounting::ScanTraceUnbatched(TraceScan* scan, bool finish)
+{
     uintptr_t children[BufferCapacity];
+    return ScanTraceSlots(scan, finish, nullptr, children);
+}
+
+LxrRcResult LxrReferenceCounting::ScanTraceSlots(
+    TraceScan* scan, bool finish, TraceBatch* targets, uintptr_t* children)
+{
+    CostScope cost(this, 8);
     size_t count = 0;
     size_t visited = 0;
-    const bool pausePhase = GetPhase() == LxrRcPhase::Suspended;
+    // Port overhead 1. A packet gives its phases and worker (TraceBatch); only a scan without a packet reads them here.
+    const LxrRcPhase phase = targets != nullptr ? targets->phase : GetPhase();
+    const LxrTracePhase tracePhase = targets != nullptr ? targets->tracePhase : GetTracePhase();
+    const bool pausePhase = phase == LxrRcPhase::Suspended;
+    // No object moves while the concurrent trace runs (see ProcessConcurrentTraceObject). A child that a pause moves later
+    // has count zero, so it is queued, and ProcessTraceObject resolves it when it uses it.
+    const bool concurrentPhase = phase == LxrRcPhase::Mutator && tracePhase == LxrTracePhase::Concurrent;
+    (void)concurrentPhase;
+    const size_t worker = targets != nullptr ? targets->worker : GetExecutionWorker();
+    // Port overhead 5. The Immix capacity shrinks only in a pause with no trace work (ReturnTailSuspended), and a larger
+    // capacity is published before its blocks hold objects. A stale smaller limit only queues the child (safe).
+    const uintptr_t immixArena = reinterpret_cast<uintptr_t>(m_arena);
+    const size_t immixLimit = m_arena != nullptr ? m_immix_capacity.load(std::memory_order_acquire) : 0;
     auto append = [&](uintptr_t target)
     {
         if (targets != nullptr)
@@ -9531,7 +9931,10 @@ LxrRcResult LxrReferenceCounting::ScanTraceLocked(TraceScan* scan, bool finish, 
         count = 0;
         return result;
     };
-    while (!scan->complete)
+    // Port overhead 3. Only the scanner writes complete (under the trace lock, or a scan on its stack), so its loop reads it
+    // relaxed. The store is a release: a reader that sees complete with an acquire load also sees the scan state. No reader
+    // needs a full barrier (a seq_cst store is an xchg on x64).
+    while (!scan->complete.load(std::memory_order_relaxed))
     {
         if (scan->cursor == scan->range.count)
         {
@@ -9547,24 +9950,46 @@ LxrRcResult LxrReferenceCounting::ScanTraceLocked(TraceScan* scan, bool finish, 
                     }
                     scan->loaderAllocator = nullptr;
                 }
-                scan->complete = true;
+                scan->complete.store(true, std::memory_order_release);
                 break;
             }
         }
         Object** slot = scan->range.start + scan->cursor++;
-        // A pause has no mutator that writes the slot, so it reads the slot without an exclusive cache line.
-        Object* child = pausePhase ? VolatileLoadWithoutBarrier(slot)
-            : Interlocked::CompareExchangePointer(slot, static_cast<Object*>(nullptr), nullptr);
+        // A pause has no mutator that writes the slot. A concurrent trace needs only an atomic acquire load:
+        // the SATB barrier logs the old value before it stores, so the old and the new value are both safe.
+        Object* child = pausePhase ? VolatileLoadWithoutBarrier(slot) : VolatileLoad(slot);
         visited++;
         if (child != nullptr)
         {
+#if !defined(LXR_TRACE_LOCK_CONTROL)
+            if (concurrentPhase)
+            {
+                // The oracle records the slot only for a target in a defrag block (gc_work/tracing.rs scan_and_enqueue).
+                if (m_configuration.evacuateMature && IsMatureCandidate(Start(child)))
+                {
+                    LxrRcResult result = RememberMatureCandidateSlot(slot, worker);
+                    if (result != LxrRcResult::Success)
+                    {
+                        return result;
+                    }
+                }
+            }
+            else
+#endif // !LXR_TRACE_LOCK_CONTROL
             if (m_configuration.evacuateMature)
             {
                 Object* original = child;
-                LxrRcResult result = RememberMatureSlot(slot, child);
+                // P6. One candidate check serves the remembered slot and the copy (the copy checks only an unforwarded
+                // child, which is this object).
+                const bool candidate = IsMatureCandidate(Start(child));
+                LxrRcResult result = candidate ? RememberMatureCandidateSlot(slot, worker) : LxrRcResult::Success;
                 if (result == LxrRcResult::Success)
                 {
-                    result = TryCopyMature(&child);
+                    child = ResolveForwardedChecked(child);
+                    if (child == original && candidate)
+                    {
+                        result = TryCopyMatureCandidate(&child);
+                    }
                 }
                 if (result != LxrRcResult::Success)
                 {
@@ -9572,15 +9997,33 @@ LxrRcResult LxrReferenceCounting::ScanTraceLocked(TraceScan* scan, bool finish, 
                 }
                 // Only a moved child changes the slot: a store of the same value only makes the cache line dirty.
                 if (child != original &&
-                    (GetTracePhase() == LxrTracePhase::Full || GetTracePhase() == LxrTracePhase::FinalMark))
+                    (tracePhase == LxrTracePhase::Full || tracePhase == LxrTracePhase::FinalMark))
                 {
                     *slot = child;
                 }
             }
-            LxrRcResult result = append(reinterpret_cast<uintptr_t>(child));
-            if (result != LxrRcResult::Success)
+            else
             {
-                return result;
+                child = ResolveForwardedChecked(child);
+            }
+            // Remember the slot and resolve/copy first: a marked source can move to an unmarked destination.
+            // Counted marks have scan, promotion or deletion work behind them. Keep RC-zero readers on the checked queue path.
+            uintptr_t childStart = Start(child);
+            // Port overhead 5. One range test with the limit read once per scan (the same test as OwnsAddress).
+            // The count load stays in all phases: a queued entry can outlive the concurrent trace (an unsubmitted
+            // packet runs in the next pause), and when the pause moves a zero-count source, the entry must resolve
+            // and mark the destination.
+            const bool owned = childStart % sizeof(uintptr_t) == 0 &&
+                (childStart - immixArena < immixLimit || IsLarge(childStart));
+            if (!owned ||
+                m_mark_metadata.Load(childStart, SideMetadataMemoryOrder::Relaxed) == 0 ||
+                m_rc_metadata.Load(childStart, SideMetadataMemoryOrder::Relaxed) == 0)
+            {
+                LxrRcResult result = append(reinterpret_cast<uintptr_t>(child));
+                if (result != LxrRcResult::Success)
+                {
+                    return result;
+                }
             }
         }
         if (!finish && visited == BufferCapacity)
@@ -9588,7 +10031,10 @@ LxrRcResult LxrReferenceCounting::ScanTraceLocked(TraceScan* scan, bool finish, 
             break;
         }
     }
-    CountWorker(GetExecutionWorker(), TraceReferencesCounter, visited);
+    if (m_configuration.traceStats)
+    {
+        CountWorker(worker, TraceReferencesCounter, visited);
+    }
     if (count != 0)
     {
         LxrRcResult result = QueueTrace(children, count);
@@ -9630,7 +10076,10 @@ LxrRcResult LxrReferenceCounting::ProcessTraceScan(TraceScan* scan, bool finish,
     ExitTraceLock(index);
     if (!finish && GetPhase() == LxrRcPhase::Mutator && GetTracePhase() == LxrTracePhase::Concurrent)
     {
-        m_trace_metrics[ConcurrentSlices].fetch_add(1, std::memory_order_relaxed);
+        if (m_configuration.traceStats)
+        {
+            CountWorker(targets != nullptr ? targets->worker : GetExecutionWorker(), ConcurrentSlicesCounter, 1);
+        }
 #ifdef LXR_HAS_DIAGNOSTIC_PROBES
         uintptr_t target = reinterpret_cast<uintptr_t>(scan->object);
         if (!complete && m_scan_checkpoint.load(std::memory_order_acquire) == target)
@@ -9666,20 +10115,31 @@ LxrRcResult LxrReferenceCounting::FinishDyingTraceObject(Object* object)
 #else
     uintptr_t start = Start(object);
     size_t index = (start - GetReservationStart()) / sizeof(uintptr_t);
-    EnterTraceLock(index);
     LxrRcResult result = LxrRcResult::Success;
-    if (m_mark_metadata.Load(start, SideMetadataMemoryOrder::SequentiallyConsistent) == 0)
+    uintptr_t observed;
+    if (m_mark_metadata.CompareExchange(start, 1, 0, SideMetadataMemoryOrder::SequentiallyConsistent, &observed))
     {
-        m_mark_metadata.Store(start, 1, SideMetadataMemoryOrder::SequentiallyConsistent);
-        m_trace_metrics[DeletionMarks].fetch_add(1, std::memory_order_relaxed);
+        if (m_configuration.traceStats)
+        {
+            CountWorker(GetExecutionWorker(), DeletionMarksCounter, 1);
+        }
 #ifdef LXR_HAS_PHASE_TIMERS
         CountWindow(1, 1);
 #endif // LXR_HAS_PHASE_TIMERS
     }
+    else if (m_trace_claims != nullptr)
+    {
+        // A concurrent worker may scan the object without the trace lock (ProcessConcurrentTraceObject).
+        WaitForTraceClaims(start);
+    }
+    EnterTraceLock(index);
     TraceScan* scan = FindTraceScan(index);
     if (result == LxrRcResult::Success && scan != nullptr && !scan->complete)
     {
-        m_trace_metrics[ForcedScans].fetch_add(1, std::memory_order_relaxed);
+        if (m_configuration.traceStats)
+        {
+            CountWorker(GetExecutionWorker(), ForcedScansCounter, 1);
+        }
         result = ScanTraceLocked(scan, true);
     }
     ExitTraceLock(index);
@@ -9721,9 +10181,9 @@ bool LxrReferenceCounting::CanTraceInParallel() const
         t_execution_worker <= m_configuration.workers && !m_pause_trace_open.load(std::memory_order_acquire);
 }
 
-// Opens the trace of the pause to all workers. The caller is a packet of a pause stage. Returns false when the trace stays on
-// the calling thread (the setting is off, or the caller is not a scheduler thread of a FinalMark or Full pause).
-bool LxrReferenceCounting::OpenPauseTrace(LxrRcResult* result)
+// Opens the trace of the pause to all workers. The caller has a pause worker index. Returns false when the trace stays on
+// the calling thread (the setting is off, or the caller is not in a FinalMark or Full pause).
+bool LxrReferenceCounting::OpenPauseTrace(LxrRcResult* result, bool finalizerTrace)
 {
     *result = LxrRcResult::Success;
     if (!CanTraceInParallel())
@@ -9740,7 +10200,7 @@ bool LxrReferenceCounting::OpenPauseTrace(LxrRcResult* result)
     m_trace_batch_limit.store(
         std::max<size_t>(1, std::min<size_t>(m_configuration.pauseTraceBatch, FullTraceBatchCapacity)),
         std::memory_order_release);
-    m_pause_trace_metrics[0].fetch_add(1, std::memory_order_relaxed);
+    m_pause_trace_metrics[finalizerTrace ? 3 : 0].fetch_add(1, std::memory_order_relaxed);
     *result = SubmitUnsubmittedTrace();
     return true;
 }
@@ -9908,20 +10368,38 @@ LxrRcResult LxrReferenceCounting::TraceRoots(const uintptr_t* objects, size_t co
     {
         return LxrRcResult::InvalidPhase;
     }
-    for (size_t offset = 0; offset < count; offset += BufferCapacity)
+    if (count == 0)
+    {
+        return LxrRcResult::Success;
+    }
+
+    // The runtime's scan thread runs while the single weak-closure packet waits. It uses the pause thread's
+    // execution index, as the serial drain does; no other closure packet can use that index before the scan returns.
+    ExecutionScope executionScope(GetExecutionWorker());
+    LxrRcResult result = LxrRcResult::Success;
+    bool opened = OpenPauseTrace(&result, true);
+    for (size_t offset = 0; result == LxrRcResult::Success && offset < count; offset += BufferCapacity)
     {
         size_t batch = count - offset;
         if (batch > BufferCapacity)
         {
             batch = BufferCapacity;
         }
-        LxrRcResult result = QueueTrace(objects + offset, batch);
-        if (result != LxrRcResult::Success)
+        result = QueueTrace(objects + offset, batch);
+    }
+    if (result == LxrRcResult::Success)
+    {
+        result = DrainTraceInsidePause();
+    }
+    if (opened)
+    {
+        ClosePauseTrace();
+        if (result == LxrRcResult::Success)
         {
-            return result;
+            result = GetFailure();
         }
     }
-    return count == 0 ? LxrRcResult::Success : DrainTraceInsidePause();
+    return result;
 }
 
 bool LxrReferenceCounting::IsMarked(Object* object) const
@@ -10140,16 +10618,30 @@ LxrRcResult LxrReferenceCounting::HoldTrace(bool hold)
         ? PublishTraceWork() : LxrRcResult::Success;
 }
 
+uint64_t LxrReferenceCounting::GetPauseTraceMetric(size_t index) const
+{
+    if (index >= 4)
+    {
+        return UINT64_MAX;
+    }
+    uint64_t value = m_pause_trace_metrics[index].load(std::memory_order_relaxed);
+    return index == 2 ? TraceStat(value + SumWorker(PauseReplayedSlotsCounter)) : value;
+}
+
 LxrTraceMetrics LxrReferenceCounting::GetTraceMetrics() const
 {
     return {
         m_trace_metrics[InitialMarks].load(), m_trace_metrics[FinalMarks].load(),
-        m_trace_metrics[FullMarks].load(), SumWorker(TraceObjectsCounter) + m_trace_metrics[TracedObjects].load(),
-        SumWorker(TraceReferencesCounter) + m_trace_metrics[TracedReferences].load(), m_trace_metrics[SatbEntries].load(),
-        m_trace_metrics[DeletionMarks].load(), m_trace_metrics[ForcedScans].load(),
+        m_trace_metrics[FullMarks].load(),
+        TraceStat(SumWorker(TraceObjectsCounter) + m_trace_metrics[TracedObjects].load()),
+        TraceStat(SumWorker(TraceReferencesCounter) + m_trace_metrics[TracedReferences].load()),
+        m_trace_metrics[SatbEntries].load(),
+        TraceStat(m_trace_metrics[DeletionMarks].load() + SumWorker(DeletionMarksCounter)),
+        TraceStat(m_trace_metrics[ForcedScans].load() + SumWorker(ForcedScansCounter)),
         m_trace_metrics[SplitPackets].load(), m_trace_metrics[CycleObjects].load(),
         m_trace_metrics[CycleBytes].load(), m_trace_metrics[Interruptions].load(),
-        m_trace_metrics[ConcurrentSlices].load(), m_trace_metrics[CheckpointInterruptions].load(),
+        TraceStat(m_trace_metrics[ConcurrentSlices].load() + SumWorker(ConcurrentSlicesCounter)),
+        m_trace_metrics[CheckpointInterruptions].load(),
         WindowMetric(0), WindowMetric(1), WindowMetric(2), WindowMetric(3), WindowMetric(4), WindowMetric(5),
         WindowMetric(6),
     };
