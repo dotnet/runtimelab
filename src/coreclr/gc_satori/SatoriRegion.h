@@ -32,14 +32,15 @@
 #include "SatoriHeap.h"
 #include "SatoriUtil.h"
 #include "SatoriObject.h"
+#include "ThreadLocalCollection.h"
 #include "SatoriPrefetchQueue.h"
 
 class SatoriAllocator;
 class SatoriRegionQueue;
 class SatoriObject;
 class SatoriAllocationContext;
-struct SatoriLocalRootCache;
-struct SatoriLocalStayRuns;
+struct ThreadLocalRootCache;
+struct ThreadLocalStayRuns;
 
 // The Region contains objects and their metadata.
 class SatoriRegion
@@ -62,16 +63,21 @@ public:
     bool RearmCardsForStillTenured();
     void ResetCardsForEphemeral();
 
-    SatoriRegion* TrySplit(size_t regionSize);
-    bool CanDecommit();
-    bool TryDecommit();
+    bool TryDecommitAbove(size_t address);
     void TryCommit();
-    bool CanCoalesceWithNext();
-    bool TryCoalesceWithNext(bool drainsAreDone);
 
     void ZeroInitAndLink(SatoriRegion* prev);
 
     static size_t RegionSizeForAlloc(size_t allocSize);
+    // How much of a region of the given size, from its start, is always committed. (see InitializeAt)
+    static size_t MinCommitSize(size_t regionSize);
+    // Where AllocateHuge places a huge object of the given size in a blank region of the given size, from the start of the region.
+    static size_t HugeObjectOffset(size_t regionSize, size_t size);
+    // How much of a region of the given size, from its start, a huge object of the given size needs committed.
+    // The claim of the region commits that much, so that AllocateHuge has nothing to commit. (see SatoriAllocator::AllocHuge)
+    static size_t HugeCommitSize(size_t regionSize, size_t size);
+    // How much of a blank region, from its start, its first allocation of the given size needs committed. (see AllocateDirty)
+    static size_t CommitSizeForAlloc(size_t allocSize);
 
     size_t GetAllocStart();
     size_t GetAllocRemaining();
@@ -164,6 +170,10 @@ public:
     size_t Start();
     size_t End();
     size_t Size();
+    // The end of the committed prefix of the region.
+    size_t CommittedEnd();
+    // Everything from here to the end of the committed prefix is known to be zero.
+    size_t UsedEnd();
     bool IsLarge();
 
     SatoriObject* FirstObject();
@@ -237,6 +247,7 @@ public:
     void UnlockFinalizableTrackers();
 
     bool RegisterForFinalization(SatoriObject* finalizable);
+    void RegisterForFinalization(SatoriObject* finalizable, SatoriWorkChunk* tracker);
     bool HasFinalizables();
     bool& HasPendingFinalizables();
 
@@ -278,8 +289,12 @@ public:
     void ClearFreeLists();
 
     // we tell where we are in terms of alloc bytes, so we do not collect too soon
-    // returns true if it actually did a collection.
-    bool ThreadLocalCollect(size_t allocBytes, bool atTlgcLimit = false);
+    static bool ThreadLocalCollectionEventEnabled();
+    // Diagnostic data is optional; rejected calls do not acquire a collection index.
+    ThreadLocalCollectionOutcome ThreadLocalCollect(size_t allocBytes, bool atTlgcLimit,
+        ThreadLocalCollectionData* data);
+    void ReportThreadLocalCollection(const ThreadLocalCollectionData& data, size_t requestedBytes,
+        ThreadLocalCollectionTrigger trigger, ThreadLocalCollectionOutcome outcome, ThreadLocalCollectionRetry retry);
 
     SatoriPage* ContainingPage();
     SatoriRegion* NextInPage();
@@ -314,7 +329,20 @@ private:
         // we will overlap the map and the header for simplicity of map operations.
         // it is ok because the first BITMAP_START elements of the map cover the header/map itself and thus will not be used.
         // +1 to include End(), it will always be 0, but it is convenient to make it legal map index.
-        volatile size_t m_bitmap[BITMAP_LENGTH + 1];
+        //
+        // The map is not volatile - nearly always one thread has the map of a region to itself:
+        //  - in a region that is escape tracked, the owning thread: the write barrier, escaping and thread-local GC.
+        //    Concurrent marking does not mark in such region (see MaybeEscapeTrackingAcquire) and a blocking GC has
+        //    the owner suspended. The map changes hands through the owner tag and the stale marks flag - the map is
+        //    cleared before the tag is cleared (see StopEscapeTracking), or, when the barrier stops tracking, the flag
+        //    is set before the tag is cleared and reset after the map is cleared (see ClearStaleEscapeMarks).
+        //  - after marking is done, the thread that relocates, updates or sweeps the region. It took the region from a queue
+        //    and nothing is marked until all regions are swept.
+        // While the global GC marks, the map of a region that is not escape tracked is shared - many threads set marks
+        // at once (see SetMarkedAtomic) and look at the marks that others set. The code that can run at such time reads
+        // the map with volatile loads: IsMarkedAtomic, FindMarkedObjectFrom and SkipUnmarked that takes "upTo".
+        // NB: the escape path stores to the map as volatile for another reason, see SetEscaped.
+        size_t m_bitmap[BITMAP_LENGTH + 1];
 
         // Header.(can be up to 72 size_t)
         struct
@@ -448,9 +476,6 @@ private:
     size_t ComputeTlgcWindow();
     size_t ComputeTlgcAllocEnd(size_t minAllocSize, size_t allocBytes);
     size_t ParseableBitmapLimit();
-    bool CanSplitWithoutCommit(size_t size);
-    void SplitCore(size_t regionSize, size_t& newStart, size_t& newCommitted, size_t& newZeroInitedAfter);
-    void UndoSplitCore(size_t regionSize, size_t nextStart, size_t nextCommitted, size_t nextUsed);
 
     template <bool isConservative>
     static void MarkFn(PTR_PTR_Object ppObject, ScanContext* sc, uint32_t flags);
@@ -461,18 +486,18 @@ private:
     static void EscapeFn(SatoriObject** dst, SatoriObject* src, SatoriRegion* region);
     NOINLINE void EscapeReachable(SatoriObject* o);
 
-    bool ThreadLocalMark(SatoriLocalRootCache* rootCache, size_t* localStorage);
+    bool ThreadLocalMark(ThreadLocalRootCache* rootCache, size_t* localStorage);
     void ThreadLocalPropagateMarks(size_t maxSurv, size_t maxCount, size_t maxPointerBytes, size_t& pointerBytes);
-    size_t ThreadLocalPlan(SatoriLocalStayRuns* stayRuns);
-    void ThreadLocalUpdatePointers(SatoriLocalRootCache* rootCache);
-    void ThreadLocalCompact(size_t denseEnd, SatoriLocalStayRuns* stayRuns);
+    size_t ThreadLocalPlan(ThreadLocalStayRuns* stayRuns);
+    void ThreadLocalUpdatePointers(ThreadLocalRootCache* rootCache);
+    void ThreadLocalCompact(size_t denseEnd, ThreadLocalStayRuns* stayRuns);
     void ThreadLocalPendFinalizables();
     size_t FindUnmovableThreadLocal(size_t from, size_t to, bool includePinned);
-    size_t SkipDenseThreadLocal(size_t from, int32_t* objCount);
-    void ClearMarksOfDenseThreadLocal(size_t from, size_t to);
-    size_t SkipEscapedThreadLocal(size_t from);
-    size_t MarkedSizeThreadLocal(SatoriObject* o);
-    bool StartsObjectAtEndOfRunThreadLocal(size_t lastBit);
+    size_t SkipDenseThreadLocal(size_t from, int32_t* objCount, size_t* searchFrom);
+    void ClearMarksOfDenseThreadLocal(size_t from, size_t to, size_t* searchFrom);
+    size_t SkipEscapedThreadLocal(size_t from, size_t* nextMarked);
+    size_t MarkedSizeThreadLocal(SatoriObject* o, size_t* searchFrom);
+    bool StartsObjectAtEndOfRunThreadLocal(size_t lastBit, size_t* nextMark);
 #ifdef _DEBUG
     void VerifyLocalBitmap();
     void VerifyIndexThreadLocal();
@@ -490,11 +515,16 @@ private:
         Escaped,
     };
 
+    // These use the bitmap as ordinary memory.
+    // Only for the code that has the bitmap of the region to itself. (see m_bitmap)
     bool IsMarked(SatoriObject* o);
     void SetMarked(SatoriObject* o);
-    void SetMarkedAtomic(SatoriObject* o);
     void ClearMarked(SatoriObject* o);
     bool CheckAndClearMarked(SatoriObject* o);
+    // These are for use while the global GC marks, when other threads may be setting marks in the region:
+    // the mark is read with a volatile load and set with an interlocked operation. (see m_bitmap)
+    bool IsMarkedAtomic(SatoriObject* o);
+    void SetMarkedAtomic(SatoriObject* o);
 
     bool IsPinnedLocal(SatoriObject* o);
     void SetPinnedLocal(SatoriObject* o);
@@ -508,7 +538,6 @@ private:
     bool IsEscapedOrPinned(SatoriObject* o);
 
     bool ValidateIndexEmpty();
-    bool Coalesce(SatoriRegion* next);
 
     template <bool updatePointers, bool individuallyPromoted, bool isEscapeTracking>
     bool Sweep();

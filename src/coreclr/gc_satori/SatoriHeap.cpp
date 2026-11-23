@@ -36,6 +36,7 @@
 #include "SatoriObject.h"
 #include "SatoriPage.h"
 #include "SatoriPage.inl"
+#include <minipal/log.h>
 
 int8_t* SatoriHeap::s_pageByteMap;
 
@@ -105,6 +106,8 @@ SatoriHeap* SatoriHeap::Create()
     heap->m_reservedMapSize = mapSize;
     heap->m_committedMapSize = commitSize - offsetof(SatoriHeap, m_pageMap);
     heap->m_committedBytes = commitSize;
+    heap->m_trimmingBytes = 0;
+    heap->m_lastCommitTs = 0;
     InitWriteBarrier(heap->m_pageMap, s_pageByteMap, heap->CommittedMapLength() * Satori::PAGE_SIZE_GRANULARITY - 1);
     heap->m_mapLock.Initialize();
 
@@ -195,8 +198,12 @@ bool SatoriHeap::TryAddRegularPage(SatoriPage*& newPage)
                 // therefore the read will happen after the object is obtained.
                 // Also the object must be published before other thread could see it, and publishing is a release.
                 // Thus an ordinary write is ok even for weak memory cases.
-                m_pageMap[i] = newPage;
+                //
+                // That is not enough for the page itself. Free granules of a page can be claimed by anyone who finds
+                // the page in the map, and that must see the page as it was initialized. The map entry is the last write,
+                // and it is a release. (readers get to the page through the entry that they load, see ForEachPageFrom)
                 s_pageByteMap[i] = 1;
+                VolatileStore(&m_pageMap[i], newPage);
 
                 // ensure the next is advanced to at least i + 1
                 while ((nextPageIndex = m_nextPageIndex) < i + 1 &&
@@ -226,8 +233,10 @@ bool SatoriHeap::TryAddRegularPage(SatoriPage*& newPage)
 // also unlikely that we cross-use one if just comitted.
 // we scan ahead and claim, but do not move m_nextPageIndex
 // unless we claimed contiguously.
-SatoriPage* SatoriHeap::AddLargePage(size_t minSize)
+SatoriPage* SatoriHeap::AddLargePage(size_t minSize, bool longLived, SatoriRegion*& region, size_t commitSize)
 {
+    region = nullptr;
+
     // The page starts with the card table, which is 1/512 of the page size, not of minSize.
     // The rest of the page must fit minSize:
     //    pageSize - pageSize / 512 >= minSize
@@ -264,13 +273,28 @@ SatoriPage* SatoriHeap::AddLargePage(size_t minSize)
             }
             if (newPage)
             {
-                // mark the map, before an object can be allocated in the new page and
-                // may be seen in a GC barrier
-                for (size_t j = 0; j < mapMarkCount; j++)
+                // The page is made for this region, claim it before others can see the page and take a granule of it.
+                // That also means that a failure to format the region can still release the entire reservation.
+                size_t granules = minSize >> Satori::REGION_BITS;
+                size_t first = newPage->TryClaimRun(granules, longLived);
+                _ASSERTE(first != SIZE_MAX);
+                if (first == SIZE_MAX || (region = newPage->FormatClaimed(first, granules, commitSize)) == nullptr)
+                {
+                    newPage->Release();
+                    return nullptr;
+                }
+
+                // Mark the map, before an object can be allocated in the new page and may be seen in a GC barrier.
+                // Others find the page at its first entry, and then take granules from all of it. Thus the first entry
+                // is the last write, and it is a release, so that the rest of the map is there when the page is found.
+                for (size_t j = mapMarkCount - 1; j > 0; j--)
                 {
                     m_pageMap[i + j] = newPage;
                     s_pageByteMap[i + j] = 1;
                 }
+
+                s_pageByteMap[i] = 1;
+                VolatileStore(&m_pageMap[i], newPage);
 
                 size_t usedMapLength;
                 // ensure the m_usedMapLength is advanced to at least i + mapMarkCount
@@ -303,3 +327,57 @@ SatoriRegion* SatoriHeap::RegionForAddressChecked(size_t address)
 
     return nullptr;
 }
+
+size_t SatoriHeap::FreeCommittedBytes()
+{
+    size_t bytes = 0;
+    ForEachPage(
+        [&](SatoriPage* page)
+        {
+            bytes += page->FreeCommittedBytes();
+        }
+    );
+
+    return bytes;
+}
+
+// The counts are read one after another, and a claim, a free, or a run of the trimmer can come between the reads.
+// The trimmer counts a run that it claimed before it decommits it, and stops counting it right after the commit count goes down.
+size_t SatoriHeap::InUseBytes()
+{
+    size_t committed = GetBytesCommitted();
+    size_t free = FreeCommittedBytes();
+    size_t trimming = VolatileLoadWithoutBarrier(&m_trimmingBytes);
+    size_t notInUse = free + trimming;
+    return committed > notInUse ? committed - notInUse : 0;
+}
+
+#if _DEBUG
+size_t SatoriHeap::VerifyGranules(bool report)
+{
+    // what the heap has committed is the map itself, the card tables of the pages,
+    // the regions and the free granules.
+    size_t committedBytes = offsetof(SatoriHeap, m_pageMap) + m_committedMapSize;
+    size_t problems = 0;
+
+    ForEachPage(
+        [&](SatoriPage* page)
+        {
+            problems += page->VerifyGranules(committedBytes, report);
+        }
+    );
+
+    if (committedBytes != m_committedBytes)
+    {
+        if (report)
+        {
+            minipal_log_print_error("Satori: the heap counts %zu bytes as committed, the map, the pages, the regions and the free granules have %zu\n",
+                m_committedBytes, committedBytes);
+        }
+
+        problems++;
+    }
+
+    return problems;
+}
+#endif

@@ -93,7 +93,10 @@ public:
     void FirePrvSetGCHandle(void *handleID, void *objectID, uint32_t kind, uint32_t generation);
     void FireDestroyGCHandle(void *handleID);
     void FirePrvDestroyGCHandle(void *handleID);
-    void FireGCThreadLocalCollection(uint32_t count, bool collected, uint64_t occupancyBefore, uint64_t occupancyAfter, double durationNs, uint64_t escapedBytesBefore, uint64_t escapedBytesAfter);
+    void FireGCThreadLocalCollection(uint32_t count, uint32_t outcome, uint32_t trigger, uint32_t retry,
+        bool trackingProductive, uint64_t regionId, uint64_t requestedBytes, uint64_t allocationProgress,
+        uint64_t usableBefore, uint64_t usableAfter, uint64_t occupancyBefore, uint64_t occupancyAfter,
+        uint64_t escapedBytesBefore, uint64_t escapedBytesAfter, double durationNs);
 };
 
 extern GCToCLREventSink g_gcToClrEventSink;

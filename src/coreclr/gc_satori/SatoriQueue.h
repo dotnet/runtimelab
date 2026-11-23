@@ -338,8 +338,11 @@ public:
     // NB: a racing popper may read m_next out of an item another thread has already
     //     claimed. That read is harmless - the CAS below will fail and retry - but it
     //     does require the item to stay mapped for the duration of the drain.
-    //     This is why the drain may only run in the blocking phase: outside of it the
-    //     trimmer could coalesce an already claimed region and decommit its header.
+    //     It does. An item can be freed during the drain (a sweep frees the regions that it finds empty), and its granules
+    //     claimed again, but neither a free nor a claim decommits the memory where a header was. Only the trimmer decommits
+    //     free granules, and only those that an earlier round of it has seen free (see SatoriPage::FreeRegion), except for
+    //     TrimNow, which runs after the drains of its GC. The drains run in the blocking phase for the reason above:
+    //     nothing pushes to the queue then.
     template <bool prefetch = true>
     T* TryPopDrainOnly()
     {

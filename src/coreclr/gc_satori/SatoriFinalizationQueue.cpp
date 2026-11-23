@@ -62,18 +62,21 @@ bool SatoriFinalizationQueue::Initialize(SatoriHeap* heap)
     m_sizeMask = size - 1;
     size_t allocSize = size * sizeof(Entry);
     size_t regionSize = SatoriRegion::RegionSizeForAlloc(allocSize);
-    SatoriRegion* region = m_heap->Allocator()->GetRegion(regionSize);
+
+    // The queue lives as long as the process, so place its region at the highest free granules of a page.
+    // The claim commits the array before it publishes the region, and gives the granules back if it cannot.
+    SatoriRegion* region = m_heap->Allocator()->GetRegionLongLived(regionSize, SatoriRegion::CommitSizeForAlloc(allocSize));
     if (region == nullptr)
     {
         return false;
     }
 
+    // Nothing is left to commit, so this cannot fail.
     m_data = (Entry*)region->Allocate(allocSize, /*zeroInitialize*/false);
-    if (m_data == nullptr)
-    {
-        m_heap->Allocator()->ReturnRegion(region);
-        return false;
-    }
+    _ASSERTE(m_data != nullptr);
+
+    // The run could come committed beyond the array, and we need only the array.
+    region->TryDecommitAbove((size_t)m_data + allocSize);
 
     // format as empty
     for (size_t i = 0; i < size; i++)
@@ -112,16 +115,20 @@ void SatoriFinalizationQueue::TryResizeIfOverflowing()
     {
         size_t allocSize = size * sizeof(Entry);
         size_t regionSize = SatoriRegion::RegionSizeForAlloc(allocSize);
-        SatoriRegion* newRegion = m_heap->Allocator()->GetRegion(regionSize);
+
+        // The queue is long-lived, so place the new region at the highest free granules of a page.
+        // The old region is returned after the transfer and becomes a hole that other long-lived requests can reuse.
+        // This runs on GC threads, while other threads may scan their stacks, so in the conservative mode a region that is published
+        // could not be freed here. The claim commits the array before it publishes the region, and gives the granules back if it cannot.
+        SatoriRegion* newRegion = m_heap->Allocator()->GetRegionLongLived(regionSize, SatoriRegion::CommitSizeForAlloc(allocSize));
         if (newRegion)
         {
-            newRegion->TryDecommit();
+            // Nothing is left to commit, so this cannot fail.
             Entry* newData = (Entry*)newRegion->Allocate(allocSize, /*zeroInitialize*/false);
-            if (!newData)
-            {
-                m_heap->Allocator()->AddRegion(newRegion);
-                return;
-            }
+            _ASSERTE(newData != nullptr);
+
+            // The run could come committed beyond the array, and we need only the array.
+            newRegion->TryDecommitAbove((size_t)newData + allocSize);
 
             // format as empty
             for (size_t i = 0; i < size; i++)

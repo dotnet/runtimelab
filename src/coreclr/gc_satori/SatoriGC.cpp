@@ -398,7 +398,7 @@ void ErectWriteBarrier(void* context, Object **dst, Object* ref)
 
     if (!pRecycler->IsBarrierConcurrent(/* includeSwitching */ true))
     {
-        page->SetCardForAddress((size_t)dst);
+        page->SetCardForAddressConcurrent((size_t)dst);
         // recheck - the barrier could turn concurrent while we were setting the card.
         if (!pRecycler->IsBarrierConcurrent(/* includeSwitching */ true))
             return;
@@ -728,6 +728,13 @@ Object* SatoriGC::GetContainingObject(void* pInteriorPtr, bool fCollectedGenOnly
         return nullptr;
     }
 
+    // With conservative stack reporting the pointer may be stale, and point into a region that is not in use (in the cache, for one).
+    // It has no objects to look for, as in SatoriRecycler::MarkFn<true>.
+    if (SatoriUtil::IsConservativeMode() && region->Generation() < 0)
+    {
+        return nullptr;
+    }
+
     if (fCollectedGenOnly &&
         region->Generation() > m_heap->Recycler()->GetCondemnedGeneration())
     {
@@ -1035,7 +1042,7 @@ void SatoriGC::SetCardsAfterBulkCopy(size_t dst, size_t src, size_t len)
         SatoriRecycler* recycler = m_heap->Recycler();
         if (!recycler->IsBarrierConcurrent(/* includeSwitching */ true))
         {
-            page->SetCardsForRange(dst, dst + len);
+            page->SetCardsForRangeConcurrent(dst, dst + len);
         }
 
         if (recycler->IsBarrierConcurrent(/* includeSwitching */ true))

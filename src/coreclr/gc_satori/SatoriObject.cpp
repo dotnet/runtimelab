@@ -94,7 +94,7 @@ SatoriObject* SatoriObject::FormatAsFree(size_t location, size_t size, size_t ze
 
     o->CleanSyncBlock();
     o->RawSetMethodTable(s_emptyObjectMt);
-    _ASSERTE(!o->IsMarked());
+    _ASSERTE(!o->IsMarkedAtomic());
 
     // deduct the size of Array header + syncblock and set the size of the free bytes.
     ((size_t*)o)[1] = size - Satori::MIN_FREE_SIZE;
@@ -107,7 +107,7 @@ SatoriObject* SatoriObject::FormatAsFree(size_t location, size_t size, size_t ze
 
 void SatoriObject::DirtyCardsForContent()
 {
-    _ASSERTE(IsMarked());
+    _ASSERTE(IsMarkedAtomic());
     MethodTable* mt = RawGetMethodTable();
     if (mt->ContainsGCPointersOrCollectible())
     {

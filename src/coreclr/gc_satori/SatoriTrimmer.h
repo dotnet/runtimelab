@@ -62,7 +62,6 @@ private:
 
     static void LoopFn(void* inst);
     void Loop();
-    bool TryTrimRegion(SatoriRegion* region, bool drainsAreDone);
     void StopAndWait();
     void Pause(int msec);
     void Unpause();
